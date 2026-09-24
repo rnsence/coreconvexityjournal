@@ -245,7 +245,7 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
   }, [series])
   const tiles = [
     {
-      label: 'Net P&L', value: money(stats.netPnl, { privacy, decimals: 0, sign: false }), tone: toneOf(stats.netPnl),
+      label: 'Net P&L', value: money(stats.netPnl, { privacy, decimals: 0, sign: false }), tone: toneOf(stats.netPnl), hero: true,
       note: `${plural(series.length, 'session')} · avg ${money(stats.netPnl / Math.max(1, series.length), { privacy, decimals: 0 })}`,
     },
     {
@@ -332,7 +332,7 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
           <ScoreMeter value={edge.score ?? 0}/>
         </div>
         <div className="tile-grid">
-          {tiles.map((tile) => <div className="stat-tile" key={tile.label}>
+          {tiles.map((tile) => <div className={`stat-tile${tile.hero ? ' is-hero' : ''}`} key={tile.label}>
             <span className="tile-head">
               <span className="tile-label">{tile.label}</span>
               {tile.delta != null && Number.isFinite(tile.delta) && <span className={`tile-delta ${tile.delta >= 0 ? 'pos' : 'neg'}`}>
