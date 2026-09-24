@@ -98,7 +98,7 @@ export function Module({ title, meta, actions, state = 'ready', minData, childre
     </header>}
     {state === 'ready'
       ? children
-      : <ChartState state={state} minData={minData}/>}
+      : <ChartState state={state} minData={minData} />}
     {state === 'ready' && foot}
   </section>
 }
@@ -111,8 +111,8 @@ export function ChartState({ state, minData, detail }) {
   }[state] || {}
   return <div className={`chart-state ${state}`}>
     {state === 'loading'
-      ? <div className="state-skeleton"><i/><i/><i/></div>
-      : <div className="state-mark" aria-hidden="true"/>}
+      ? <div className="state-skeleton"><i /><i /><i /></div>
+      : <div className="state-mark" aria-hidden="true" />}
     <b>{copy.title}</b>
     <span>{detail ?? copy.detail}</span>
   </div>
@@ -229,29 +229,29 @@ export function EquityPlot({ series, height = 300, drawdownHeight = 72, privacy 
       onPointerLeave={() => setActive(null)}
     >
       {ticks.map((tick) => <g key={tick}>
-        <line className="viz-grid" x1={padding.left} y1={yAt(tick)} x2={padding.left + plotWidth} y2={yAt(tick)}/>
+        <line className="viz-grid" x1={padding.left} y1={yAt(tick)} x2={padding.left + plotWidth} y2={yAt(tick)} />
         {Math.abs(yAt(tick) - yAt(last?.cumulative ?? tick)) > 13 &&
           <text className="viz-axis" x={padding.left + plotWidth + 10} y={yAt(tick) + 3.5}>{compactMoney(tick, { privacy })}</text>}
       </g>)}
-      <line className="viz-zero" x1={padding.left} y1={yAt(0)} x2={padding.left + plotWidth} y2={yAt(0)}/>
+      <line className="viz-zero" x1={padding.left} y1={yAt(0)} x2={padding.left + plotWidth} y2={yAt(0)} />
 
-      {trendLine && <path className="equity-trend-line" d={trendLine} vectorEffect="non-scaling-stroke"/>}
-      {line && <path className="equity-line" d={line} vectorEffect="non-scaling-stroke"/>}
-      {series.length === 1 && <circle className="equity-point" cx={xAt(0)} cy={yAt(series[0].cumulative)} r="3.5"/>}
+      {trendLine && <path className="equity-trend-line" d={trendLine} vectorEffect="non-scaling-stroke" />}
+      {line && <path className="equity-line" d={line} vectorEffect="non-scaling-stroke" />}
+      {series.length === 1 && <circle className="equity-point" cx={xAt(0)} cy={yAt(series[0].cumulative)} r="3.5" />}
 
       {last && <>
-        <circle className="equity-head" cx={xAt(series.length - 1)} cy={yAt(last.cumulative)} r="3"/>
+        <circle className="equity-head" cx={xAt(series.length - 1)} cy={yAt(last.cumulative)} r="3" />
         <g transform={`translate(${padding.left + plotWidth + 6}, ${Math.max(padding.top + 9, Math.min(padding.top + plotHeight - 9, yAt(last.cumulative)))})`}>
-          <rect className="equity-pill" x="0" y="-9" width={padding.right - 10} height="18" rx="4"/>
+          <rect className="equity-pill" x="0" y="-9" width={padding.right - 10} height="18" rx="4" />
           <text className="equity-pill-label" x={(padding.right - 10) / 2} y="3.5">{compactMoney(last.cumulative, { privacy })}</text>
         </g>
       </>}
 
       {ddLine && <>
-        <line className="viz-zero" x1={padding.left} y1={ddTop} x2={padding.left + plotWidth} y2={ddTop}/>
-        <path className="drawdown-series" d={ddLine} vectorEffect="non-scaling-stroke"/>
+        <line className="viz-zero" x1={padding.left} y1={ddTop} x2={padding.left + plotWidth} y2={ddTop} />
+        <path className="drawdown-series" d={ddLine} vectorEffect="non-scaling-stroke" />
         {worstIndex >= 0 && <>
-          <line className="drawdown-marker" x1={xAt(worstIndex)} y1={ddTop} x2={xAt(worstIndex)} y2={ddY(ddValues[worstIndex])}/>
+          <line className="drawdown-marker" x1={xAt(worstIndex)} y1={ddTop} x2={xAt(worstIndex)} y2={ddY(ddValues[worstIndex])} />
           <text className="viz-axis worst" x={padding.left + plotWidth + 10} y={ddTop + drawdownHeight - 22}>
             max {compactMoney(ddValues[worstIndex], { privacy })}
           </text>
@@ -265,8 +265,8 @@ export function EquityPlot({ series, height = 300, drawdownHeight = 72, privacy 
       ) : null)}
 
       {point && <>
-        <line className="viz-crosshair" x1={xAt(active)} y1={padding.top} x2={xAt(active)} y2={ddTop + drawdownHeight - 16}/>
-        <circle className="viz-focus" cx={xAt(active)} cy={yAt(point.cumulative)} r="4"/>
+        <line className="viz-crosshair" x1={xAt(active)} y1={padding.top} x2={xAt(active)} y2={ddTop + drawdownHeight - 16} />
+        <circle className="viz-focus" cx={xAt(active)} cy={yAt(point.cumulative)} r="4" />
       </>}
     </svg>
 
@@ -278,7 +278,7 @@ export function EquityPlot({ series, height = 300, drawdownHeight = 72, privacy 
           { label: 'Session P&L', value: money(point.pnl, { privacy }), tone: toneOf(point.pnl) },
           { label: 'Drawdown', value: money(point.drawdown, { privacy }), tone: point.drawdown < 0 ? 'neg' : 'flat' },
           { label: 'Trades', value: `${point.trades} · ${percent(point.winRate, { decimals: 0 })} win` },
-        ]}/>
+        ]} />
       </>}
     </Tooltip>
   </div>
@@ -310,22 +310,22 @@ export function ColumnPlot({ data, height = 190, privacy = false, valueLabel = '
     <svg width={width} height={height} role="img" aria-label={`${valueLabel} by session hour`}>
       <defs>
         <pattern id={`${hatchId}-positive`} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="7" height="7" className="bar-pattern-base"/>
-          <line x1="0" y1="0" x2="0" y2="7" className="bar-pattern-line"/>
+          <rect width="7" height="7" className="bar-pattern-base" />
+          <line x1="0" y1="0" x2="0" y2="7" className="bar-pattern-line" />
         </pattern>
         <pattern id={`${hatchId}-negative`} width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <rect width="7" height="7" className="bar-pattern-base negative"/>
-          <line x1="0" y1="0" x2="0" y2="7" className="bar-pattern-line negative"/>
+          <rect width="7" height="7" className="bar-pattern-base negative" />
+          <line x1="0" y1="0" x2="0" y2="7" className="bar-pattern-line negative" />
         </pattern>
       </defs>
       {ticks.map((tick) => <g key={tick}>
-        <line className="viz-grid" x1="0" y1={yAt(tick)} x2={plotWidth} y2={yAt(tick)}/>
+        <line className="viz-grid" x1="0" y1={yAt(tick)} x2={plotWidth} y2={yAt(tick)} />
         <text className="viz-axis" x={plotWidth + 8} y={yAt(tick) + 3.5}>{compactMoney(tick, { privacy })}</text>
       </g>)}
-      <line className="viz-zero" x1="0" y1={yAt(0)} x2={plotWidth} y2={yAt(0)}/>
-      <line className="column-average" x1="0" y1={yAt(average)} x2={plotWidth} y2={yAt(average)}/>
+      <line className="viz-zero" x1="0" y1={yAt(0)} x2={plotWidth} y2={yAt(0)} />
+      <line className="column-average" x1="0" y1={yAt(average)} x2={plotWidth} y2={yAt(average)} />
       <g className="column-average-label" transform={`translate(0 ${yAt(average) - 8})`}>
-        <rect width="58" height="17" rx="4"/>
+        <rect width="58" height="17" rx="4" />
         <text x="29" y="11.5" textAnchor="middle">Avg {compactMoney(average, { privacy })}</text>
       </g>
       {data.map((item, index) => {
@@ -352,7 +352,7 @@ export function ColumnPlot({ data, height = 190, privacy = false, valueLabel = '
           { label: valueLabel, value: money(data[active].pnl, { privacy }), tone: toneOf(data[active].pnl) },
           { label: 'Trades', value: `${data[active].trades}` },
           { label: 'Win rate', value: percent(data[active].winRate, { decimals: 0 }) },
-        ]}/>
+        ]} />
       </>}
     </Tooltip>
   </div>
@@ -380,7 +380,7 @@ export function RowPlot({ data, privacy = false, labelWidth = 62, valueWidth = 9
       >
         <span className="row-label">{item.label}</span>
         <span className="row-track">
-          <i className="row-axis"/>
+          <i className="row-axis" />
           <i
             className={`row-bar ${toneOf(item.pnl)}`}
             style={item.pnl >= 0
@@ -396,7 +396,7 @@ export function RowPlot({ data, privacy = false, labelWidth = 62, valueWidth = 9
             { label: 'Trades', value: `${item.trades}` },
             { label: 'Win rate', value: percent(item.winRate, { decimals: 0 }) },
             { label: 'Avg / trade', value: money(item.avgPnl, { privacy, decimals: 0 }) },
-          ]}/>
+          ]} />
         </span>}
       </li>
     })}
@@ -411,9 +411,9 @@ export function BulletBars({ components }) {
     {components.map((component) => <li key={component.key} title={`Full marks at ${component.target}`}>
       <span className="bullet-label">{component.key}</span>
       <span className="bullet-track">
-        <i className="bullet-fill" style={{ width: `${component.value ?? 0}%` }}/>
-        <i className="bullet-target" style={{ left: '100%' }}/>
-        <i className="bullet-mid" style={{ left: '60%' }}/>
+        <i className="bullet-fill" style={{ width: `${component.value ?? 0}%` }} />
+        <i className="bullet-target" style={{ left: '100%' }} />
+        <i className="bullet-mid" style={{ left: '60%' }} />
       </span>
       <span className="bullet-display">{component.display}</span>
       <span className="bullet-score">{component.value == null ? '—' : Math.round(component.value)}</span>
@@ -450,17 +450,17 @@ export function RollingPlot({ points, window = 20, height = 188 }) {
   const point = active == null ? null : points[active]
   return <div className="rolling-plot" ref={ref} style={{ height }}>
     <svg width={width} height={height} role="img" aria-label={`Rolling ${window}-trade win rate`} onPointerMove={track} onPointerLeave={() => setActive(null)}>
-      <rect className="rolling-band" x="0" y={yAt(60)} width={plotWidth} height={Math.max(0, yAt(45) - yAt(60))}/>
+      <rect className="rolling-band" x="0" y={yAt(60)} width={plotWidth} height={Math.max(0, yAt(45) - yAt(60))} />
       {ticks.map((tick) => <g key={tick}>
-        <line className="viz-grid" x1="0" y1={yAt(tick)} x2={plotWidth} y2={yAt(tick)}/>
+        <line className="viz-grid" x1="0" y1={yAt(tick)} x2={plotWidth} y2={yAt(tick)} />
         <text className="viz-axis" x={plotWidth + 8} y={yAt(tick) + 3.5}>{tick}%</text>
       </g>)}
-      <line className="rolling-benchmark" x1="0" y1={yAt(50)} x2={plotWidth} y2={yAt(50)}/>
-      <path className="rolling-series" d={line} vectorEffect="non-scaling-stroke"/>
-      {last && <circle className="equity-head" cx={xAt(points.length - 1)} cy={yAt(last.value)} r="3"/>}
+      <line className="rolling-benchmark" x1="0" y1={yAt(50)} x2={plotWidth} y2={yAt(50)} />
+      <path className="rolling-series" d={line} vectorEffect="non-scaling-stroke" />
+      {last && <circle className="equity-head" cx={xAt(points.length - 1)} cy={yAt(last.value)} r="3" />}
       {point && <>
-        <line className="viz-crosshair" x1={xAt(active)} y1={padding.top} x2={xAt(active)} y2={padding.top + plotHeight}/>
-        <circle className="viz-focus" cx={xAt(active)} cy={yAt(point.value)} r="4"/>
+        <line className="viz-crosshair" x1={xAt(active)} y1={padding.top} x2={xAt(active)} y2={padding.top + plotHeight} />
+        <circle className="viz-focus" cx={xAt(active)} cy={yAt(point.value)} r="4" />
       </>}
       {points.length > 1 && <>
         <text className="viz-axis" x="0" y={height - 5}>{shortDate(points[0].to)}</text>
@@ -474,7 +474,7 @@ export function RollingPlot({ points, window = 20, height = 188 }) {
           { label: 'Win rate', value: percent(point.value, { decimals: 1 }), tone: point.value >= 50 ? 'pos' : 'neg' },
           { label: 'Window', value: `${shortDate(point.from)} – ${shortDate(point.to)}` },
           { label: 'Sample', value: `${window} trades` },
-        ]}/>
+        ]} />
       </>}
     </Tooltip>
   </div>
@@ -489,7 +489,7 @@ export function HeatCalendar({ grid, privacy = false, selected, onSelect, today 
     <div className="heat-head">{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => <span key={day}>{day}</span>)}</div>
     <div className="heat-grid">
       {grid.cells.map((cell) => {
-        if (cell.blank) return <i key={cell.key} className="heat-blank"/>
+        if (cell.blank) return <i key={cell.key} className="heat-blank" />
         const pnl = cell.session?.pnl ?? 0
         const intensity = cell.session ? Math.min(1, Math.abs(pnl) / grid.peak) : 0
         const level = cell.session ? Math.max(1, Math.ceil(intensity * 4)) : 0
@@ -513,14 +513,14 @@ export function HeatCalendar({ grid, privacy = false, selected, onSelect, today 
               { label: 'Trades', value: `${cell.session.trades}` },
               { label: 'Win rate', value: percent(cell.session.winRate, { decimals: 0 }) },
               { label: 'Cumulative', value: money(cell.session.cumulative, { privacy }) },
-            ]}/>
+            ]} />
           </span>}
         </button>
       })}
     </div>
     <div className="heat-legend">
       <span>Loss</span>
-      <i className="swatch neg level-4"/><i className="swatch neg level-2"/><i className="swatch idle"/><i className="swatch pos level-2"/><i className="swatch pos level-4"/>
+      <i className="swatch neg level-4" /><i className="swatch neg level-2" /><i className="swatch idle" /><i className="swatch pos level-2" /><i className="swatch pos level-4" />
       <span>Profit</span>
     </div>
   </div>
@@ -572,10 +572,10 @@ export function ScoreMeter({ value = 0, max = 100 }) {
         const from = index * 20
         const fill = Math.max(0, Math.min(1, (position - from) / 20))
         return <span key={band.label} className={`meter-band band-${index}`}>
-          <i style={{ width: `${fill * 100}%` }}/>
+          <i style={{ width: `${fill * 100}%` }} />
         </span>
       })}
-      <span className="meter-marker" style={{ left: `${position}%` }}/>
+      <span className="meter-marker" style={{ left: `${position}%` }} />
     </div>
     <div className="meter-scale">{[0, 20, 40, 60, 80, 100].map((tick) => <span key={tick}>{tick}</span>)}</div>
   </div>
@@ -625,18 +625,18 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
     <svg width={width} height={height} role="img" aria-label="Daily net cumulative profit and loss" onPointerMove={track} onPointerLeave={() => setActive(null)}>
       <defs>
         <linearGradient id="cumeFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--accent)" stopOpacity=".7"/>
-          <stop offset="35%" stopColor="var(--accent)" stopOpacity=".34"/>
-          <stop offset="100%" stopColor="var(--accent)" stopOpacity=".02"/>
+          <stop offset="0" stopColor="var(--accent)" stopOpacity=".7" />
+          <stop offset="35%" stopColor="var(--accent)" stopOpacity=".34" />
+          <stop offset="100%" stopColor="var(--accent)" stopOpacity=".02" />
         </linearGradient>
         <pattern id="cumeDots" width="7" height="7" patternUnits="userSpaceOnUse">
-          <circle cx="1.6" cy="1.6" r=".9" fill="currentColor" fillOpacity=".18"/>
+          <circle cx="1.6" cy="1.6" r=".9" fill="currentColor" fillOpacity=".18" />
         </pattern>
       </defs>
 
       {ticks.map((tick) => <g key={tick}>
-        <line className="cume-grid" x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)}/>
-        <line className="cume-tick" x1={pad.left - 7} y1={yAt(tick)} x2={pad.left - 2} y2={yAt(tick)}/>
+        <line className="cume-grid" x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)} />
+        <line className="cume-tick" x1={pad.left - 7} y1={yAt(tick)} x2={pad.left - 2} y2={yAt(tick)} />
         <text className="cume-axis" x={pad.left - 12} y={yAt(tick) + 4} textAnchor="end">{compactMoney(tick, { privacy })}</text>
       </g>)}
 
@@ -644,14 +644,14 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
         const x = xAt(band.from)
         const bandWidth = Math.max(4, xAt(band.to) - x)
         return <g key={`${band.from}-${band.to}`}>
-          <rect className="cume-band" x={x} y={pad.top} width={bandWidth} height={plotHeight} clipPath="url(#cumeClip)"/>
-          <rect className="cume-band-bar" x={x} y={pad.top + plotHeight - 1.5} width={bandWidth} height="1.5" rx=".75"/>
+          <rect className="cume-band" x={x} y={pad.top} width={bandWidth} height={plotHeight} clipPath="url(#cumeClip)" />
+          <rect className="cume-band-bar" x={x} y={pad.top + plotHeight - 1.5} width={bandWidth} height="1.5" rx=".75" />
         </g>
       })}
-      <clipPath id="cumeClip"><path d={area}/></clipPath>
+      <clipPath id="cumeClip"><path d={area} /></clipPath>
 
-      {area && <path className="cume-area" d={area}/>}
-      {line && <path className="cume-line" d={line} vectorEffect="non-scaling-stroke"/>}
+      {area && <path className="cume-area" d={area} />}
+      {line && <path className="cume-line" d={line} vectorEffect="non-scaling-stroke" />}
 
       {series.map((item, index) => index % labelEvery === 0 || index === series.length - 1 ? (
         <text key={item.date} className="cume-axis" x={xAt(index)} y={height - 10} textAnchor={index === 0 ? 'start' : index === series.length - 1 ? 'end' : 'middle'}>
@@ -660,8 +660,8 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
       ) : null)}
 
       {point && <>
-        <line className="cume-cross" x1={xAt(active)} y1={pad.top} x2={xAt(active)} y2={pad.top + plotHeight}/>
-        <circle className="cume-focus" cx={xAt(active)} cy={yAt(point.cumulative)} r="4.5"/>
+        <line className="cume-cross" x1={xAt(active)} y1={pad.top} x2={xAt(active)} y2={pad.top + plotHeight} />
+        <circle className="cume-focus" cx={xAt(active)} cy={yAt(point.cumulative)} r="4.5" />
       </>}
     </svg>
     <Tooltip point={point ? { x: xAt(active), y: yAt(point.cumulative) } : null} width={width}>
@@ -671,7 +671,7 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
           { label: 'Cumulative', value: money(point.cumulative, { privacy }), tone: toneOf(point.cumulative) },
           { label: 'Session P&L', value: money(point.pnl, { privacy }), tone: toneOf(point.pnl) },
           { label: 'Trades', value: `${point.trades}` },
-        ]}/>
+        ]} />
       </>}
     </Tooltip>
   </div>
@@ -722,44 +722,44 @@ export function IntradayChart({ fills, open = '09:30', close = '16:00', height =
     <svg width={width} height={height} role="img" aria-label={`Intraday net P&L, closing at ${money(level, { privacy })}`}>
       <defs>
         <linearGradient id="intradayFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--accent)" stopOpacity=".18"/>
-          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0"/>
+          <stop offset="0" stopColor="var(--accent)" stopOpacity=".18" />
+          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
         </linearGradient>
         <linearGradient id="intradayUp" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#32d583" stopOpacity=".2"/>
-          <stop offset="100%" stopColor="#32d583" stopOpacity=".02"/>
+          <stop offset="0" stopColor="#32d583" stopOpacity=".2" />
+          <stop offset="100%" stopColor="#32d583" stopOpacity=".02" />
         </linearGradient>
         <linearGradient id="intradayDown" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#f97066" stopOpacity=".03"/>
-          <stop offset="100%" stopColor="#f97066" stopOpacity=".2"/>
+          <stop offset="0" stopColor="#f97066" stopOpacity=".03" />
+          <stop offset="100%" stopColor="#f97066" stopOpacity=".2" />
         </linearGradient>
-        <clipPath id="intradayAbove"><rect x={pad.left} y={0} width={plotWidth} height={zeroY}/></clipPath>
-        <clipPath id="intradayBelow"><rect x={pad.left} y={zeroY} width={plotWidth} height={Math.max(0, height - zeroY)}/></clipPath>
+        <clipPath id="intradayAbove"><rect x={pad.left} y={0} width={plotWidth} height={zeroY} /></clipPath>
+        <clipPath id="intradayBelow"><rect x={pad.left} y={zeroY} width={plotWidth} height={Math.max(0, height - zeroY)} /></clipPath>
       </defs>
       {phases.map((phase) => <g key={phase.label} className="intraday-phase">
-        <rect x={xAt(phase.from)} y={pad.top} width={xAt(phase.to) - xAt(phase.from)} height={plotHeight}/>
+        <rect x={xAt(phase.from)} y={pad.top} width={xAt(phase.to) - xAt(phase.from)} height={plotHeight} />
         <text x={(xAt(phase.from) + xAt(phase.to)) / 2} y={pad.top - 10} textAnchor="middle">{phase.label}</text>
       </g>)}
       {ticks.map((tick) => <g key={tick}>
-        <line className={tick === 0 ? 'intraday-zero' : 'cume-grid'} x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)}/>
+        <line className={tick === 0 ? 'intraday-zero' : 'cume-grid'} x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)} />
         <text className="cume-axis" x={pad.left - 8} y={yAt(tick) + 4} textAnchor="end">{compactMoney(tick, { privacy })}</text>
       </g>)}
       {hours.map((hour) => <text key={hour} className="cume-axis" x={xAt(hour)} y={height - 8} textAnchor="middle">{hour}</text>)}
-      <path d={`${line} V ${zeroY} H ${xAt(open)} Z`} fill="url(#intradayUp)" clipPath="url(#intradayAbove)"/>
-      <path d={`${line} V ${zeroY} H ${xAt(open)} Z`} fill="url(#intradayDown)" clipPath="url(#intradayBelow)"/>
-      {point && <line className="intraday-guide" x1={xAt(point.time)} y1={pad.top} x2={xAt(point.time)} y2={pad.top + plotHeight}/>}
-      <path className="cume-line" d={line}/>
+      <path d={`${line} V ${zeroY} H ${xAt(open)} Z`} fill="url(#intradayUp)" clipPath="url(#intradayAbove)" />
+      <path d={`${line} V ${zeroY} H ${xAt(open)} Z`} fill="url(#intradayDown)" clipPath="url(#intradayBelow)" />
+      {point && <line className="intraday-guide" x1={xAt(point.time)} y1={pad.top} x2={xAt(point.time)} y2={pad.top + plotHeight} />}
+      <path className="cume-line" d={line} />
       {marks.map((mark, index) => {
         const size = active === index ? 12 : 9
         return <rect
-        key={`${mark.symbol}-${mark.time}`}
-        className={`intraday-mark ${toneOf(mark.pnl)}${active === index ? ' active' : ''}`}
-        x={xAt(mark.time) - size / 2} y={yAt(mark.cumulative) - size / 2} width={size} height={size} rx={size * 0.32}
-        tabIndex={0}
-        aria-label={`${mark.time} ${mark.symbol} ${money(mark.pnl, { privacy })}`}
-        onPointerEnter={() => setActive(index)} onPointerLeave={() => setActive(null)}
-        onFocus={() => setActive(index)} onBlur={() => setActive(null)}
-      />
+          key={`${mark.symbol}-${mark.time}`}
+          className={`intraday-mark ${toneOf(mark.pnl)}${active === index ? ' active' : ''}`}
+          x={xAt(mark.time) - size / 2} y={yAt(mark.cumulative) - size / 2} width={size} height={size} rx={size * 0.32}
+          tabIndex={0}
+          aria-label={`${mark.time} ${mark.symbol} ${money(mark.pnl, { privacy })}`}
+          onPointerEnter={() => setActive(index)} onPointerLeave={() => setActive(null)}
+          onFocus={() => setActive(index)} onBlur={() => setActive(null)}
+        />
       })}
     </svg>
     <Tooltip point={point ? { x: xAt(point.time), y: yAt(point.cumulative) } : null} width={width}>
@@ -768,7 +768,7 @@ export function IntradayChart({ fills, open = '09:30', close = '16:00', height =
         <TipRows rows={[
           { label: 'Trade', value: money(point.pnl, { privacy }), tone: toneOf(point.pnl) },
           { label: 'Running', value: money(point.cumulative, { privacy }), tone: toneOf(point.cumulative) },
-        ]}/>
+        ]} />
       </>}
     </Tooltip>
   </div>
@@ -799,8 +799,8 @@ export function DailyColumns({ series, height: fixedHeight = 300, fill = false, 
   return <div className={`daily-columns${fill ? ' fill' : ''}`} ref={ref} style={fill ? undefined : { height }}>
     <svg width={width} height={height} role="img" aria-label="Net daily profit and loss">
       {ticks.map((tick) => <g key={tick}>
-        <line className="cume-grid" x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)}/>
-        <line className="cume-tick" x1={pad.left - 7} y1={yAt(tick)} x2={pad.left - 2} y2={yAt(tick)}/>
+        <line className="cume-grid" x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)} />
+        <line className="cume-tick" x1={pad.left - 7} y1={yAt(tick)} x2={pad.left - 2} y2={yAt(tick)} />
         <text className="cume-axis" x={pad.left - 12} y={yAt(tick) + 4} textAnchor="end">{compactMoney(tick, { privacy })}</text>
       </g>)}
       {series.map((point, index) => {
@@ -829,7 +829,7 @@ export function DailyColumns({ series, height: fixedHeight = 300, fill = false, 
           { label: 'Net P&L', value: money(series[active].pnl, { privacy }), tone: toneOf(series[active].pnl) },
           { label: 'Trades', value: `${series[active].trades}` },
           { label: 'Win rate', value: percent(series[active].winRate, { decimals: 0 }) },
-        ]}/>
+        ]} />
       </>}
     </Tooltip>
   </div>
@@ -850,18 +850,18 @@ export function ScoreRadar({ axes, current, compare, size = 300 }) {
     <svg viewBox={`0 38 ${size} ${size - 76}`} width="100%" height="100%" role="img" aria-label="Overall score by component">
       <defs>
         <radialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0" stopColor="var(--accent)" stopOpacity=".16"/>
-          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0"/>
+          <stop offset="0" stopColor="var(--accent)" stopOpacity=".16" />
+          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
         </radialGradient>
       </defs>
-      <circle cx={center} cy={center} r={radius * 1.05} fill="url(#radarGlow)"/>
-      {[0.33, 0.66, 1].map((ratio) => <polygon key={ratio} className="radar-web" points={shape(axes.map(() => ratio * 100))}/>)}
+      <circle cx={center} cy={center} r={radius * 1.05} fill="url(#radarGlow)" />
+      {[0.33, 0.66, 1].map((ratio) => <polygon key={ratio} className="radar-web" points={shape(axes.map(() => ratio * 100))} />)}
       {axes.map((axis, index) => {
         const [x, y] = pointAt(index, 1)
-        return <line key={axis} className="radar-web" x1={center} y1={center} x2={x} y2={y}/>
+        return <line key={axis} className="radar-web" x1={center} y1={center} x2={x} y2={y} />
       })}
-      {compare && <polygon className="radar-compare" points={shape(compare)}/>}
-      <polygon className="radar-current" points={shape(current)}/>
+      {compare && <polygon className="radar-compare" points={shape(compare)} />}
+      <polygon className="radar-current" points={shape(current)} />
       {axes.map((axis, index) => {
         const [x, y] = pointAt(index, 1.2)
         return <text key={`label-${axis}`} className="radar-label" x={x} y={y + 3} textAnchor={x > center + 6 ? 'start' : x < center - 6 ? 'end' : 'middle'}>{axis}</text>
@@ -885,18 +885,18 @@ export function WinDonut({ winRate, wins, losses, recent = [], size = 116 }) {
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Win rate ${winRate == null ? 'unavailable' : `${Math.round(winRate)}%`}`}>
         <defs>
           <linearGradient id={`${id}-arc`} x1="0" y1="1" x2="1" y2="0">
-            <stop offset="0" stopColor="var(--pos-mark)" stopOpacity="1"/>
-            <stop offset="1" stopColor="var(--pos-mark)" stopOpacity="1"/>
+            <stop offset="0" stopColor="var(--pos-mark)" stopOpacity="1" />
+            <stop offset="1" stopColor="var(--pos-mark)" stopOpacity="1" />
           </linearGradient>
         </defs>
         <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-          <circle className="donut-track" cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke}/>
+          <circle className="donut-track" cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} />
           <circle
             className="donut-arc" cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke}
             stroke={`url(#${id}-arc)`} strokeLinecap="round"
             strokeDasharray={`${Math.max(0.5, share * circumference)} ${circumference}`}
           />
-          <circle className="donut-mark" cx={size / 2} cy={stroke / 2 + 0.5} r={stroke / 2 - 2.5}/>
+          <circle className="donut-mark" cx={size / 2} cy={stroke / 2 + 0.5} r={stroke / 2 - 2.5} />
         </g>
       </svg>
       <span className="donut-value">
@@ -908,7 +908,7 @@ export function WinDonut({ winRate, wins, losses, recent = [], size = 116 }) {
       <div><dt>Winning trades</dt><dd>{wins}</dd></div>
       <div><dt>Losing trades</dt><dd>{losses}</dd></div>
     </dl>
-    {recent.length > 0 && <RecentResults results={recent}/>}
+    {recent.length > 0 && <RecentResults results={recent} />}
   </div>
 }
 
@@ -948,23 +948,23 @@ export function WinPairBars({ buckets, height = 150 }) {
     <svg width={width} height={height} role="img" aria-label="Win and loss share by period">
       <defs>
         <linearGradient id="pairWinFade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--win)" stopOpacity="1"/>
-          <stop offset="1" stopColor="var(--win)" stopOpacity=".2"/>
+          <stop offset="0" stopColor="var(--win)" stopOpacity="1" />
+          <stop offset="1" stopColor="var(--win)" stopOpacity=".2" />
         </linearGradient>
         <linearGradient id="pairLossFade" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--loss)" stopOpacity="1"/>
-          <stop offset="1" stopColor="var(--loss)" stopOpacity=".2"/>
+          <stop offset="0" stopColor="var(--loss)" stopOpacity="1" />
+          <stop offset="1" stopColor="var(--loss)" stopOpacity=".2" />
         </linearGradient>
       </defs>
       {ticks.map((tick) => <g key={tick}>
-        <line className="cume-grid" x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)}/>
+        <line className="cume-grid" x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)} />
         <text className="cume-axis" x={pad.left - 8} y={yAt(tick) + 4} textAnchor="end">{tick}%</text>
       </g>)}
       {buckets.map((bucket, index) => {
         const center = pad.left + index * band + band / 2
         return <g key={bucket.key}>
-          <rect className="pair-win" x={center - barWidth - 1.5} y={yAt(bucket.winRate)} width={barWidth} height={Math.max(2, pad.top + plotHeight - yAt(bucket.winRate))} rx="2"/>
-          <rect className="pair-loss" x={center + 1.5} y={yAt(bucket.lossRate)} width={barWidth} height={Math.max(2, pad.top + plotHeight - yAt(bucket.lossRate))} rx="2"/>
+          <rect className="pair-win" x={center - barWidth - 1.5} y={yAt(bucket.winRate)} width={barWidth} height={Math.max(2, pad.top + plotHeight - yAt(bucket.winRate))} rx="2" />
+          <rect className="pair-loss" x={center + 1.5} y={yAt(bucket.lossRate)} width={barWidth} height={Math.max(2, pad.top + plotHeight - yAt(bucket.lossRate))} rx="2" />
           <text className="cume-axis" x={center} y={height - 5} textAnchor="middle">{bucket.label}</text>
         </g>
       })}
@@ -995,25 +995,25 @@ export function WinLines({ buckets, height = 150 }) {
   return <div className="win-lines" ref={ref} style={{ height }}>
     <svg width={width} height={height} role="img" aria-label="Win and loss share trend">
       <defs>
-        <linearGradient id="winLineFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--win)" stopOpacity=".16"/><stop offset="1" stopColor="var(--win)" stopOpacity="0"/></linearGradient>
-        <linearGradient id="lossLineFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--loss)" stopOpacity=".12"/><stop offset="1" stopColor="var(--loss)" stopOpacity="0"/></linearGradient>
+        <linearGradient id="winLineFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--win)" stopOpacity=".16" /><stop offset="1" stopColor="var(--win)" stopOpacity="0" /></linearGradient>
+        <linearGradient id="lossLineFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--loss)" stopOpacity=".12" /><stop offset="1" stopColor="var(--loss)" stopOpacity="0" /></linearGradient>
         <linearGradient id="winEdgeFade" gradientUnits="userSpaceOnUse" x1={pad.left} y1="0" x2={pad.left + plotWidth} y2="0">
-          <stop offset="0" stopColor="#fff" stopOpacity="0"/>
-          <stop offset="0.07" stopColor="#fff" stopOpacity="1"/>
-          <stop offset="0.93" stopColor="#fff" stopOpacity="1"/>
-          <stop offset="1" stopColor="#fff" stopOpacity="0"/>
+          <stop offset="0" stopColor="#fff" stopOpacity="0" />
+          <stop offset="0.07" stopColor="#fff" stopOpacity="1" />
+          <stop offset="0.93" stopColor="#fff" stopOpacity="1" />
+          <stop offset="1" stopColor="#fff" stopOpacity="0" />
         </linearGradient>
-        <mask id="winEdgeMask"><rect x={pad.left} y="0" width={plotWidth} height={height} fill="url(#winEdgeFade)"/></mask>
+        <mask id="winEdgeMask"><rect x={pad.left} y="0" width={plotWidth} height={height} fill="url(#winEdgeFade)" /></mask>
       </defs>
       {ticks.map((tick) => <g key={tick}>
-        <line className="cume-grid" x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)}/>
+        <line className="cume-grid" x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)} />
         <text className="cume-axis" x={pad.left - 8} y={yAt(tick) + 4} textAnchor="end">{tick}%</text>
       </g>)}
       <g mask="url(#winEdgeMask)">
-        <path d={area(lossLine, lossPoints)} fill="url(#lossLineFill)"/>
-        <path d={area(winLine, winPoints)} fill="url(#winLineFill)"/>
-        <path className="line-loss" d={lossLine}/>
-        <path className="line-win" d={winLine}/>
+        <path d={area(lossLine, lossPoints)} fill="url(#lossLineFill)" />
+        <path d={area(winLine, winPoints)} fill="url(#winLineFill)" />
+        <path className="line-loss" d={lossLine} />
+        <path className="line-win" d={winLine} />
       </g>
       {buckets.map((bucket, index) => <text key={bucket.key} className="cume-axis" x={xAt(index)} y={height - 5} textAnchor={index === 0 ? 'start' : index === buckets.length - 1 ? 'end' : 'middle'}>{bucket.label}</text>)}
     </svg>
@@ -1032,7 +1032,7 @@ export function SessionBars({ sessions, height = 72, privacy = false }) {
   const point = active == null ? null : sessions[active]
   return <div className="session-bars" ref={ref} style={{ height }}>
     <svg width={width} height={height} role="img" aria-label="Net P&L by trading day">
-      <line className="session-zero" x1="0" y1={mid} x2={width} y2={mid}/>
+      <line className="session-zero" x1="0" y1={mid} x2={width} y2={mid} />
       {sessions.map((session, index) => {
         const magnitude = Math.max(2, (Math.abs(session.pnl) / peak) * (mid - 4))
         return <rect
@@ -1081,14 +1081,14 @@ export function SessionLine({ sessions, height = 76, privacy = false }) {
     >
       <defs>
         <linearGradient id="sessionLineFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--green)" stopOpacity=".16"/>
-          <stop offset="1" stopColor="var(--green)" stopOpacity="0"/>
+          <stop offset="0" stopColor="var(--green)" stopOpacity=".16" />
+          <stop offset="1" stopColor="var(--green)" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <line className="session-zero" x1="0" y1={yAt(0)} x2={width} y2={yAt(0)}/>
-      {area && <path d={area} fill="url(#sessionLineFill)"/>}
-      {line && <path className="session-path" d={line}/>}
-      {coords.map(([x, y], index) => <circle key={points[index].label} className={`session-dot ${toneOf(points[index].pnl)}${active === index ? ' active' : ''}`} cx={x} cy={y} r={active === index ? 4.5 : 3}/>)}
+      <line className="session-zero" x1="0" y1={yAt(0)} x2={width} y2={yAt(0)} />
+      {area && <path d={area} fill="url(#sessionLineFill)" />}
+      {line && <path className="session-path" d={line} />}
+      {coords.map(([x, y], index) => <circle key={points[index].label} className={`session-dot ${toneOf(points[index].pnl)}${active === index ? ' active' : ''}`} cx={x} cy={y} r={active === index ? 4.5 : 3} />)}
     </svg>
     <Tooltip point={point ? { x: xAt(active), y: yAt(point.cumulative) } : null} width={width} gap={10}>
       {point && <>
@@ -1096,7 +1096,7 @@ export function SessionLine({ sessions, height = 76, privacy = false }) {
         <TipRows rows={[
           { label: 'Day P&L', value: money(point.pnl, { privacy, decimals: 0 }), tone: toneOf(point.pnl) },
           { label: 'Month to date', value: money(point.cumulative, { privacy, decimals: 0 }), tone: toneOf(point.cumulative) },
-        ]}/>
+        ]} />
       </>}
     </Tooltip>
   </div>
@@ -1180,14 +1180,14 @@ export function MiniLine({ values, width = 116, height = 44 }) {
   return <svg className={`mini-chart mini-line ${tone}`} width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
     <defs>
       <linearGradient id={`miniLine-${tone}`} x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0" className="mini-stop" stopOpacity=".22"/>
-        <stop offset="1" className="mini-stop" stopOpacity="0"/>
+        <stop offset="0" className="mini-stop" stopOpacity=".22" />
+        <stop offset="1" className="mini-stop" stopOpacity="0" />
       </linearGradient>
     </defs>
-    <line className="mini-zero" x1={pad} y1={zero} x2={width - pad} y2={zero}/>
-    {coords.length > 1 && <path d={`${line} L ${last[0]} ${zero} L ${coords[0][0]} ${zero} Z`} fill={`url(#miniLine-${tone})`}/>}
-    <path className="mini-path" d={line}/>
-    <circle className="mini-end" cx={last[0]} cy={last[1]} r="2.6"/>
+    <line className="mini-zero" x1={pad} y1={zero} x2={width - pad} y2={zero} />
+    {coords.length > 1 && <path d={`${line} L ${last[0]} ${zero} L ${coords[0][0]} ${zero} Z`} fill={`url(#miniLine-${tone})`} />}
+    <path className="mini-path" d={line} />
+    <circle className="mini-end" cx={last[0]} cy={last[1]} r="2.6" />
   </svg>
 }
 
@@ -1202,7 +1202,7 @@ export function MiniBars({ values, reference, neutral = false, width = 116, heig
   const band = (width - pad * 2) / values.length
   const barWidth = Math.max(2, Math.min(7, band * 0.62))
   return <svg className="mini-chart" width={width} height={height} viewBox={`0 0 ${width} ${height}`} aria-hidden="true">
-    {!neutral && <line className="mini-zero" x1={pad} y1={yAt(0)} x2={width - pad} y2={yAt(0)}/>}
+    {!neutral && <line className="mini-zero" x1={pad} y1={yAt(0)} x2={width - pad} y2={yAt(0)} />}
     {values.map((value, index) => {
       const top = yAt(Math.max(value, 0))
       const bottom = yAt(Math.min(value, 0))
@@ -1213,7 +1213,7 @@ export function MiniBars({ values, reference, neutral = false, width = 116, heig
         width={barWidth} height={Math.max(1.5, bottom - top)} rx="1.2"
       />
     })}
-    {reference != null && <line className="mini-ref" x1={pad} y1={yAt(reference)} x2={width - pad} y2={yAt(reference)}/>}
+    {reference != null && <line className="mini-ref" x1={pad} y1={yAt(reference)} x2={width - pad} y2={yAt(reference)} />}
   </svg>
 }
 
@@ -1225,7 +1225,7 @@ export function MiniRing({ wins, losses, size = 44 }) {
   const circumference = 2 * Math.PI * radius
   const share = total ? wins / total : 0
   return <svg className="mini-chart mini-ring" width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
-    <circle className="ring-loss" cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke}/>
+    <circle className="ring-loss" cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke} />
     <circle
       className="ring-win" cx={size / 2} cy={size / 2} r={radius} strokeWidth={stroke}
       strokeDasharray={`${share * circumference} ${circumference}`}
@@ -1253,21 +1253,21 @@ export function DailyPulse({ series, privacy = false }) {
     <svg className={active != null ? 'is-hovering' : ''} width={width} height={height} role="img" aria-label="Size of each session's P&L, coloured by result">
       <defs>
         <linearGradient id="pulseUp" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--pos-mark)" stopOpacity="1"/>
-          <stop offset="1" stopColor="var(--pos-mark)" stopOpacity=".18"/>
+          <stop offset="0" stopColor="var(--pos-mark)" stopOpacity="1" />
+          <stop offset="1" stopColor="var(--pos-mark)" stopOpacity=".18" />
         </linearGradient>
         <linearGradient id="pulseDown" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--neg-mark)" stopOpacity="1"/>
-          <stop offset="1" stopColor="var(--neg-mark)" stopOpacity=".18"/>
+          <stop offset="0" stopColor="var(--neg-mark)" stopOpacity="1" />
+          <stop offset="1" stopColor="var(--neg-mark)" stopOpacity=".18" />
         </linearGradient>
       </defs>
-      <line className="pulse-zero" x1={pad.x} y1={base} x2={width - pad.x} y2={base}/>
+      <line className="pulse-zero" x1={pad.x} y1={base} x2={width - pad.x} y2={base} />
       {series.map((item, index) => {
         const x = pad.x + index * band + (band - barWidth) / 2
         const top = yAt(sizes[index])
         return <g key={item.date} onPointerEnter={() => setActive(index)} onPointerLeave={() => setActive(null)}>
-          <rect x={pad.x + index * band} y={pad.top} width={band} height={plotHeight} fill="transparent"/>
-          <rect className={`pulse-bar ${toneOf(item.pnl)}${active === index ? ' is-active' : ''}`} x={x} y={top} width={barWidth} height={Math.max(2, base - top)} rx="2"/>
+          <rect x={pad.x + index * band} y={pad.top} width={band} height={plotHeight} fill="transparent" />
+          <rect className={`pulse-bar ${toneOf(item.pnl)}${active === index ? ' is-active' : ''}`} x={x} y={top} width={barWidth} height={Math.max(2, base - top)} rx="2" />
         </g>
       })}
     </svg>
@@ -1278,7 +1278,7 @@ export function DailyPulse({ series, privacy = false }) {
           { label: 'Net P&L', value: money(point.pnl, { privacy }), tone: toneOf(point.pnl) },
           { label: 'Trades', value: `${point.trades}` },
           { label: 'Win rate', value: percent(point.winRate, { decimals: 0 }) },
-        ]}/>
+        ]} />
       </>}
     </Tooltip>
   </div>
