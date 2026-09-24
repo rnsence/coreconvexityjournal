@@ -247,7 +247,6 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
     {
       label: 'Net P&L', value: money(stats.netPnl, { privacy, decimals: 0, sign: false }), tone: toneOf(stats.netPnl),
       note: `${plural(series.length, 'session')} · avg ${money(stats.netPnl / Math.max(1, series.length), { privacy, decimals: 0 })}`,
-      chart: <TileSpark values={series.slice(-60).map((day) => day.pnl)} tone={toneOf(stats.netPnl)}/>,
     },
     {
       label: 'Trade win%', value: percent(stats.winRate, { decimals: 1 }),
