@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.pnpm-store/
+test-results/
+_shot.mjs
+.DS_Store
+*.log
+
+# agent instructions stay local
+AGENTS.md
+CLAUDE.md
+**/AGENTS.md
+**/CLAUDE.md
