@@ -1065,22 +1065,6 @@ export function PropFirmsPage({ privacy }) {
       {liveAccounts.map((account) => renderAccount(account))}
     </div>
 
-    {graveyard.length > 0 && <section className={`graveyard${boneyardOpen ? ' is-open' : ''}`}>
-      <button
-        type="button" className="grave-head" aria-expanded={boneyardOpen}
-        onClick={() => setBoneyardOpen(!boneyardOpen)}
-      >
-        <span className="grave-title">Graveyard <em>{graveyard.length}</em></span>
-        <span className="grave-meta">{money(graveyardFees, { privacy, sign: false, decimals: 0 })} in fees burned</span>
-        <span className="grave-caret"><ChevronDown size={14} strokeWidth={2.2}/></span>
-      </button>
-      <div className="grave-body">
-        {graveyard.map((account, index) => <div
-          className="grave-slot" key={account.id}
-          style={{ '--i': index, '--back': graveyard.length - 1 - index, zIndex: graveyard.length - index }}
-        >{renderAccount(account)}</div>)}
-      </div>
-    </section>}
 
 
     <div className="ws-grid two-one">
@@ -1133,6 +1117,24 @@ export function PropFirmsPage({ privacy }) {
         {showAll ? 'Show fewer' : `Show all ${ledger.length} entries`}
       </button>}
     </Card>
+
+    {graveyard.length > 0 && <section className={`graveyard${boneyardOpen ? ' is-open' : ''}`}>
+      <button
+        type="button" className="grave-head" aria-expanded={boneyardOpen}
+        onClick={() => setBoneyardOpen(!boneyardOpen)}
+      >
+        <span className="grave-title">Graveyard <em>{graveyard.length}</em></span>
+        <span className="grave-meta">{money(graveyardFees, { privacy, sign: false, decimals: 0 })} in fees burned</span>
+        <span className="grave-caret"><ChevronDown size={14} strokeWidth={2.2}/></span>
+      </button>
+      <div className="grave-body">
+        {graveyard.map((account, index) => <div
+          className="grave-slot" key={account.id}
+          style={{ '--i': index, '--back': graveyard.length - 1 - index, zIndex: graveyard.length - index }}
+        >{renderAccount(account)}</div>)}
+      </div>
+    </section>}
+
     {dialog === 'entry' && <PropEntryDialog onClose={() => setDialog(null)}/>}
     {dialog === 'account' && <AddAccountDialog onClose={() => setDialog(null)}/>}
   </div>

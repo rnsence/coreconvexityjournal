@@ -4091,11 +4091,14 @@ button.glance-chip.is-link:hover { background: rgba(125,140,170,.08); border-rad
 .dock-gauge.brand .dock-tip strong span { background: rgba(47,98,221,.14); color: #2f62dd; }
 
 /* graveyard: breached accounts stack like a discarded deck until expanded */
-.graveyard { margin-top: 16px; }
+.graveyard { margin-top: 16px; margin-bottom: 4px; }
 .grave-head {
-  display: flex; align-items: center; gap: 10px; width: 100%; padding: 0 0 12px;
-  border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  display: flex; align-items: center; gap: 10px; width: 100%; height: 46px; margin-bottom: 14px; padding: 0 14px;
+  border: 0; border-radius: 14px; background: var(--surface, #fff); color: inherit; font: inherit; text-align: left; cursor: pointer;
+  box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 4px 14px -4px rgba(16,24,40,.08);
+  transition: box-shadow .14s ease;
 }
+.grave-head:hover { box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 6px 18px -6px rgba(16,24,40,.12); }
 .grave-title { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); font-size: 13px; font-weight: 650; letter-spacing: -.015em; }
 .grave-title em {
   display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px;
@@ -4106,8 +4109,9 @@ button.glance-chip.is-link:hover { background: rgba(125,140,170,.08); border-rad
 .graveyard.is-open .grave-caret { transform: rotate(180deg); }
 .grave-head:hover .grave-caret { background: var(--fill-strong, var(--fill)); color: var(--ink); }
 
-.grave-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 14px; }
-.graveyard:not(.is-open) .grave-body { display: block; position: relative; height: 120px; }
+.grave-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 14px; height: auto; padding-bottom: 12px; transition: height .36s cubic-bezier(.2,.8,.25,1); }
+.graveyard:not(.is-open) .grave-body { display: block; position: relative; height: 130px; }
+.graveyard:not(.is-open) .grave-slot:first-child { position: relative; }
 .graveyard:not(.is-open) .grave-slot {
   position: absolute; top: 0; left: 0; right: 0;
   transform: translateX(calc(var(--i) * 18px)) scale(calc(1 - var(--i) * .025));
@@ -4120,4 +4124,7 @@ button.glance-chip.is-link:hover { background: rgba(125,140,170,.08); border-rad
 .graveyard .acct-card { filter: grayscale(.55); }
 .graveyard .acct-card:hover { filter: grayscale(0); }
 .graveyard.is-open .grave-slot { transition: transform .34s cubic-bezier(.2,.8,.25,1); }
-@media (prefers-reduced-motion: reduce) { .graveyard .grave-slot { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .graveyard .grave-slot, .grave-body { transition: none; } }
+
+/* the graveyard height eases between states so the page below never jumps */
+:root { interpolate-size: allow-keywords; }

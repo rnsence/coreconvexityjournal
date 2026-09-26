@@ -122,10 +122,10 @@ export const propAccounts = [
   { id: 'APEX-248193-17', firm: 'Apex', size: 100000, phase: 'Evaluation', status: 'Active', balance: 101700.0, start: 100000, floor: 100700.0, maxDrawdown: 3000, dailyLossLimit: 1200, target: 106000, fee: 60, payoutEligible: false },
   { id: 'MFFUSFBLDR654871012', firm: 'MyFundedFutures', size: 100000, phase: 'Evaluation', status: 'Passed', balance: 106322.4, start: 100000, floor: 104822.4, maxDrawdown: 3000, dailyLossLimit: 1200, target: 106000, fee: 209, payoutEligible: false },
   { id: 'TDFYSEL50K00318462', firm: 'Tradeify', size: 50000, phase: 'Evaluation', status: 'Breached', balance: 47910.0, start: 50000, floor: 48000.0, maxDrawdown: 2000, dailyLossLimit: 800, target: 53000, fee: 139, payoutEligible: false },
-  { id: 'PA-APEX-231877-01', firm: 'Apex', size: 50000, phase: 'Evaluation', status: 'Breached', balance: 47380.0, start: 50000, floor: 47500.0, maxDrawdown: 2500, dailyLossLimit: 1000, target: 53000, fee: 35, payoutEligible: false, closed: '2026-05-14' },
-  { id: 'EXPRESS-V2-231877-64029118', firm: 'Topstep', size: 50000, phase: 'Funded', status: 'Breached', balance: 47640.0, start: 50000, floor: 48000.0, maxDrawdown: 2000, dailyLossLimit: 800, target: null, fee: 49, payoutEligible: false, closed: '2026-06-02' },
-  { id: 'MFFUSFSTR118420937', firm: 'MyFundedFutures', size: 100000, phase: 'Evaluation', status: 'Breached', balance: 96840.0, start: 100000, floor: 97000.0, maxDrawdown: 3000, dailyLossLimit: 1200, target: 106000, fee: 209, payoutEligible: false, closed: '2026-06-28' },
-  { id: 'LCDSTR100K0084213', firm: 'Lucid', size: 100000, phase: 'Evaluation', status: 'Breached', balance: 97120.0, start: 100000, floor: 97500.0, maxDrawdown: 2500, dailyLossLimit: 1000, target: 106000, fee: 215, payoutEligible: false, closed: '2026-07-21' },
+  { id: 'PA-APEX-231877-01', firm: 'Apex', size: 50000, phase: 'Evaluation', status: 'Breached', balance: 47955.0, start: 50000, floor: 48000.0, maxDrawdown: 2000, dailyLossLimit: 800, target: 53000, fee: 35, payoutEligible: false, closed: '2026-05-14' },
+  { id: 'EXPRESS-V2-231877-64029118', firm: 'Topstep', size: 50000, phase: 'Funded', status: 'Breached', balance: 47938.0, start: 50000, floor: 48000.0, maxDrawdown: 2000, dailyLossLimit: 800, target: null, fee: 49, payoutEligible: false, closed: '2026-06-02' },
+  { id: 'MFFUSFSTR118420937', firm: 'MyFundedFutures', size: 100000, phase: 'Evaluation', status: 'Breached', balance: 96952.0, start: 100000, floor: 97000.0, maxDrawdown: 3000, dailyLossLimit: 1200, target: 106000, fee: 209, payoutEligible: false, closed: '2026-06-28' },
+  { id: 'LCDSTR100K0084213', firm: 'Lucid', size: 100000, phase: 'Evaluation', status: 'Breached', balance: 97468.0, start: 100000, floor: 97500.0, maxDrawdown: 2500, dailyLossLimit: 1000, target: 106000, fee: 215, payoutEligible: false, closed: '2026-07-21' },
   ...readStore(STORE_KEYS.accounts),
 ]
 
