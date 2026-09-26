@@ -19,7 +19,6 @@ import {
 import { accounts, activity, avgLine, calendarDays, dayEntries, profile, trades, tradeLog, tradingDays, trendLine } from './data'
 import { symbolClassSlug } from './symbols'
 
-
 function SectionTitle({ title, subtitle, action }) {
   return <div className="section-title"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>
 }
@@ -309,8 +308,20 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
             : 'No sessions journaled yet — log your first trade to get started.'}</p>
         </div>
       </div>
-      <div className="home-actions">
-        <button className="start-day" onClick={openLog}><Plus size={15} strokeWidth={2.2}/> Log a trade</button>
+      <div className="compare-row">
+        {compareCards.map((card) => <section className="compare-card" key={`${card.label}-${card.note ?? ''}`}>
+          <div className="compare-head">
+            <span className="compare-label">{card.label}{card.note && <em> {card.note}</em>}</span>
+          </div>
+          <div className="compare-value">
+            <strong>{card.value}</strong>
+            {card.delta != null && <span className={`compare-delta ${card.delta >= 0 ? 'pos' : 'neg'}`}>
+              {card.delta >= 0 ? <ArrowUpRight size={14} strokeWidth={2.4}/> : <ArrowDownRight size={14} strokeWidth={2.4}/>}
+              {Math.abs(card.delta).toFixed(0)}%
+            </span>}
+          </div>
+          <small className="compare-caption">{card.caption}</small>
+        </section>)}
       </div>
     </header>
 
@@ -422,22 +433,6 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
       </section>
     </div>
 
-    <div className="compare-row">
-      {compareCards.map((card) => <section className="compare-card" key={`${card.label}-${card.note ?? ''}`}>
-        <div className="compare-head">
-          <span className="compare-label">{card.label}{card.note && <em> {card.note}</em>}</span>
-        </div>
-        <div className="compare-value">
-          <strong>{card.value}</strong>
-          {card.delta != null && <span className={`compare-delta ${card.delta >= 0 ? 'pos' : 'neg'}`}>
-            {card.delta >= 0 ? <ArrowUpRight size={14} strokeWidth={2.4}/> : <ArrowDownRight size={14} strokeWidth={2.4}/>}
-            {Math.abs(card.delta).toFixed(0)}%
-          </span>}
-        </div>
-        <small className="compare-caption">{card.caption}</small>
-      </section>)}
-    </div>
-
     <div className="win-row">
       <WinRatioCard trades={scoped} variant="donut"/>
       <WinRatioCard trades={scoped} variant="bars"/>
@@ -471,7 +466,6 @@ const isJournaled = (date) => {
   if (date === '2026-09-18' || ['2026-09-14', '2026-09-15', '2026-09-16', '2026-09-17'].includes(date)) return true
   try { return !!(localStorage.getItem(`journal-note-${date}`) || localStorage.getItem(`journal-checklist-${date}`)) } catch { return false }
 }
-
 
 /** Facet rows arrive as a fanned deck and unshuffle into a list on the first click. */
 function RailDeck({ items, isMuted, onToggle }) {
@@ -716,7 +710,6 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
     </div>
   </div>
 }
-
 
 
 /** Calendar cells plus a display name for the month a set of trades belongs to. */

@@ -4128,3 +4128,32 @@ button.glance-chip.is-link:hover { background: rgba(125,140,170,.08); border-rad
 
 /* the graveyard height eases between states so the page below never jumps */
 :root { interpolate-size: allow-keywords; }
+
+/* header: greeting on the left, the month comparison strip beside it, action on the right */
+.page.home .home-header:has(.compare-row) { display: flex !important; align-items: stretch; gap: 12px; row-gap: 0; }
+.page.home .home-header:has(.compare-row) > * { grid-area: auto; }
+.page.home .home-header:has(.compare-row) .home-greeting { flex: 0 1 356px; min-width: 240px; }
+.page.home .home-header:has(.compare-row) .home-greeting .greeting-plate { flex: 1; min-height: 88px; display: flex; flex-direction: column; justify-content: center; gap: 0; }
+.page.home .home-header .compare-row {
+  flex: 1; min-width: 0; align-self: flex-end;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 0;
+}
+.page.home .home-header .compare-card { min-height: 88px; padding: 9px 12px 10px; justify-content: center; }
+.page.home .home-header .compare-label { margin-left: 0; font-size: 12px; white-space: nowrap; }
+.page.home .home-header .compare-head { min-width: 0; }
+.page.home .home-header:has(.compare-row) .welcome-title { white-space: nowrap; }
+.page.home .home-header:has(.compare-row) .page-lede { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.page.home .home-header .compare-value { margin: 3px 0 2px; gap: 6px; }
+.page.home .home-header .compare-value strong { font-size: 18px; }
+.page.home .home-header .compare-delta { font-size: 11.5px; }
+.page.home .home-header .compare-caption { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.page.home .home-header:has(.compare-row) .home-actions { align-self: center; margin-bottom: 0; margin-left: 4px; }
+@media (max-width: 1400px) {
+  .page.home .home-header .compare-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .page.home .home-header .compare-caption { display: none; }
+}
+@media (max-width: 1100px) {
+  .page.home .home-header:has(.compare-row) { flex-wrap: wrap; }
+  .page.home .home-header:has(.compare-row) .home-greeting { flex: 1 1 100%; }
+  .page.home .home-header .compare-row { flex: 1 1 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
