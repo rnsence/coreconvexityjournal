@@ -117,11 +117,15 @@ export function dayEntries(day) {
 
 /** Funded and evaluation accounts. `floor` is the current liquidation level. */
 export const propAccounts = [
-  { id: 'PA-APEX-248193-03', firm: 'Apex', size: 50000, phase: 'Funded', status: 'Active', balance: 53184.2, start: 50000, floor: 51184.2, maxDrawdown: 2500, target: null, payoutEligible: true },
-  { id: 'EXPRESS-V2-248193-73015942', firm: 'Topstep', size: 150000, phase: 'Funded', status: 'Active', balance: 154612.5, start: 150000, floor: 151700.0, maxDrawdown: 4500, target: null, payoutEligible: true },
-  { id: 'APEX-248193-17', firm: 'Apex', size: 100000, phase: 'Evaluation', status: 'Active', balance: 103486.0, start: 100000, floor: 101486.0, maxDrawdown: 3000, target: 106000, payoutEligible: false },
-  { id: 'MFFUSFBLDR654871012', firm: 'MyFundedFutures', size: 100000, phase: 'Evaluation', status: 'Passed', balance: 106322.4, start: 100000, floor: 104822.4, maxDrawdown: 3000, target: 106000, payoutEligible: false },
-  { id: 'TDFYSEL50K00318462', firm: 'Tradeify', size: 50000, phase: 'Evaluation', status: 'Breached', balance: 47910.0, start: 50000, floor: 48000.0, maxDrawdown: 2000, target: 53000, payoutEligible: false },
+  { id: 'PA-APEX-248193-03', firm: 'Apex', size: 50000, phase: 'Funded', status: 'Active', balance: 53184.2, start: 50000, floor: 52184.2, maxDrawdown: 2500, dailyLossLimit: 1000, target: null, fee: 35, payoutEligible: true },
+  { id: 'EXPRESS-V2-248193-73015942', firm: 'Topstep', size: 150000, phase: 'Funded', status: 'Active', balance: 154612.5, start: 150000, floor: 152700.0, maxDrawdown: 4500, dailyLossLimit: 1800, target: null, fee: 199, payoutEligible: true },
+  { id: 'APEX-248193-17', firm: 'Apex', size: 100000, phase: 'Evaluation', status: 'Active', balance: 101700.0, start: 100000, floor: 100700.0, maxDrawdown: 3000, dailyLossLimit: 1200, target: 106000, fee: 60, payoutEligible: false },
+  { id: 'MFFUSFBLDR654871012', firm: 'MyFundedFutures', size: 100000, phase: 'Evaluation', status: 'Passed', balance: 106322.4, start: 100000, floor: 104822.4, maxDrawdown: 3000, dailyLossLimit: 1200, target: 106000, fee: 209, payoutEligible: false },
+  { id: 'TDFYSEL50K00318462', firm: 'Tradeify', size: 50000, phase: 'Evaluation', status: 'Breached', balance: 47910.0, start: 50000, floor: 48000.0, maxDrawdown: 2000, dailyLossLimit: 800, target: 53000, fee: 139, payoutEligible: false },
+  { id: 'PA-APEX-231877-01', firm: 'Apex', size: 50000, phase: 'Evaluation', status: 'Breached', balance: 47380.0, start: 50000, floor: 47500.0, maxDrawdown: 2500, dailyLossLimit: 1000, target: 53000, fee: 35, payoutEligible: false, closed: '2026-05-14' },
+  { id: 'EXPRESS-V2-231877-64029118', firm: 'Topstep', size: 50000, phase: 'Funded', status: 'Breached', balance: 47640.0, start: 50000, floor: 48000.0, maxDrawdown: 2000, dailyLossLimit: 800, target: null, fee: 49, payoutEligible: false, closed: '2026-06-02' },
+  { id: 'MFFUSFSTR118420937', firm: 'MyFundedFutures', size: 100000, phase: 'Evaluation', status: 'Breached', balance: 96840.0, start: 100000, floor: 97000.0, maxDrawdown: 3000, dailyLossLimit: 1200, target: 106000, fee: 209, payoutEligible: false, closed: '2026-06-28' },
+  { id: 'LCDSTR100K0084213', firm: 'Lucid', size: 100000, phase: 'Evaluation', status: 'Breached', balance: 97120.0, start: 100000, floor: 97500.0, maxDrawdown: 2500, dailyLossLimit: 1000, target: 106000, fee: 215, payoutEligible: false, closed: '2026-07-21' },
   ...readStore(STORE_KEYS.accounts),
 ]
 
@@ -129,6 +133,7 @@ export const propAccounts = [
 export function addPropAccount({ firm, id, size, phase, maxDrawdown, fee }) {
   const account = {
     id, firm, size, phase, status: 'Active', balance: size, start: size, floor: size - maxDrawdown, maxDrawdown,
+    dailyLossLimit: Math.round((maxDrawdown * 0.4) / 50) * 50,
     target: phase === 'Evaluation' ? Math.round(size * 1.06) : null, payoutEligible: false,
   }
   propAccounts.push(account)

@@ -912,6 +912,7 @@ const TYPE_TONE = { Payout: 'pos', Evaluation: 'neutral', Subscription: 'neutral
 export function PropFirmsPage({ privacy }) {
   const [dialog, setDialog] = useState(null)
   const [ledgerView, setLedgerView] = useState('All')
+  const [boneyardOpen, setBoneyardOpen] = useState(false)
   const [showAll, setShowAll] = useState(false)
   const [openAccounts, setOpenAccounts] = useState(() => new Set())
   const toggleAccount = (id) => setOpenAccounts((prev) => {
@@ -978,6 +979,60 @@ export function PropFirmsPage({ privacy }) {
     .sort((a, b) => b.date.localeCompare(a.date))
   const active = propAccounts.filter((account) => account.status === 'Active' || account.status === 'Passed').length
 
+  const liveAccounts = propAccounts.filter((account) => account.status !== 'Breached')
+  const graveyard = propAccounts.filter((account) => account.status === 'Breached')
+  const graveyardFees = graveyard.reduce((total, account) => total + (account.fee ?? 0), 0)
+
+  const renderAccount = (account) => {
+      const pnl = account.balance - account.start
+      const buffer = Math.max(0, account.balance - account.floor)
+      const bufferShare = Math.min(1, buffer / account.maxDrawdown)
+      const bufferTone = account.status === 'Breached' ? 'neg' : bufferShare > 0.6 ? 'pos' : bufferShare > 0.3 ? 'warn' : 'neg'
+      const progress = account.target ? Math.max(0, Math.min(1, pnl / (account.target - account.start))) : null
+      const statusLabel = account.status === 'Breached' ? 'Breached' : account.status === 'Passed' ? 'Passed' : account.phase
+      const goal = account.target ?? Math.round(account.size * 1.06)
+      const open = openAccounts.has(account.id)
+      const drawerId = `acct-meters-${account.id}`
+      return <article key={account.id} className={`acct-card${account.status === 'Breached' ? ' is-breached' : ''}${open ? ' is-open' : ''}`}>
+        <header>
+          <FirmLogo firm={account.firm}/>
+          <div className="acct-id">
+            <b title={`${account.firm} ${account.size / 1000}K`}>{account.firm} {account.size / 1000}K</b>
+            <span className="acct-sub">
+              <span className={`acct-status ${statusLabel.toLowerCase()}`}>{statusLabel}</span>
+              <small title={account.id}>{account.id}</small>
+            </span>
+          </div>
+          <span className={`acct-delta ${toneOf(pnl)}`}>{money(pnl, { privacy, decimals: 0 })}</span>
+        </header>
+        <div className="acct-balance">
+          <strong>{money(account.balance, { privacy, sign: false, decimals: 0 })}<em className="acct-goal">/{money(goal, { privacy, sign: false, decimals: 0 })}</em></strong>
+          <button
+            type="button" className="acct-toggle" aria-expanded={open} aria-controls={drawerId}
+            aria-label={`${open ? 'Hide' : 'Show'} ${progress != null ? 'target' : 'payout'} and drawdown`}
+            title={open ? 'Hide details' : 'Show details'} onClick={() => toggleAccount(account.id)}
+          >
+            <ChevronDown size={13} strokeWidth={2.2}/>
+          </button>
+        </div>
+        <div className="acct-drawer" id={drawerId} inert={!open}><div className="acct-meters">
+          {progress != null
+            ? <div className="acct-meter">
+                <div className="acct-meter-head"><span>Profit target</span><b>{money(Math.max(0, pnl), { privacy, sign: false, decimals: 0 })} <em>/ {money(account.target - account.start, { privacy, sign: false, decimals: 0 })}</em></b></div>
+                <div className="acct-bar"><i className="accent" style={{ width: `${progress * 100}%` }}/></div>
+              </div>
+            : <div className="acct-meter">
+                <div className="acct-meter-head"><span>Payout window</span><b className={account.payoutEligible ? 'tone-pos' : undefined}>{account.payoutEligible ? 'Eligible now' : 'Not yet'}</b></div>
+                <div className="acct-bar"><i className="pos" style={{ width: account.payoutEligible ? '100%' : '40%' }}/></div>
+              </div>}
+          <div className="acct-meter">
+            <div className="acct-meter-head"><span>Drawdown room</span><b>{money(buffer, { privacy, sign: false, decimals: 0 })} <em>/ {money(account.maxDrawdown, { privacy, sign: false, decimals: 0 })}</em></b></div>
+            <div className="acct-bar"><i className={bufferTone} style={{ width: `${bufferShare * 100}%` }}/></div>
+          </div>
+        </div></div>
+      </article>
+  }
+
   return <div className="page home ws-page prop-ws">
     <PageHead
       title="Prop firms"
@@ -1007,56 +1062,26 @@ export function PropFirmsPage({ privacy }) {
     ]}/>
 
     <div className="acct-grid">
-      {propAccounts.map((account) => {
-        const pnl = account.balance - account.start
-        const buffer = Math.max(0, account.balance - account.floor)
-        const bufferShare = Math.min(1, buffer / account.maxDrawdown)
-        const bufferTone = account.status === 'Breached' ? 'neg' : bufferShare > 0.6 ? 'pos' : bufferShare > 0.3 ? 'warn' : 'neg'
-        const progress = account.target ? Math.max(0, Math.min(1, pnl / (account.target - account.start))) : null
-        const statusLabel = account.status === 'Breached' ? 'Breached' : account.status === 'Passed' ? 'Passed' : account.phase
-        const goal = account.target ?? Math.round(account.size * 1.06)
-        const open = openAccounts.has(account.id)
-        const drawerId = `acct-meters-${account.id}`
-        return <article key={account.id} className={`acct-card${account.status === 'Breached' ? ' is-breached' : ''}${open ? ' is-open' : ''}`}>
-          <header>
-            <FirmLogo firm={account.firm}/>
-            <div className="acct-id">
-              <b title={`${account.firm} ${account.size / 1000}K`}>{account.firm} {account.size / 1000}K</b>
-              <span className="acct-sub">
-                <span className={`acct-status ${statusLabel.toLowerCase()}`}>{statusLabel}</span>
-                <small title={account.id}>{account.id}</small>
-              </span>
-            </div>
-            <span className={`acct-delta ${toneOf(pnl)}`}>{money(pnl, { privacy, decimals: 0 })}</span>
-          </header>
-          <div className="acct-balance">
-            <strong>{money(account.balance, { privacy, sign: false, decimals: 0 })}<em className="acct-goal">/{money(goal, { privacy, sign: false, decimals: 0 })}</em></strong>
-            <button
-              type="button" className="acct-toggle" aria-expanded={open} aria-controls={drawerId}
-              aria-label={`${open ? 'Hide' : 'Show'} ${progress != null ? 'target' : 'payout'} and drawdown`}
-              title={open ? 'Hide details' : 'Show details'} onClick={() => toggleAccount(account.id)}
-            >
-              <ChevronDown size={13} strokeWidth={2.2}/>
-            </button>
-          </div>
-          <div className="acct-drawer" id={drawerId} inert={!open}><div className="acct-meters">
-            {progress != null
-              ? <div className="acct-meter">
-                  <div className="acct-meter-head"><span>Profit target</span><b>{money(Math.max(0, pnl), { privacy, sign: false, decimals: 0 })} <em>/ {money(account.target - account.start, { privacy, sign: false, decimals: 0 })}</em></b></div>
-                  <div className="acct-bar"><i className="accent" style={{ width: `${progress * 100}%` }}/></div>
-                </div>
-              : <div className="acct-meter">
-                  <div className="acct-meter-head"><span>Payout window</span><b className={account.payoutEligible ? 'tone-pos' : undefined}>{account.payoutEligible ? 'Eligible now' : 'Not yet'}</b></div>
-                  <div className="acct-bar"><i className="pos" style={{ width: account.payoutEligible ? '100%' : '40%' }}/></div>
-                </div>}
-            <div className="acct-meter">
-              <div className="acct-meter-head"><span>Drawdown room</span><b>{money(buffer, { privacy, sign: false, decimals: 0 })} <em>/ {money(account.maxDrawdown, { privacy, sign: false, decimals: 0 })}</em></b></div>
-              <div className="acct-bar"><i className={bufferTone} style={{ width: `${bufferShare * 100}%` }}/></div>
-            </div>
-          </div></div>
-        </article>
-      })}
+      {liveAccounts.map((account) => renderAccount(account))}
     </div>
+
+    {graveyard.length > 0 && <section className={`graveyard${boneyardOpen ? ' is-open' : ''}`}>
+      <button
+        type="button" className="grave-head" aria-expanded={boneyardOpen}
+        onClick={() => setBoneyardOpen(!boneyardOpen)}
+      >
+        <span className="grave-title">Graveyard <em>{graveyard.length}</em></span>
+        <span className="grave-meta">{money(graveyardFees, { privacy, sign: false, decimals: 0 })} in fees burned</span>
+        <span className="grave-caret"><ChevronDown size={14} strokeWidth={2.2}/></span>
+      </button>
+      <div className="grave-body">
+        {graveyard.map((account, index) => <div
+          className="grave-slot" key={account.id}
+          style={{ '--i': index, '--back': graveyard.length - 1 - index, zIndex: graveyard.length - index }}
+        >{renderAccount(account)}</div>)}
+      </div>
+    </section>}
+
 
     <div className="ws-grid two-one">
       <Card title="Cash flow" aside={<div className="ws-legend"><span><i className="spent"/>Spent</span><span><i className="paid"/>Payouts</span><span><i className="loss"/>Net loss</span></div>}>

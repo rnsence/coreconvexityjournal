@@ -3988,3 +3988,136 @@ button.glance-chip.is-link:hover { background: rgba(125,140,170,.08); border-rad
 /* dashboard Net P&L tile: the headline number reads larger */
 .page.home .tile-grid .stat-tile.is-hero strong { font-size: 31px; letter-spacing: -.04em; line-height: 1.1; }
 .page.home .tile-grid .stat-tile.is-hero .tile-note { margin-top: 6px; font-size: 12.5px; letter-spacing: 0; }
+
+/* Right-edge dock with a shadow that follows its curved surface. */
+.side-dock {
+  position: fixed; right: 0; top: 50%; transform: translateY(-50%) scale(.72); transform-origin: right center; z-index: 20;
+  width: 84px; height: 500px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 30px;
+  padding: 30px 14px 30px 20px;
+  filter: drop-shadow(-1px 1px 1.5px rgba(16,24,40,.06)) drop-shadow(-2px 2px 4px rgba(16,24,40,.07));
+  pointer-events: none;
+}
+.side-dock::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(90deg, #fafbfc 0%, #fff 38%);
+  clip-path: path('M84 0 C84 44 72 62 46 70 C24 77 12 92 12 112 L12 388 C12 408 24 423 46 430 C72 438 84 456 84 500 Z');
+}
+.dock-gauge {
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  padding: 0; border: 0; background: transparent; cursor: pointer; pointer-events: auto;
+}
+.dock-ring { position: relative; width: 42px; height: 42px; display: grid; place-items: center; }
+.dock-ring .dg-svg { position: absolute; inset: 0; width: 42px; height: 42px; }
+.dock-ring > svg:not(.dg-svg) { position: relative; width: 21px; height: 21px; color: #181a1e; }
+.dock-ring .dg-track { fill: none; stroke: rgba(24,26,30,.09); stroke-width: 5.5; }
+.dock-ring .dg-arc { fill: none; stroke: #181a1e; stroke-width: 3; stroke-linecap: round; transition: stroke-dasharray .4s cubic-bezier(.2,.8,.25,1); }
+.dock-gauge b { color: #34373d; font-size: 14px; line-height: 1.2; font-weight: 500; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
+.dock-gauge:hover .dg-arc { stroke: #555b65; }
+.dock-gauge:hover b { color: #181a1e; }
+.dock-gauge:focus-visible { outline: 2px solid rgba(24,26,30,.5); outline-offset: 3px; border-radius: 12px; }
+@media (max-width: 1280px) { .side-dock { display: none; } }
+@media (min-width: 1281px) { .workspace main { padding-right: 76px; } }
+
+/* dock gauges sit on the same raised tile as the sidebar glyphs */
+.dock-ring::before {
+  content: ''; position: absolute; inset: 6px; border-radius: 50%;
+  background: linear-gradient(180deg, #5b93ff 0%, #2f62dd 100%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.34), 0 2px 5px -1px rgba(47,98,221,.42), 0 0 0 1px rgba(47,98,221,.3);
+  transition: transform .16s cubic-bezier(.2,.8,.25,1), box-shadow .16s ease, background .16s ease;
+}
+.dock-ring > svg:not(.dg-svg) { z-index: 1; }
+.dock-ring .dg-svg { z-index: 1; overflow: visible; }
+.dock-gauge:hover .dock-ring::before { transform: translateY(-1px); }
+.dock-gauge.pos:hover .dock-ring::before {
+  background: linear-gradient(180deg, #3ddc97, #0ea169);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.34), 0 4px 9px -2px rgba(14,161,105,.45), 0 0 0 1px rgba(14,161,105,.32);
+}
+.dock-gauge.warn:hover .dock-ring::before {
+  background: linear-gradient(180deg, #fdb022, #dc6803);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.36), 0 4px 9px -2px rgba(220,104,3,.42), 0 0 0 1px rgba(220,104,3,.3);
+}
+.dock-gauge.neg:hover .dock-ring::before {
+  background: linear-gradient(180deg, #ff8079, #e0453c);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.34), 0 4px 9px -2px rgba(224,69,60,.45), 0 0 0 1px rgba(224,69,60,.32);
+}
+.dock-gauge:active .dock-ring::before {
+  transform: translateY(0.5px);
+  box-shadow: inset 0 1px 2px rgba(16,24,40,.16), 0 0 0 1px rgba(16,24,40,.1);
+}
+
+/* dock glyphs read as pressed metal: gradient paint plus a letterpress highlight */
+.dock-defs { position: absolute; width: 0; height: 0; }
+.dock-ring > svg:not(.dg-svg) { filter: drop-shadow(0 1px 0 rgba(16,24,40,.22)); }
+.dock-gauge:hover .dock-ring > svg:not(.dg-svg) {
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,1)) drop-shadow(0 -1px 0 rgba(16,24,40,.16));
+}
+
+/* dock gauges: blue arcs at rest, state colour on hover, duotone glyph on a raised tile */
+.dock-ring .dg-arc { stroke: url(#dockArc); stroke-width: 3.5; }
+.dock-ring .dg-track { stroke: rgba(24,26,30,.08); }
+.dock-gauge.pos:hover .dg-arc { stroke: url(#dockPos); }
+.dock-gauge.warn:hover .dg-arc { stroke: url(#dockWarn); }
+.dock-gauge.neg:hover .dg-arc { stroke: url(#dockNeg); }
+.dock-ring > svg:not(.dg-svg) { fill: #fff; transition: fill .16s ease; }
+.dock-gauge b { transition: color .16s ease; }
+.dock-gauge.neg:hover b { color: var(--neg); }
+.dock-gauge.warn:hover b { color: #b54708; }
+.dock-gauge.pos:hover b { color: var(--pos); }
+.dock-gauge.brand:hover b { color: #2f62dd; }
+
+/* dock tooltips fly out to the left, colour-coded by the gauge's state */
+.dock-gauge { position: relative; }
+.dock-tip {
+  position: absolute; right: calc(100% + 16px); top: calc(50% - 13px);
+  transform: translateY(-50%) translateX(8px) scale(.98);
+  width: max-content; max-width: 250px; text-align: left;
+  padding: 11px 14px 12px; border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 8px 18px -12px rgba(16,24,40,.16), 0 0 0 1px rgba(16,24,40,.05);
+  opacity: 0; pointer-events: none;
+  transition: opacity .16s ease, transform .2s cubic-bezier(.2,.8,.25,1);
+}
+.dock-gauge:hover .dock-tip, .dock-gauge:focus-visible .dock-tip { opacity: 1; transform: translateY(-50%) translateX(0) scale(1); }
+.dock-tip strong { display: flex; align-items: center; gap: 8px; color: var(--ink, #101828); font-size: 13.5px; font-weight: 650; letter-spacing: -.015em; }
+.dock-tip strong span {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: 7px;
+  background: var(--fill, #f2f4f7); font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.dock-tip em { display: block; margin-top: 5px; max-width: 224px; color: var(--ink-faint, #667085); font-style: normal; font-size: 12px; font-weight: 450; line-height: 1.4; }
+.dock-gauge.pos .dock-tip strong span { background: rgba(18,183,106,.14); color: #0b8f5d; }
+.dock-gauge.warn .dock-tip strong span { background: rgba(253,176,34,.18); color: #b54708; }
+.dock-gauge.neg .dock-tip strong span { background: rgba(240,68,56,.14); color: #d0362e; }
+.dock-gauge.brand .dock-tip strong span { background: rgba(47,98,221,.14); color: #2f62dd; }
+
+/* graveyard: breached accounts stack like a discarded deck until expanded */
+.graveyard { margin-top: 16px; }
+.grave-head {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 0 0 12px;
+  border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer;
+}
+.grave-title { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); font-size: 13px; font-weight: 650; letter-spacing: -.015em; }
+.grave-title em {
+  display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px;
+  border-radius: 6px; background: var(--fill); color: var(--ink-faint); font-size: 11px; font-style: normal; font-weight: 700;
+}
+.grave-meta { color: var(--neg); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.grave-caret { margin-left: auto; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--fill); color: var(--ink-faint); transition: transform .3s cubic-bezier(.2,.8,.25,1), background .14s ease; }
+.graveyard.is-open .grave-caret { transform: rotate(180deg); }
+.grave-head:hover .grave-caret { background: var(--fill-strong, var(--fill)); color: var(--ink); }
+
+.grave-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 14px; }
+.graveyard:not(.is-open) .grave-body { display: block; position: relative; height: 120px; }
+.graveyard:not(.is-open) .grave-slot {
+  position: absolute; top: 0; left: 0; right: 0;
+  transform: translateX(calc(var(--i) * 18px)) scale(calc(1 - var(--i) * .025));
+  transform-origin: left center; opacity: calc(1 - var(--i) * .13);
+  transition: transform .34s cubic-bezier(.2,.8,.25,1), opacity .24s ease;
+}
+.graveyard:not(.is-open) .grave-slot:nth-child(n+5) { opacity: 0; }
+.graveyard:not(.is-open) .grave-slot .acct-card { max-width: 300px; }
+.graveyard:not(.is-open) .grave-slot:not(:first-child) .acct-card { pointer-events: none; }
+.graveyard .acct-card { filter: grayscale(.55); }
+.graveyard .acct-card:hover { filter: grayscale(0); }
+.graveyard.is-open .grave-slot { transition: transform .34s cubic-bezier(.2,.8,.25,1); }
+@media (prefers-reduced-motion: reduce) { .graveyard .grave-slot { transition: none; } }

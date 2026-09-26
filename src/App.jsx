@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { EmptyPage, Sidebar, Topbar } from './components'
+import { EmptyPage, Sidebar, SideDock, Topbar } from './components'
 import { Dashboard, CalendarPage, JournalPage } from './pages'
 import { TradesPage, PropFirmsPage } from './workspace'
 import { LogTradeDialog, QuickJump } from './dialogs'
@@ -52,6 +52,7 @@ export default function App() {
     <div className="workspace">
       <Topbar page={page} setPage={setPage} range={range} setRange={setRange} setSidebarOpen={setSidebarOpen} privacy={privacy} setPrivacy={setPrivacy} openJump={() => setJumpOpen(true)}/>
       <main key={`${page}-${dataVersion}-${page === 'Daily journal' ? journalDate : ''}`}>{view}</main>
+      <SideDock setPage={setPage}/>
     </div>
     {logOpen && <LogTradeDialog defaultDate={page === 'Daily journal' ? journalDate : undefined} onClose={() => setLogOpen(false)} onSaved={(trade) => { setLogOpen(false); openJournal(trade.date) }}/>}
     {jumpOpen && <QuickJump onClose={() => setJumpOpen(false)} {...nav}/>}
