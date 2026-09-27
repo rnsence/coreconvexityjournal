@@ -6,6 +6,14 @@ _shot.mjs
 .DS_Store
 *.log
 
+# private reference copied from frontend-monolith-alpha; keep out of the public repo
+frontend-monolith-transfer/
+
+# third-party UI screenshots used as design references; local only
+design/references/
+.verify/
+design/vendor/
+
 # agent instructions stay local
 AGENTS.md
 CLAUDE.md
