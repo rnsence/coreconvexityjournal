@@ -1,0 +1,142 @@
+/* Dashboard (src/port/dashboard.jsx). Every selector is prefixed d3-, plus MUI chart classes scoped to .d3. */
+
+.d3 { --d3-plate: 0 1px 1px rgba(16,24,40,.05), 0 1.5px 3px -1.5px rgba(16,24,40,.1); }
+.d3 .d3-row { display: grid; gap: 16px; margin-top: 16px; align-items: stretch; }
+.d3 .d3-perf { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); }
+.d3 .d3-bottom { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 1180px) { .d3 .d3-perf, .d3 .d3-bottom { grid-template-columns: minmax(0, 1fr); } }
+.d3 .d3-card { margin: 0; display: flex; flex-direction: column; }
+.d3 .d3-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* ------------------------------------------------------------ tiles */
+.d3 .d3-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 1180px) { .d3 .d3-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.d3 .d3-tile { display: flex; flex-direction: column; gap: 12px; padding: 14px 16px 13px; border-radius: 14px; background: #fff; box-shadow: var(--d3-plate); }
+.d3 .d3-tile-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; }
+.d3 .d3-tile-fig { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.d3 .d3-tile-fig strong { color: var(--ink); font-size: 24px; font-weight: 700; letter-spacing: -.035em; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.d3 .d3-tile-fig span { color: var(--ink-faint); font-size: 12px; font-weight: 500; }
+.d3 .d3-tile-viz { flex: 0 0 92px; width: 92px; display: flex; justify-content: flex-end; }
+.d3 .d3-rows { display: flex; flex-direction: column; gap: 6px; margin: 0; padding-top: 10px; border-top: 1px solid var(--line-soft, #f2f4f7); }
+.d3 .d3-rows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.d3 .d3-rows dt { color: var(--ink-soft); font-size: 12px; }
+.d3 .d3-rows dd { margin: 0; color: var(--ink); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* MUI gauge + sparkline skins */
+.d3 .d3-gauge .MuiGauge-referenceArc { fill: #eef0f3; }
+.d3 .d3-gauge.is-pos .MuiGauge-valueArc { fill: #22c47d; }
+.d3 .d3-gauge.is-neg .MuiGauge-valueArc { fill: #f5615a; }
+.d3 .d3-spark { width: 100%; }
+.d3 .d3-tile-viz .d3-spark { width: 92px; }
+
+/* ------------------------------------------------------------ performance */
+.d3 .d3-headline { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 2px 0 4px; }
+.d3 .d3-headline strong { font-size: 22px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.d3 .d3-headline > span { color: var(--ink-faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+.d3 .d3-legend { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+.d3 .d3-legend i { display: inline-block; width: 14px; height: 0; margin-left: 8px; border-top: 2px solid #2e7cf6; }
+.d3 .d3-legend i.dash { border-top: 2px dashed #b9ccf5; }
+.d3 .d3-chart { margin: 0 -6px; }
+.d3 .d3-foot { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 8px 0 0; padding-top: 12px; border-top: 1px solid var(--line-soft, #f2f4f7); }
+.d3 .d3-foot dt { color: var(--ink-faint); font-size: 11.5px; }
+.d3 .d3-foot dd { margin: 3px 0 0; color: var(--ink); font-size: 15px; font-weight: 650; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.d3 .d3-foot dd small { color: var(--ink-faint); font-size: 12px; font-weight: 500; }
+
+/* ------------------------------------------------------------ score */
+.d3 .d3-shift { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.d3 .d3-gauge-wrap { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: -4px; }
+.d3 .d3-score-gauge .MuiGauge-referenceArc { fill: #eef0f3; }
+.d3 .d3-score-gauge .MuiGauge-valueArc { fill: #2e7cf6; }
+.d3 .d3-score-gauge .MuiGauge-valueText text { font-size: 36px !important; font-weight: 700; letter-spacing: -.03em; fill: var(--ink) !important; }
+.d3 .d3-gauge-sub { margin-top: -30px; color: var(--ink-faint); font-size: 11.5px; }
+.d3 .d3-parts { display: flex; flex-direction: column; gap: 10px; margin: 18px 0 0; padding: 0; list-style: none; }
+.d3 .d3-parts li { display: grid; grid-template-columns: 96px minmax(0, 1fr) 48px; align-items: center; gap: 10px; font-size: 12px; }
+.d3 .d3-parts li > span:first-child { color: var(--ink-soft); }
+.d3 .d3-parts b { color: var(--ink); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.d3 .d3-track { position: relative; height: 6px; border-radius: 3px; background: #f2f4f7; overflow: hidden; }
+.d3 .d3-track i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; background: #22c47d; transition: width .5s cubic-bezier(.22,.82,.28,1); }
+.d3 .d3-track i.mid { background: #f0a83a; }
+.d3 .d3-track i.neg { background: #f5615a; }
+.d3 .d3-insights { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; }
+.d3 .d3-insights > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 11px; border-radius: 12px; background: var(--canvas-soft, #f7f8fa); }
+.d3 .d3-insights span { font-size: 10.5px; font-weight: 650; }
+.d3 .d3-insights span.pos { color: #0e9f6e; }
+.d3 .d3-insights span.warn { color: #d08215; }
+.d3 .d3-insights b { color: var(--ink); font-size: 12.5px; font-weight: 650; }
+.d3 .d3-insights small { color: var(--ink-soft); font-size: 11px; line-height: 1.4; }
+
+/* ------------------------------------------------------------ last 30 days */
+.d3 .d3-recent { margin-top: 16px; }
+.d3 .d3-compare { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; margin-top: 4px; }
+@media (max-width: 1180px) { .d3 .d3-compare { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 16px; } }
+.d3 .d3-cmp { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 2px 16px; border-left: 1px solid var(--line-soft, #f2f4f7); }
+.d3 .d3-cmp:first-child { padding-left: 0; border-left: 0; }
+.d3 .d3-cmp-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.d3 .d3-cmp-top span { color: var(--ink-faint); font-size: 12px; }
+.d3 .d3-cmp-top em { font-size: 11.5px; font-style: normal; font-weight: 600; font-variant-numeric: tabular-nums; }
+.d3 .d3-cmp-top em.pos { color: #0e9f6e; }
+.d3 .d3-cmp-top em.neg { color: #e0453c; }
+.d3 .d3-cmp strong { color: var(--ink); font-size: 20px; font-weight: 700; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.d3 .d3-cmp strong small { color: var(--ink-faint); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+.d3 .d3-cmp > small { color: var(--ink-faint); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.d3 .d3-cmp .d3-spark { margin-top: 4px; }
+.d3 .d3-form-strip { display: flex; gap: 2px; height: 34px; align-items: center; margin-top: 4px; }
+.d3 .d3-form-strip i { flex: 1; height: 18px; border-radius: 3px; background: #22c47d; }
+.d3 .d3-form-strip i.neg { background: #f5615a; }
+
+/* ------------------------------------------------------------ trades */
+.d3 .d3-list { display: flex; flex-direction: column; margin: 2px 0 0; padding: 0; list-style: none; }
+.d3 .d3-list button { width: 100%; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto 96px; align-items: center; gap: 12px; height: 44px; padding: 0 10px; border: 0; border-radius: 10px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background .13s ease; }
+.d3 .d3-list button:hover { background: #f6f6f7; }
+.d3 .d3-list button.is-selected { background: #ececed; }
+.d3 .d3-list .jt-token { width: 28px; height: 28px; min-width: 28px; padding: 0; box-sizing: border-box; }
+.d3 .d3-list .jt-token img { display: block; width: 100%; height: 100%; margin: 0; object-fit: cover; }
+.d3 .d3-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.d3 .d3-name b { color: var(--ink); font-size: 13px; font-weight: 650; }
+.d3 .d3-name small { overflow: hidden; color: var(--ink-faint); font-size: 11.5px; white-space: nowrap; text-overflow: ellipsis; }
+.d3 .d3-side { height: 20px; display: inline-flex; align-items: center; padding: 0 7px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.d3 .d3-side.long { background: rgba(18,183,106,.12); color: #067647; }
+.d3 .d3-side.short { background: rgba(240,68,56,.1); color: #b42318; }
+.d3 .d3-pnl { font-size: 13px; font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.d3 .d3-trades .ws-more { margin-top: auto; }
+
+/* ------------------------------------------------------------ win rate */
+.d3 .d3-win-body { flex: 1; display: flex; flex-direction: column; justify-content: center; min-height: 230px; }
+.d3 .d3-rate { display: flex; align-items: center; gap: 28px; }
+.d3 .d3-donut { position: relative; flex: none; width: 170px; height: 170px; }
+.d3 .d3-donut-mid { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
+.d3 .d3-donut-mid b { color: var(--ink); font-size: 30px; font-weight: 700; letter-spacing: -.03em; line-height: 1; }
+.d3 .d3-donut-mid small { margin-top: 4px; color: var(--ink-faint); font-size: 11.5px; }
+.d3 .d3-rate-rows { flex: 1; display: flex; flex-direction: column; gap: 12px; margin: 0; }
+.d3 .d3-rate-rows > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--line-soft, #f2f4f7); }
+.d3 .d3-rate-rows > div:last-child { padding-bottom: 0; border-bottom: 0; align-items: center; }
+.d3 .d3-rate-rows dt { color: var(--ink-soft); font-size: 12.5px; }
+.d3 .d3-rate-rows dd { margin: 0; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.d3 .d3-dots { display: grid; grid-template-columns: repeat(10, 10px); gap: 3px; }
+.d3 .d3-dots i { width: 10px; height: 10px; border-radius: 3px; background: #22c47d; }
+.d3 .d3-dots i.neg { background: #f5615a; }
+.d3 .d3-note { margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--line-soft, #f2f4f7); color: var(--ink-soft); font-size: 12px; }
+.d3 .d3-note b { font-weight: 600; }
+
+/* ------------------------------------------------------------ MUI chart chrome, quietened */
+.d3 .MuiChartsAxis-line, .d3 .MuiChartsAxis-tick { display: none; }
+.d3 .MuiChartsAxis-tickLabel { fill: #98a2b3 !important; font-size: 11px !important; font-family: Inter, ui-sans-serif, system-ui, sans-serif !important; }
+.d3 .MuiChartsGrid-line { stroke: #f2f4f7 !important; }
+.d3 .MuiLineElement-root { stroke-width: 2; }
+.d3 .MuiChartsAxisHighlight-root { stroke: rgba(16,24,40,.18) !important; stroke-dasharray: none !important; }
+.MuiChartsTooltip-paper { border: 0 !important; border-radius: 10px !important; background: rgba(255,255,255,.96) !important; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 4px 12px -4px rgba(16,24,40,.16) !important; font-family: Inter, ui-sans-serif, system-ui, sans-serif !important; }
+.MuiChartsTooltip-paper * { font-family: inherit !important; font-size: 12px !important; }
+
+/* phones: one column, controls wrap under the title */
+@media (max-width: 640px) {
+  .d3 .d3-tiles, .d3 .d3-compare, .d3 .d3-foot { grid-template-columns: minmax(0, 1fr); }
+  .d3 .d3-cmp { padding: 0; border-left: 0; }
+  .d3 .d3-card .ws-card-head { flex-wrap: wrap; }
+  .d3 .d3-tools { justify-content: flex-start; }
+  .d3 .d3-rate { flex-direction: column; align-items: stretch; }
+  .d3 .d3-donut { align-self: center; }
+  .d3 .d3-list button { grid-template-columns: 28px minmax(0, 1fr) auto; }
+  .d3 .d3-list .d3-side { display: none; }
+  .d3 .d3-legend { margin-left: 0; }
+}
+

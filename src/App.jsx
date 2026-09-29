@@ -1,11 +1,19 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { EmptyPage, Sidebar, SideDock, Topbar } from './components'
+import { EmptyPage, Sidebar, Topbar } from './components'
 import { Dashboard, CalendarPage, JournalPage } from './pages'
 import { TradesPage, PropFirmsPage } from './workspace'
 import { LogTradeDialog, QuickJump } from './dialogs'
+import { NotebookPage } from './port/notebook'
+import { AssistantPage } from './port/assistant'
+import { ImportPage } from './port/import'
+import { AccountsPage } from './port/accounts'
+import { ProgressPage } from './port/progress'
+import { PlaybooksPage } from './port/playbooks'
+import { ReportsPage } from './port/reports'
+import { SettingsPage } from './port/settings'
 import { tradingDays } from './data'
 
-const primaryPages = ['Dashboard', 'Calendar', 'Daily journal', 'Trades', 'Prop firms', 'Reports', 'Notebook', 'Playbooks', 'Progress', 'Missed trades', 'Import', 'Accounts', 'Settings', 'Profile', 'Privacy', 'Terms', 'Disclaimer', 'Support']
+const primaryPages = ['Dashboard', 'Calendar', 'Daily journal', 'Trades', 'Prop firms', 'Reports', 'Notebook', 'Playbooks', 'Progress', 'Assistant', 'Import', 'Accounts', 'Settings', 'Profile', 'Privacy', 'Terms', 'Disclaimer', 'Support']
 const latestDay = () => tradingDays().at(-1)
 
 // Designs by RNSENCE Studio
@@ -15,6 +23,7 @@ export default function App() {
   const [privacy, setPrivacy] = useState(false)
   const [range, setRange] = useState('All')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [railCollapsed, setRailCollapsed] = useState(false)
   const [journalDate, setJournalDate] = useState(latestDay)
   const [tradeQuery, setTradeQuery] = useState('')
   const [logOpen, setLogOpen] = useState(false)
@@ -43,16 +52,23 @@ export default function App() {
     if (page === 'Daily journal') return <JournalPage privacy={privacy} date={journalDate} setDate={setJournalDate} {...nav}/>
     if (page === 'Trades') return <TradesPage privacy={privacy} range={range} initialQuery={tradeQuery} {...nav}/>
     if (page === 'Prop firms') return <PropFirmsPage privacy={privacy} {...nav}/>
+    if (page === 'Reports') return <ReportsPage privacy={privacy} range={range} {...nav}/>
+    if (page === 'Notebook') return <NotebookPage privacy={privacy} {...nav}/>
+    if (page === 'Playbooks') return <PlaybooksPage privacy={privacy} {...nav}/>
+    if (page === 'Progress') return <ProgressPage privacy={privacy} {...nav}/>
+    if (page === 'Assistant') return <AssistantPage privacy={privacy} {...nav}/>
+    if (page === 'Import') return <ImportPage privacy={privacy} {...nav}/>
+    if (page === 'Accounts') return <AccountsPage privacy={privacy} {...nav}/>
+    if (page === 'Settings') return <SettingsPage privacy={privacy} {...nav}/>
     return <EmptyPage page={page}/>
   }, [page, privacy, range, journalDate, tradeQuery, dataVersion])
 
-  return <div className="app-shell">
-    <Sidebar page={page} setPage={setPage} openLog={openLog} open={sidebarOpen} setOpen={setSidebarOpen}/>
+  return <div className={`app-shell${railCollapsed ? ' rail-collapsed' : ''}`}>
+    <Sidebar page={page} setPage={setPage} openLog={openLog} open={sidebarOpen} setOpen={setSidebarOpen} collapsed={railCollapsed} toggleRail={() => setRailCollapsed((value) => !value)}/>
     {sidebarOpen && <div className="scrim" onClick={() => setSidebarOpen(false)}/>}
     <div className="workspace">
       <Topbar page={page} setPage={setPage} range={range} setRange={setRange} setSidebarOpen={setSidebarOpen} privacy={privacy} setPrivacy={setPrivacy} openJump={() => setJumpOpen(true)}/>
       <main key={`${page}-${dataVersion}-${page === 'Daily journal' ? journalDate : ''}`}>{view}</main>
-      <SideDock setPage={setPage}/>
     </div>
     {logOpen && <LogTradeDialog defaultDate={page === 'Daily journal' ? journalDate : undefined} onClose={() => setLogOpen(false)} onSaved={(trade) => { setLogOpen(false); openJournal(trade.date) }}/>}
     {jumpOpen && <QuickJump onClose={() => setJumpOpen(false)} {...nav}/>}

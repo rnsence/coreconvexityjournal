@@ -79,6 +79,75 @@ export function addCustomSymbol(symbol, name = 'Custom symbol') {
 const BUILT_IN = [...FUTURES, ...ETFS, ...STOCKS, ...OPTIONS, ...CRYPTO, ...FOREX]
 export const allSymbols = () => [...customSymbols(), ...BUILT_IN]
 
+
+/**
+ * Instrument marks, keyed by ticker. The value is the path segment on the public
+ * symbol-logo CDN; tickers without an entry fall back to the lettered token.
+ */
+const MARKS = {
+  '6A': 'country/AU', '6B': 'country/GB', '6C': 'country/CA', '6E': 'country/EU',
+  '6J': 'country/JP', '6S': 'country/CH', AAL: 'american-airlines-group', AAPL: 'apple',
+  ABBV: 'abbvie', ABNB: 'airbnb', ABT: 'abbott', ACN: 'accenture',
+  ADAUSD: 'crypto/XTVCADA', ADBE: 'adobe', AMAT: 'applied-materials', AMC: 'amc-entertainment-holdings',
+  AMD: 'advanced-micro-devices', AMGN: 'amgen', AMZN: 'amazon', ANET: 'arista-networks',
+  ARM: 'arm', ASML: 'asml', AUDUSD: 'country/AU', AVAXUSD: 'crypto/XTVCAVAX',
+  AVGO: 'broadcom', AXP: 'american-express', BA: 'boeing', BABA: 'alibaba',
+  BAC: 'bank-of-america', BKNG: 'booking', BLK: 'blackrock', 'BRK.B': 'berkshire-hathaway',
+  BTC: 'crypto/XTVCBTC', BTCUSD: 'crypto/XTVCBTC', C: 'citigroup', CAT: 'caterpillar',
+  CCL: 'carnival', CL: 'crude-oil', CMCSA: 'comcast', COIN: 'coinbase',
+  COP: 'conocophillips', COST: 'costco-wholesale', CRM: 'salesforce', CRWD: 'crowdstrike',
+  CSCO: 'cisco', CVS: 'cvs-health', CVX: 'chevron', DAL: 'delta-air-lines',
+  DASH: 'doordash', DDOG: 'datadog', DE: 'deere', DELL: 'dell',
+  DIA: 'state-street', DIS: 'walt-disney', DJX: 'indices/dow-30', DOGEUSD: 'crypto/XTVCDOGE',
+  EEM: 'ishares', EFA: 'ishares', ENPH: 'enphase-energy', ES: 'indices/s-and-p-500',
+  ETH: 'crypto/XTVCETH', ETHUSD: 'crypto/XTVCETH', EURJPY: 'country/EU', EURUSD: 'country/EU',
+  F: 'ford', FDX: 'fedex', FSLR: 'first-solar', FXI: 'ishares',
+  GBPJPY: 'country/GB', GBPUSD: 'country/GB', GC: 'gold', GE: 'ge-aerospace',
+  GILD: 'gilead', GLD: 'state-street', GM: 'general-motors', GME: 'gamestop',
+  GOOG: 'alphabet', GOOGL: 'alphabet', GS: 'goldman-sachs', HD: 'home-depot',
+  HO: 'diesel', HON: 'honeywell', HOOD: 'robinhood', HPQ: 'hp',
+  HYG: 'ishares', IBIT: 'ishares', INTC: 'intel', INTU: 'intuit',
+  ISRG: 'intuitive-surgical', IWM: 'ishares', JD: 'jd-com', JNJ: 'johnson-and-johnson',
+  JPM: 'jpmorgan-chase', KLAC: 'kla-tencor', KO: 'coca-cola', KRE: 'state-street',
+  LCID: 'lucid-group', LE: 'live-cattle', LIN: 'linde', LINKUSD: 'crypto/XTVCLINK',
+  LLY: 'eli-lilly', LMT: 'lockheed-martin', LOW: 'lowe-s', LRCX: 'lam-research',
+  LYFT: 'lyft', 'M2K': 'indices/russell-2000', 'M6E': 'country/EU', MA: 'mastercard',
+  MARA: 'marathon-digital-holdings', MBT: 'crypto/XTVCBTC', MCD: 'mcdonalds', MCL: 'crude-oil',
+  MDB: 'mongodb', MES: 'indices/s-and-p-500', MET: 'crypto/XTVCETH', META: 'meta-platforms',
+  MGC: 'gold', MMM: '3m', MNQ: 'indices/nasdaq-100', MPC: 'marathon-petroleum',
+  MRK: 'merck', MRNA: 'moderna', MRVL: 'marvell-tech', MS: 'morgan-stanley',
+  MSFT: 'microsoft', MSTR: 'microstrategy', MU: 'micron-technology', MYM: 'indices/dow-30',
+  NDX: 'indices/nasdaq-100', NET: 'cloudflare-inc', NFLX: 'netflix', NG: 'natural-gas',
+  NIO: 'nio', NKE: 'nike', NOW: 'servicenow', NQ: 'indices/nasdaq-100',
+  NVDA: 'nvidia', NZDUSD: 'country/NZ', ON: 'on-semiconductor', ORCL: 'oracle',
+  OXY: 'occidental-petroleum', PANW: 'palo-alto-networks', PDD: 'pinduoduo', PEP: 'pepsico',
+  PFE: 'pfizer', PG: 'procter-and-gamble', PINS: 'pinterest', PLTR: 'palantir',
+  PYPL: 'paypal', QCOM: 'qualcomm', QM: 'crude-oil', QQQ: 'invesco',
+  RB: 'gasoline', RBLX: 'roblox', REGN: 'regeneron-pharmaceuticals', RIOT: 'riot-blockchain',
+  RIVN: 'rivian', ROKU: 'roku', RTX: 'raytheon', RTY: 'indices/russell-2000',
+  RUT: 'indices/russell-2000', SBUX: 'starbucks', SCHW: 'schwab', SHOP: 'shopify',
+  SI: 'silver', SIL: 'silver', SLB: 'schlumberger', SLV: 'ishares',
+  SMCI: 'super-micro-computer', SMH: 'vaneck', SNAP: 'snap', SNOW: 'snowflake',
+  SOFI: 'sofi', SOLUSD: 'crypto/XTVCSOL', SOXL: 'direxion', SOXS: 'direxion',
+  SPGI: 's-and-p-global', SPOT: 'spotify-technology', SPX: 'indices/s-and-p-500', SPXL: 'direxion',
+  SPXS: 'direxion', SPY: 'state-street', SQ: 'block', SQQQ: 'proshares',
+  T: 'at-and-t', TLT: 'ishares', TMO: 'thermo-fisher-scientific', TQQQ: 'proshares',
+  TSLA: 'tesla', TSM: 'taiwan-semiconductor', TTD: 'the-trade-desk', TXN: 'texas-instruments',
+  U: 'unity', UAL: 'united-airlines', UB: 'country/US', UBER: 'uber',
+  UNH: 'unitedhealth', UPS: 'united-parcel', USDCAD: 'country/US', USDCHF: 'country/US',
+  USDJPY: 'country/US', UVXY: 'proshares', V: 'visa', VIX: 'indices/volatility-index',
+  VOO: 'vanguard', VRTX: 'vertex', VTI: 'vanguard', VX: 'indices/volatility-index',
+  VXX: 'barclays', VZ: 'verizon', WFC: 'wells-fargo', WMT: 'walmart',
+  XAUUSD: 'gold', XLE: 'state-street', XLF: 'state-street', XLI: 'state-street',
+  XLK: 'state-street', XLP: 'state-street', XLU: 'state-street', XLV: 'state-street',
+  XLY: 'state-street', XND: 'indices/nasdaq-100', XOM: 'exxon', XRPUSD: 'crypto/XTVCXRP',
+  XSP: 'indices/s-and-p-500', YM: 'indices/dow-30', ZB: 'country/US', ZC: 'corn',
+  ZF: 'country/US', ZM: 'zoom', ZN: 'country/US', ZS: 'soybean',
+  ZT: 'country/US', ZW: 'wheat',
+}
+
+export const symbolMark = (symbol) => (MARKS[symbol] ? `https://s3-symbol-logo.tradingview.com/${MARKS[symbol]}--big.svg` : null)
+
 /** Asset class for a ticker, as shown on the symbol picker's class tag. */
 export const symbolClass = (symbol) => allSymbols().find(([ticker]) => ticker === symbol)?.[2] ?? 'Custom'
 export const symbolClassSlug = (symbol) => symbolClass(symbol).split(' ')[0].toLowerCase()

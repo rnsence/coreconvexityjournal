@@ -4,6 +4,7 @@
  * the measured container so plot areas line up across neighbouring modules.
  */
 import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { symbolClassSlug, symbolMark } from './symbols'
 
 /* ------------------------------------------------------------------ format */
 
@@ -408,7 +409,7 @@ export function RowPlot({ data, privacy = false, labelWidth = 62, valueWidth = 9
 /** Component scores on a shared 0-100 scale with a target marker. */
 export function BulletBars({ components }) {
   return <ul className="bullet-bars">
-    {components.map((component) => <li key={component.key} title={`Full marks at ${component.target}`}>
+    {components.map((component) => <li key={component.key}>
       <span className="bullet-label">{component.key}</span>
       <span className="bullet-track">
         <i className="bullet-fill" style={{ width: `${component.value ?? 0}%` }} />
@@ -539,6 +540,17 @@ export const axisDate = (iso) => {
 }
 
 /** Catmull-Rom → cubic bezier, for the soft wave in the cumulative chart. */
+/** Ticker mark: the instrument's logo when we have one, otherwise its lettered token. */
+export function SymbolToken({ symbol }) {
+  const [failed, setFailed] = useState(false)
+  const src = symbolMark(symbol)
+  return <span className={`jt-token c-${symbolClassSlug(symbol)}${src && !failed ? ' has-logo' : ''}`} aria-hidden="true">
+    {src && !failed
+      ? <img src={src} alt="" loading="lazy" onError={() => setFailed(true)}/>
+      : symbol.slice(0, 2)}
+  </span>
+}
+
 export function smoothPath(points) {
   if (!points.length) return ''
   if (points.length < 3) return points.map((p, i) => `${i ? 'L' : 'M'} ${p[0]} ${p[1]}`).join(' ')
@@ -589,31 +601,40 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
   const width = size.width || 900
   // In fill mode the chart takes whatever height the card gives it.
   const height = fill ? Math.max(220, size.height || fixedHeight) : fixedHeight
-  const pad = { top: 18, right: 10, bottom: 34, left: 54 }
+  const pad = { top: 18, right: 168, bottom: 54, left: 74 }
   const plotWidth = Math.max(60, width - pad.left - pad.right)
   const plotHeight = Math.max(80, height - pad.top - pad.bottom)
+
   const values = series.map((point) => point.cumulative)
-  const min = Math.min(0, ...values)
-  const max = Math.max(1, ...values)
+  const peaks = series.map((point) => point.cumulative - point.drawdown)
+  const span = Math.min(20, Math.max(5, Math.round(series.length / 8)))
+  const rolling = series.map((point, index) => {
+    const from = Math.max(0, index - span + 1)
+    return Math.round((point.cumulative - (from > 0 ? series[from - 1].cumulative : 0)) * 100) / 100
+  })
+
+  const min = Math.min(0, ...values, ...rolling)
+  const max = Math.max(1, ...values, ...peaks, ...rolling)
   const ticks = niceTicks(min, max, 7)
   const top = Math.max(max, ticks[ticks.length - 1] ?? max)
   const xAt = (index) => pad.left + (series.length === 1 ? plotWidth / 2 : (index / (series.length - 1)) * plotWidth)
   const yAt = (value) => pad.top + (1 - (value - min) / ((top - min) || 1)) * plotHeight
-  const points = series.map((point, index) => [xAt(index), yAt(point.cumulative)])
-  const line = smoothPath(points)
+
+  const netPoints = values.map((value, index) => [xAt(index), yAt(value)])
+  const line = smoothPath(netPoints)
   const area = line ? `${line} L ${xAt(series.length - 1)} ${yAt(min)} L ${xAt(0)} ${yAt(min)} Z` : ''
+  const peakPath = peaks.map((value, index) => `${index ? 'L' : 'M'} ${xAt(index)} ${yAt(value)}`).join(' ')
+  const runPath = smoothPath(rolling.map((value, index) => [xAt(index), yAt(value)]))
 
-  // the two longest underwater stretches get the dotted treatment
-  const bands = []
-  let run = null
-  series.forEach((point, index) => {
-    if (point.drawdown < 0) { if (!run) run = { from: index, to: index }; else run.to = index }
-    else if (run) { bands.push(run); run = null }
-  })
-  if (run) bands.push(run)
-  const highlights = bands.sort((a, b) => (b.to - b.from) - (a.to - a.from)).slice(0, 2)
-
-  const labelEvery = Math.max(1, Math.ceil(series.length / Math.max(3, Math.floor(plotWidth / 150))))
+  const labelEvery = Math.max(1, Math.ceil(series.length / Math.max(2, Math.floor(plotWidth / 150))))
+  const dateLabels = []
+  for (let index = 0; index < series.length; index += labelEvery) dateLabels.push(index)
+  const lastIndex = series.length - 1
+  if (lastIndex > 0) {
+    // the closing label always shows, so drop the one before it when they would collide
+    if (dateLabels.length && lastIndex - dateLabels[dateLabels.length - 1] < labelEvery * 0.6) dateLabels.pop()
+    if (dateLabels[dateLabels.length - 1] !== lastIndex) dateLabels.push(lastIndex)
+  }
   const track = useCallback((event) => {
     const bounds = event.currentTarget.getBoundingClientRect()
     const ratioX = Math.max(0, Math.min(1, (event.clientX - bounds.left - pad.left) / plotWidth))
@@ -622,45 +643,50 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
   const point = active == null ? null : series[active]
 
   return <div className={`cume-chart${fill ? ' fill' : ''}`} ref={ref} style={fill ? undefined : { height }}>
-    <svg width={width} height={height} role="img" aria-label="Daily net cumulative profit and loss" onPointerMove={track} onPointerLeave={() => setActive(null)}>
+    <div className="cume-side">
+      <ul className="cume-key">
+        <li><i className="k-net"/>Net cumulative</li>
+        <li><i className="k-peak"/>High-water mark</li>
+        <li><i className="k-run"/>Rolling {span}-session net</li>
+      </ul>
+      {series.length > 0 && <dl className="cume-stats">
+        <div><dt>Net</dt><dd className={`tone-${toneOf(values[lastIndex])}`}>{money(values[lastIndex], { privacy, decimals: 0 })}</dd></div>
+        <div><dt>Peak</dt><dd>{money(Math.max(...peaks), { privacy, decimals: 0 })}</dd></div>
+        <div><dt>Max drawdown</dt><dd className="tone-neg">{money(Math.min(0, ...series.map((point) => point.drawdown)), { privacy, decimals: 0 })}</dd></div>
+        <div><dt>Rolling {span}</dt><dd className={`tone-${toneOf(rolling[lastIndex])}`}>{money(rolling[lastIndex], { privacy, decimals: 0 })}</dd></div>
+      </dl>}
+    </div>
+    <svg width={width} height={height} role="img" aria-label="Daily net cumulative profit and loss with high-water mark and rolling net" onPointerMove={track} onPointerLeave={() => setActive(null)}>
       <defs>
         <linearGradient id="cumeFill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="var(--accent)" stopOpacity=".7" />
           <stop offset="35%" stopColor="var(--accent)" stopOpacity=".34" />
           <stop offset="100%" stopColor="var(--accent)" stopOpacity=".02" />
         </linearGradient>
-        <pattern id="cumeDots" width="7" height="7" patternUnits="userSpaceOnUse">
-          <circle cx="1.6" cy="1.6" r=".9" fill="currentColor" fillOpacity=".18" />
-        </pattern>
       </defs>
 
       {ticks.map((tick) => <g key={tick}>
         <line className="cume-grid" x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)} />
-        <line className="cume-tick" x1={pad.left - 7} y1={yAt(tick)} x2={pad.left - 2} y2={yAt(tick)} />
         <text className="cume-axis" x={pad.left - 12} y={yAt(tick) + 4} textAnchor="end">{compactMoney(tick, { privacy })}</text>
       </g>)}
 
-      {highlights.map((band) => {
-        const x = xAt(band.from)
-        const bandWidth = Math.max(4, xAt(band.to) - x)
-        return <g key={`${band.from}-${band.to}`}>
-          <rect className="cume-band" x={x} y={pad.top} width={bandWidth} height={plotHeight} clipPath="url(#cumeClip)" />
-          <rect className="cume-band-bar" x={x} y={pad.top + plotHeight - 1.5} width={bandWidth} height="1.5" rx=".75" />
-        </g>
-      })}
-      <clipPath id="cumeClip"><path d={area} /></clipPath>
-
       {area && <path className="cume-area" d={area} />}
+      {peakPath && <path className="cume-peak" d={peakPath} vectorEffect="non-scaling-stroke" />}
+      {runPath && <path className="cume-run" d={runPath} vectorEffect="non-scaling-stroke" />}
       {line && <path className="cume-line" d={line} vectorEffect="non-scaling-stroke" />}
 
-      {series.map((item, index) => index % labelEvery === 0 || index === series.length - 1 ? (
-        <text key={item.date} className="cume-axis" x={xAt(index)} y={height - 10} textAnchor={index === 0 ? 'start' : index === series.length - 1 ? 'end' : 'middle'}>
-          {axisDate(item.date)}
+      {dateLabels.map((index) => (
+        <text key={series[index].date} className="cume-axis" x={xAt(index)} y={height - 28} textAnchor={index === 0 ? 'start' : index === lastIndex ? 'end' : 'middle'}>
+          {axisDate(series[index].date)}
         </text>
-      ) : null)}
+      ))}
+      <text className="cume-axis-title" x={pad.left + plotWidth / 2} y={height - 8} textAnchor="middle">Session</text>
+      <text className="cume-axis-title" textAnchor="middle" transform={`rotate(-90 16 ${pad.top + plotHeight / 2}) translate(0 0)`} x="16" y={pad.top + plotHeight / 2 + 4}>Cumulative P&L</text>
 
       {point && <>
         <line className="cume-cross" x1={xAt(active)} y1={pad.top} x2={xAt(active)} y2={pad.top + plotHeight} />
+        <circle className="cume-focus peak" cx={xAt(active)} cy={yAt(peaks[active])} r="4" />
+        <circle className="cume-focus run" cx={xAt(active)} cy={yAt(rolling[active])} r="4" />
         <circle className="cume-focus" cx={xAt(active)} cy={yAt(point.cumulative)} r="4.5" />
       </>}
     </svg>
@@ -668,7 +694,10 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
       {point && <>
         <div className="tip-title">{longDate(point.date)}</div>
         <TipRows rows={[
-          { label: 'Cumulative', value: money(point.cumulative, { privacy }), tone: toneOf(point.cumulative) },
+          { label: 'Net cumulative', value: money(point.cumulative, { privacy }), tone: toneOf(point.cumulative) },
+          { label: 'High-water mark', value: money(peaks[active], { privacy }) },
+          { label: `Rolling ${span}-session`, value: money(rolling[active], { privacy, decimals: 0 }), tone: toneOf(rolling[active]) },
+          { label: 'Off peak', value: money(point.drawdown, { privacy, decimals: 0 }), tone: toneOf(point.drawdown) },
           { label: 'Session P&L', value: money(point.pnl, { privacy }), tone: toneOf(point.pnl) },
           { label: 'Trades', value: `${point.trades}` },
         ]} />
@@ -677,11 +706,29 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
   </div>
 }
 
+
 const minutesOf = (clock) => { const [h, m] = clock.split(':').map(Number); return h * 60 + m }
 
 /** Intraday running net P&L, stepping at each trade exit across the session window. */
 // Designs by RNSENCE Studio
-export function IntradayChart({ fills, open = '09:30', close = '16:00', height = 240, privacy = false }) {
+/** Polyline with softly rounded corners (quadratic joins), for step lines that shouldn't look jagged. */
+function roundedPath(points, radius = 4) {
+  const pts = points.filter((point, index) => index === 0 || point.x !== points[index - 1].x || point.y !== points[index - 1].y)
+  if (pts.length < 2) return ''
+  let d = `M ${pts[0].x} ${pts[0].y}`
+  for (let index = 1; index < pts.length - 1; index += 1) {
+    const prev = pts[index - 1], at = pts[index], next = pts[index + 1]
+    const inLen = Math.hypot(at.x - prev.x, at.y - prev.y), outLen = Math.hypot(next.x - at.x, next.y - at.y)
+    const r = Math.min(radius, inLen / 2, outLen / 2)
+    const a = { x: at.x - ((at.x - prev.x) / inLen) * r, y: at.y - ((at.y - prev.y) / inLen) * r }
+    const b = { x: at.x + ((next.x - at.x) / outLen) * r, y: at.y + ((next.y - at.y) / outLen) * r }
+    d += ` L ${a.x} ${a.y} Q ${at.x} ${at.y} ${b.x} ${b.y}`
+  }
+  const last = pts[pts.length - 1]
+  return `${d} L ${last.x} ${last.y}`
+}
+
+export function IntradayChart({ fills, open = '09:30', close = '16:00', height = 240, privacy = false, onSelect }) {
   const [ref, size] = useSize()
   const [active, setActive] = useState(null)
   const width = size.width || 900
@@ -703,63 +750,76 @@ export function IntradayChart({ fills, open = '09:30', close = '16:00', height =
   const xAt = (clock) => pad.left + ((minutesOf(clock) - start) / (end - start)) * plotWidth
   const yAt = (value) => pad.top + (1 - (value - low) / ((high - low) || 1)) * plotHeight
 
-  let line = `M ${xAt(open)} ${yAt(0)}`
+  // the running total steps at each exit: across at the old level, then up/down to the new one
+  const vertices = [{ x: xAt(open), y: yAt(0) }]
   let level = 0
-  marks.forEach((mark) => { line += ` H ${xAt(mark.time)} V ${yAt(mark.cumulative)}`; level = mark.cumulative })
-  line += ` H ${xAt(close)}`
+  marks.forEach((mark) => {
+    vertices.push({ x: xAt(mark.time), y: yAt(level) }, { x: xAt(mark.time), y: yAt(mark.cumulative) })
+    level = mark.cumulative
+  })
+  vertices.push({ x: xAt(close), y: yAt(level) })
+  const line = roundedPath(vertices, 4)
+  const zeroY = yAt(0)
+  const area = `${line} L ${xAt(close)} ${zeroY} L ${xAt(open)} ${zeroY} Z`
+
   const hours = []
   const step = plotWidth < 420 ? 120 : 60
   for (let minute = Math.ceil(start / 60) * 60; minute <= end; minute += step) hours.push(`${Math.floor(minute / 60)}:00`)
   const point = active == null ? null : marks[active]
-  const zeroY = yAt(0)
   const phases = [
     { label: 'Open', from: '09:30', to: '10:30' },
     { label: 'Lunch', from: '12:00', to: '13:30' },
     { label: 'Close', from: '15:00', to: '16:00' },
   ]
+  const top = pad.top, bottom = pad.top + plotHeight
 
   return <div className="cume-chart intraday-chart" ref={ref} style={{ height }}>
     <svg width={width} height={height} role="img" aria-label={`Intraday net P&L, closing at ${money(level, { privacy })}`}>
       <defs>
-        <linearGradient id="intradayFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--accent)" stopOpacity=".18" />
-          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
+        <linearGradient id="intradayUp" gradientUnits="userSpaceOnUse" x1="0" y1={top} x2="0" y2={zeroY}>
+          <stop offset="0" stopColor="var(--pos-mark, #22c47d)" stopOpacity=".2" />
+          <stop offset="1" stopColor="var(--pos-mark, #22c47d)" stopOpacity=".02" />
         </linearGradient>
-        <linearGradient id="intradayUp" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#32d583" stopOpacity=".2" />
-          <stop offset="100%" stopColor="#32d583" stopOpacity=".02" />
+        <linearGradient id="intradayDown" gradientUnits="userSpaceOnUse" x1="0" y1={zeroY} x2="0" y2={bottom}>
+          <stop offset="0" stopColor="var(--neg-mark, #f5615a)" stopOpacity=".02" />
+          <stop offset="1" stopColor="var(--neg-mark, #f5615a)" stopOpacity=".18" />
         </linearGradient>
-        <linearGradient id="intradayDown" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#f97066" stopOpacity=".03" />
-          <stop offset="100%" stopColor="#f97066" stopOpacity=".2" />
-        </linearGradient>
-        <clipPath id="intradayAbove"><rect x={pad.left} y={0} width={plotWidth} height={zeroY} /></clipPath>
-        <clipPath id="intradayBelow"><rect x={pad.left} y={zeroY} width={plotWidth} height={Math.max(0, height - zeroY)} /></clipPath>
+        <clipPath id="intradayAbove"><rect x={0} y={0} width={width} height={zeroY + 1.5} /></clipPath>
+        <clipPath id="intradayBelow"><rect x={0} y={zeroY + 1.5} width={width} height={Math.max(0, height - zeroY - 1.5)} /></clipPath>
       </defs>
       {phases.map((phase) => <g key={phase.label} className="intraday-phase">
-        <rect x={xAt(phase.from)} y={pad.top} width={xAt(phase.to) - xAt(phase.from)} height={plotHeight} />
-        <text x={(xAt(phase.from) + xAt(phase.to)) / 2} y={pad.top - 10} textAnchor="middle">{phase.label}</text>
+        <rect x={xAt(phase.from)} y={top} width={xAt(phase.to) - xAt(phase.from)} height={plotHeight} rx="6" />
+        <text x={(xAt(phase.from) + xAt(phase.to)) / 2} y={top - 10} textAnchor="middle">{phase.label}</text>
       </g>)}
       {ticks.map((tick) => <g key={tick}>
-        <line className={tick === 0 ? 'intraday-zero' : 'cume-grid'} x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)} />
+        <line className={tick === 0 ? 'intraday-zero' : 'cume-grid intraday-grid'} x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)} />
         <text className="cume-axis" x={pad.left - 8} y={yAt(tick) + 4} textAnchor="end">{compactMoney(tick, { privacy })}</text>
       </g>)}
-      {hours.map((hour) => <text key={hour} className="cume-axis" x={xAt(hour)} y={height - 8} textAnchor="middle">{hour}</text>)}
-      <path d={`${line} V ${zeroY} H ${xAt(open)} Z`} fill="url(#intradayUp)" clipPath="url(#intradayAbove)" />
-      <path d={`${line} V ${zeroY} H ${xAt(open)} Z`} fill="url(#intradayDown)" clipPath="url(#intradayBelow)" />
-      {point && <line className="intraday-guide" x1={xAt(point.time)} y1={pad.top} x2={xAt(point.time)} y2={pad.top + plotHeight} />}
-      <path className="cume-line" d={line} />
+      {hours.map((hour) => { const x = xAt(hour); return <text key={hour} className="cume-axis" x={x} y={height - 8} textAnchor={x > width - 24 ? 'end' : 'middle'}>{hour}</text> })}
+      <path className="intraday-area" d={area} fill="url(#intradayUp)" clipPath="url(#intradayAbove)" />
+      <path className="intraday-area" d={area} fill="url(#intradayDown)" clipPath="url(#intradayBelow)" />
+      {point && <line className="intraday-guide" x1={xAt(point.time)} y1={top} x2={xAt(point.time)} y2={bottom} />}
+      <path className="intraday-line pos" d={line} pathLength="1" clipPath="url(#intradayAbove)" />
+      <path className="intraday-line neg" d={line} pathLength="1" clipPath="url(#intradayBelow)" />
       {marks.map((mark, index) => {
-        const size = active === index ? 12 : 9
-        return <rect
+        const on = active === index
+        const cx = xAt(mark.time), cy = yAt(mark.cumulative)
+        return <g
           key={`${mark.symbol}-${mark.time}`}
-          className={`intraday-mark ${toneOf(mark.pnl)}${active === index ? ' active' : ''}`}
-          x={xAt(mark.time) - size / 2} y={yAt(mark.cumulative) - size / 2} width={size} height={size} rx={size * 0.32}
+          className={`intraday-dot ${toneOf(mark.pnl)}${on ? ' active' : ''}`}
+          style={{ '--i': index }}
           tabIndex={0}
           aria-label={`${mark.time} ${mark.symbol} ${money(mark.pnl, { privacy })}`}
+          role={onSelect ? 'button' : undefined}
           onPointerEnter={() => setActive(index)} onPointerLeave={() => setActive(null)}
           onFocus={() => setActive(index)} onBlur={() => setActive(null)}
-        />
+          onClick={onSelect ? () => onSelect(mark.id) : undefined}
+          onKeyDown={onSelect ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(mark.id) } } : undefined}
+        >
+          <circle className="halo" cx={cx} cy={cy} r={on ? 9 : 4} />
+          <circle className="dot" cx={cx} cy={cy} r={on ? 5 : 4} />
+          <circle className="hit" cx={cx} cy={cy} r="12" />
+        </g>
       })}
     </svg>
     <Tooltip point={point ? { x: xAt(point.time), y: yAt(point.cumulative) } : null} width={width}>
@@ -769,6 +829,7 @@ export function IntradayChart({ fills, open = '09:30', close = '16:00', height =
           { label: 'Trade', value: money(point.pnl, { privacy }), tone: toneOf(point.pnl) },
           { label: 'Running', value: money(point.cumulative, { privacy }), tone: toneOf(point.cumulative) },
         ]} />
+        {onSelect && <div className="tip-hint">Click to open</div>}
       </>}
     </Tooltip>
   </div>
@@ -837,36 +898,100 @@ export function DailyColumns({ series, height: fixedHeight = 300, fill = false, 
 
 /** Overall score radar: current window against the previous one. */
 // Designs by RNSENCE Studio
-export function ScoreRadar({ axes, current, compare, size = 300 }) {
+/**
+ * Concentric activity rings: each part of the score is a rounded track filled clockwise
+ * from 12 o'clock, the headline sits in the centre, a legend runs underneath.
+ */
+export function ScoreRings({ items, title, subtitle, size = 156 }) {
+  const [active, setActive] = useState(null)
+  const outer = size / 2 - 2
+  const inner = outer * 0.6
+  const gap = 3
+  const band = (outer - inner - gap * (items.length - 1)) / Math.max(1, items.length)
+  const c = size / 2
+  const ring = (index) => outer - index * (band + gap) - band / 2
+  const tones = ['#1d5fd0', '#2e7cf6', '#6ea5f8', '#a9c8fb', '#cfe0fd', '#e3edfe']
+  const shown = active == null ? null : items[active]
+  return <div className="score-rings">
+    <div className="sr-plot" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`${subtitle} ${title}`}>
+        {items.map((item, index) => {
+          const r = ring(index)
+          const length = 2 * Math.PI * r
+          const share = Math.max(0, Math.min(1, item.value / 100))
+          return <g key={item.label} className={`sr-ring${active != null && active !== index ? ' is-dim' : ''}`}
+            onPointerEnter={() => setActive(index)} onPointerLeave={() => setActive(null)}>
+            <circle cx={c} cy={c} r={r} fill="none" stroke="#eef0f3" strokeWidth={band}/>
+            <circle
+              className="sr-fill" cx={c} cy={c} r={r} fill="none" stroke={tones[index % tones.length]} strokeWidth={band} strokeLinecap="round"
+              strokeDasharray={`${Math.max(0.001, share * length)} ${length}`} transform={`rotate(-90 ${c} ${c})`}
+              style={{ '--len': length, '--i': index }}
+            />
+            <circle cx={c} cy={c} r={r} fill="none" stroke="transparent" strokeWidth={band + gap}/>
+          </g>
+        })}
+        <g className="sr-center">
+          <text x={c} y={c - 10} textAnchor="middle" className="sr-sub">{shown ? shown.label : subtitle}</text>
+          <text x={c} y={c + 14} textAnchor="middle" className="sr-title">{shown ? shown.display ?? Math.round(shown.value) : title}</text>
+        </g>
+      </svg>
+    </div>
+    <ul className="sr-legend">
+      {items.map((item, index) => <li key={item.label} className={active === index ? 'is-on' : ''}
+        onPointerEnter={() => setActive(index)} onPointerLeave={() => setActive(null)}>
+        <i style={{ background: tones[index % tones.length] }}/>{item.label}<b>{Math.round(item.value)}</b>
+      </li>)}
+    </ul>
+  </div>
+}
+
+export function ScoreRadar({ axes, current, compare, score, size = 176 }) {
+  const rings = axes.map((label, index) => ({
+    label,
+    value: Math.max(0, Math.min(100, current[index] ?? 0)),
+    prior: compare ? Math.max(0, Math.min(100, compare[index] ?? 0)) : null,
+  }))
+  const thickness = 5.5
+  const gap = 2.8
   const center = size / 2
-  const radius = center - 67
-  const angleAt = (index) => (index / axes.length) * Math.PI * 2 - Math.PI / 2
-  const pointAt = (index, ratio) => [
-    center + Math.cos(angleAt(index)) * radius * Math.max(0.05, ratio),
-    center + Math.sin(angleAt(index)) * radius * Math.max(0.05, ratio),
-  ]
-  const shape = (values) => values.map((value, index) => pointAt(index, (value ?? 0) / 100).join(',')).join(' ')
-  return <div className="score-radar">
-    <svg viewBox={`0 38 ${size} ${size - 76}`} width="100%" height="100%" role="img" aria-label="Overall score by component">
-      <defs>
-        <radialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0" stopColor="var(--accent)" stopOpacity=".16" />
-          <stop offset="100%" stopColor="var(--accent)" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      <circle cx={center} cy={center} r={radius * 1.05} fill="url(#radarGlow)" />
-      {[0.33, 0.66, 1].map((ratio) => <polygon key={ratio} className="radar-web" points={shape(axes.map(() => ratio * 100))} />)}
-      {axes.map((axis, index) => {
-        const [x, y] = pointAt(index, 1)
-        return <line key={axis} className="radar-web" x1={center} y1={center} x2={x} y2={y} />
-      })}
-      {compare && <polygon className="radar-compare" points={shape(compare)} />}
-      <polygon className="radar-current" points={shape(current)} />
-      {axes.map((axis, index) => {
-        const [x, y] = pointAt(index, 1.2)
-        return <text key={`label-${axis}`} className="radar-label" x={x} y={y + 3} textAnchor={x > center + 6 ? 'start' : x < center - 6 ? 'end' : 'middle'}>{axis}</text>
-      })}
-    </svg>
+  const radiusAt = (index) => center - 2 - thickness / 2 - index * (thickness + gap)
+  const markAt = (radius, ratio) => {
+    const angle = ratio * Math.PI * 2 - Math.PI / 2
+    return [center + Math.cos(angle) * radius, center + Math.sin(angle) * radius]
+  }
+
+  return <div className="score-gauge">
+    <div className="gauge-plot" style={{ width: size, height: size }}>
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} role="img" aria-label="Overall score by component">
+        <g transform={`rotate(-90 ${center} ${center})`}>
+          {rings.map((ring, index) => {
+            const radius = radiusAt(index)
+            const circumference = 2 * Math.PI * radius
+            return <g key={ring.label}>
+              <circle className="gauge-track" cx={center} cy={center} r={radius} strokeWidth={thickness} />
+              <circle
+                className={`gauge-arc g${index}`} cx={center} cy={center} r={radius} strokeWidth={thickness} strokeLinecap="round"
+                strokeDasharray={`${Math.max(0.6, (ring.value / 100) * circumference)} ${circumference}`}
+              />
+            </g>
+          })}
+        </g>
+        {rings.map((ring, index) => {
+          if (ring.prior == null) return null
+          const [x, y] = markAt(radiusAt(index), ring.prior / 100)
+          return <circle key={`prior-${ring.label}`} className="gauge-prior" cx={x} cy={y} r="1.5" />
+        })}
+      </svg>
+      <div className="gauge-core">
+        <b>{score == null ? '—' : Math.round(score)}<small>/100</small></b>
+        <em>Trading score</em>
+      </div>
+    </div>
+    <ul className="gauge-key">
+      {rings.map((ring, index) => <li key={ring.label}>
+        <i className={`g${index}`}/><span>{ring.label}</span><b>{Math.round(ring.value)}</b>
+      </li>)}
+    </ul>
   </div>
 }
 
@@ -923,7 +1048,7 @@ function RecentResults({ results }) {
       {results.map((item, index) => <i
         key={item.id ?? index}
         className={`${item.win ? 'win' : 'loss'}${index === results.length - 1 ? ' latest' : ''}`}
-        title={`${item.symbol} · ${item.win ? 'Win' : 'Loss'}`}
+
       />)}
     </div>
     <span className={`rr-streak ${last.win ? 'win' : 'loss'}`}>
@@ -1145,11 +1270,11 @@ export function useMarketSession() {
     const minutes = (Number(parts.hour) % 24) * 60 + Number(parts.minute)
     const weekend = parts.weekday === 'Sat' || parts.weekday === 'Sun'
     const span = (to) => { const left = Math.max(0, to - minutes); return left >= 60 ? `${Math.floor(left / 60)}h ${left % 60}m` : `${left}m` }
-    if (weekend) return { state: 'closed', label: 'Market closed', detail: 'Weekend', minutes, weekend }
-    if (minutes >= 570 && minutes < 960) return { state: 'open', label: 'Market open', detail: `Closes in ${span(960)}`, minutes, weekend }
-    if (minutes >= 240 && minutes < 570) return { state: 'pre', label: 'Pre-market', detail: `Opens in ${span(570)}`, minutes, weekend }
-    if (minutes >= 960 && minutes < 1200) return { state: 'post', label: 'After hours', detail: `Ends in ${span(1200)}`, minutes, weekend }
-    return { state: 'closed', label: 'Market closed', detail: 'Opens 9:30 ET', minutes, weekend }
+    if (weekend) return { state: 'closed', label: 'Market closed', detail: 'Weekend', minutes, weekend, weekday: parts.weekday }
+    if (minutes >= 570 && minutes < 960) return { state: 'open', label: 'Market open', detail: `Closes in ${span(960)}`, minutes, weekend, weekday: parts.weekday }
+    if (minutes >= 240 && minutes < 570) return { state: 'pre', label: 'Pre-market', detail: `Opens in ${span(570)}`, minutes, weekend, weekday: parts.weekday }
+    if (minutes >= 960 && minutes < 1200) return { state: 'post', label: 'After hours', detail: `Ends in ${span(1200)}`, minutes, weekend, weekday: parts.weekday }
+    return { state: 'closed', label: 'Market closed', detail: 'Opens 9:30 ET', minutes, weekend, weekday: parts.weekday }
   }
   const [session, setSession] = useState(read)
   useEffect(() => {
@@ -1234,48 +1359,59 @@ export function MiniRing({ wins, losses, size = 44 }) {
   </svg>
 }
 
-/** Daily P&L as dense upward bars from one baseline: height is the size of the day, colour is the result. */
+/** Daily P&L as thin upward bars from one baseline, with a dotted run-rate trend across the window. */
 export function DailyPulse({ series, privacy = false }) {
   const [ref, size] = useSize()
   const [active, setActive] = useState(null)
   const width = size.width || 520
   const height = Math.max(160, size.height || 220)
-  const pad = { top: 14, bottom: 4, x: 2 }
-  const plotHeight = height - pad.top - pad.bottom
+  const pad = { top: 12, bottom: 42, left: 62, right: 6 }
+  const plotWidth = Math.max(60, width - pad.left - pad.right)
+  const plotHeight = Math.max(60, height - pad.top - pad.bottom)
   const sizes = series.map((point) => Math.abs(point.pnl))
-  const max = Math.max(1, ...sizes)
+  const window = Math.min(7, Math.max(3, Math.round(series.length / 6)))
+  const runRate = sizes.map((_, index) => {
+    const slice = sizes.slice(Math.max(0, index - window + 1), index + 1)
+    return slice.reduce((total, value) => total + value, 0) / Math.max(1, slice.length)
+  })
+  const ticks = niceTicks(0, Math.max(1, ...sizes, ...runRate), 3)
+  const max = Math.max(1, ...sizes, ...runRate, ...ticks)
   const base = pad.top + plotHeight
   const yAt = (value) => base - (value / max) * plotHeight
-  const band = (width - pad.x * 2) / Math.max(1, series.length)
-  const barWidth = Math.max(2.5, Math.min(28, band * 0.7))
+  const band = plotWidth / Math.max(1, series.length)
+  const barWidth = Math.max(3, Math.min(12, band * 0.6))
+  const labelStep = Math.max(1, Math.round((series.length - 1) / Math.max(1, Math.min(5, Math.floor(plotWidth / 92)) - 1)))
+  const trend = smoothPath(runRate.map((value, index) => [pad.left + index * band + band / 2, yAt(value)]))
   const point = active == null ? null : series[active]
   return <div className="daily-pulse" ref={ref}>
-    <svg className={active != null ? 'is-hovering' : ''} width={width} height={height} role="img" aria-label="Size of each session's P&L, coloured by result">
-      <defs>
-        <linearGradient id="pulseUp" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--pos-mark)" stopOpacity="1" />
-          <stop offset="1" stopColor="var(--pos-mark)" stopOpacity=".18" />
-        </linearGradient>
-        <linearGradient id="pulseDown" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="var(--neg-mark)" stopOpacity="1" />
-          <stop offset="1" stopColor="var(--neg-mark)" stopOpacity=".18" />
-        </linearGradient>
-      </defs>
-      <line className="pulse-zero" x1={pad.x} y1={base} x2={width - pad.x} y2={base} />
+    <svg className={active != null ? 'is-hovering' : ''} width={width} height={height} role="img" aria-label="Size of each session's P&L, coloured by result, with the rolling run rate">
+      {ticks.map((tick) => <g key={tick}>
+        <line className="pulse-grid" x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)}/>
+        <text className="pulse-axis" x={pad.left - 10} y={yAt(tick) + 3.5} textAnchor="end">{compactMoney(tick, { privacy })}</text>
+      </g>)}
+      <line className="pulse-zero" x1={pad.left} y1={base} x2={pad.left + plotWidth} y2={base} />
+      {series.map((item, index) => index % labelStep === 0 ? (
+        <text key={`x-${item.date}`} className="pulse-axis" x={pad.left + index * band + band / 2} y={height - 24} textAnchor="middle">{shortDate(item.date)}</text>
+      ) : null)}
+      <text className="pulse-axis-title" x={pad.left + plotWidth / 2} y={height - 6} textAnchor="middle">Session</text>
+      <text className="pulse-axis-title" textAnchor="middle" transform={`rotate(-90 16 ${pad.top + plotHeight / 2})`} x="16" y={pad.top + plotHeight / 2 + 4}>Net P&L</text>
       {series.map((item, index) => {
-        const x = pad.x + index * band + (band - barWidth) / 2
+        const x = pad.left + index * band + (band - barWidth) / 2
         const top = yAt(sizes[index])
-        return <g key={item.date} onPointerEnter={() => setActive(index)} onPointerLeave={() => setActive(null)}>
-          <rect x={pad.x + index * band} y={pad.top} width={band} height={plotHeight} fill="transparent" />
-          <rect className={`pulse-bar ${toneOf(item.pnl)}${active === index ? ' is-active' : ''}`} x={x} y={top} width={barWidth} height={Math.max(2, base - top)} rx="2" />
-        </g>
+        return <rect key={item.date} className={`pulse-bar ${toneOf(item.pnl)}${active === index ? ' is-active' : ''}`} x={x} y={top} width={barWidth} height={Math.max(2, base - top)} rx={Math.min(4, barWidth / 2)} />
       })}
+      <path className="pulse-trend" d={trend} vectorEffect="non-scaling-stroke" />
+      {series.map((item, index) => <rect
+        key={`hit-${item.date}`} x={pad.left + index * band} y={pad.top} width={band} height={plotHeight} fill="transparent"
+        onPointerEnter={() => setActive(index)} onPointerLeave={() => setActive(null)}
+      />)}
     </svg>
-    <Tooltip point={point ? { x: pad.x + active * band + band / 2, y: yAt(sizes[active]) } : null} width={width}>
+    <Tooltip point={point ? { x: pad.left + active * band + band / 2, y: yAt(sizes[active]) } : null} width={width}>
       {point && <>
         <div className="tip-title">{longDate(point.date)}</div>
         <TipRows rows={[
           { label: 'Net P&L', value: money(point.pnl, { privacy }), tone: toneOf(point.pnl) },
+          { label: `Run rate (${window}d)`, value: money(runRate[active], { privacy, decimals: 0 }) },
           { label: 'Trades', value: `${point.trades}` },
           { label: 'Win rate', value: percent(point.winRate, { decimals: 0 }) },
         ]} />

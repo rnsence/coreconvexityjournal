@@ -9,12 +9,19 @@
 		"preview": "vite preview"
 	},
 	"dependencies": {
+		"@emotion/react": "^11.14.0",
+		"@emotion/styled": "^11.14.1",
+		"@iconify-icons/material-symbols": "^2.0.4",
 		"@iconify-react/basil": "^1.0.2",
+		"@iconify/react": "^6.0.2",
+		"@mui/material": "^9.4.0",
+		"@mui/x-charts": "^9.14.0",
 		"lucide-react": "^1.47.0",
 		"react": "^19.3.0",
 		"react-dom": "^19.3.0"
 	},
 	"devDependencies": {
+		"@playwright/test": "^1.63.0",
 		"@vitejs/plugin-react": "^6.1.1",
 		"vite": "^8.3.0"
 	}

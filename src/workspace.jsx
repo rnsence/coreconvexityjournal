@@ -2,23 +2,28 @@
  * Trades, Reports and Prop firms — built on the light workspace system used by the
  * dashboard (white cards, purple accent, green/red for results only).
  */
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDownRight, ArrowUpRight, Check, ChevronDown, ChevronLeft, Download, ChevronRight, ChevronsUpDown, Import, Plus,
+  ArrowDownRight, ArrowUpRight, Check, ChevronDown, ChevronLeft, Download, ChevronRight, ChevronsUpDown, HandCoins, Import, Plus,
   Search, Star, X,
 } from 'lucide-react'
 import {
-  ChartState, CumulativeChart, TipRows, Tooltip, compactMoney, money, niceTicks, percent, ratio,
+  ChartState, CumulativeChart, SymbolToken, TipRows, Tooltip, compactMoney, money, niceTicks, percent, ratio,
   smoothPath, toneOf, useEasternToday, useSize,
 } from './viz'
 import {
-  equitySeries, groupStats, rollingWinRate, scopeByRange, streaks, summarize,
+  calendarGrid, equitySeries, groupStats, rollingWinRate, scopeByRange, streaks, summarize,
 } from './analytics'
-import { FlagstickIcon } from './icons'
 import { AddAccountDialog, PropEntryDialog } from './dialogs'
 import { PerformanceInsights, insightStats, monthCalendar } from './pages'
 import { propAccounts, propTransactions, tradeLog } from './data'
 import { symbolClassSlug } from './symbols'
+import { TradeCardActions } from './port/trades-card'
+import { TradeDetail, TradeDetailSheet } from './port/trades-detail'
+import { ManualFillsForm, recordedMessage } from './port/trades-fillsform'
+import { AllMetrics } from './port/trades-metrics'
+import { accountForTrade, clearFlash, peekFlash, realizedR, setFlash } from './port/trading-data'
+import { Drawer, DrawerHeader, Sheet } from './dialogs'
 
 /** Nice ticks, extended one step so the top (and bottom) gridline clears the data. */
 const coverTicks = (min, max, count = 4) => {
@@ -46,11 +51,10 @@ const writeStore = (key, value) => {
 /* ============================================================ shared UI */
 
 // Designs by RNSENCE Studio
-function PageHead({ title, meta, actions }) {
+export function PageHead({ title, meta, actions }) {
   const today = useEasternToday()
   return <header className="home-header ws-header">
     <div className="home-greeting">
-      <span className="home-date">{today.label}</span>
       <div className="greeting-plate">
         <h1>{title}</h1>
         {meta && <p className="ws-meta">{meta}</p>}
@@ -62,13 +66,28 @@ function PageHead({ title, meta, actions }) {
 
 /** One white card, divided into metric cells. */
 // Designs by RNSENCE Studio
-function MetricStrip({ items }) {
+/** The firm an account name belongs to, so its mark can sit beside the name. */
+export function firmOf(name = '') {
+  const text = String(name)
+  if (/topstep/i.test(text)) return 'Topstep'
+  if (/apex/i.test(text)) return 'Apex'
+  if (/myfunded/i.test(text)) return 'MyFundedFutures'
+  if (/tradeify/i.test(text)) return 'Tradeify'
+  if (/lucid/i.test(text)) return 'Lucid'
+  if (/take profit/i.test(text)) return 'Take Profit Trader'
+  return text.trim() || 'Unassigned'
+}
+
+export function MetricStrip({ items }) {
   return <section className="metric-strip" style={{ '--cells': items.length }}>
-    {items.map((item) => <div className="metric-cell" key={item.label}>
-      <span className="metric-name">{item.label}</span>
-      <strong className={item.tone ? `tone-${item.tone}` : undefined}>{item.value}</strong>
+    {items.map((item) => <div className={`metric-cell${item.viz ? ' has-viz' : ''}`} key={item.label}>
+      <div className="metric-top">
+        <strong className={item.tone ? `tone-${item.tone}` : undefined}>{item.value}</strong>
+        <span className="metric-name">{item.label}</span>
+      </div>
       {item.sub && <small>{item.sub}</small>}
       {item.line && <MetricLine line={item.line}/>}
+      {item.viz && <span className="ms-viz" aria-hidden="true">{item.viz}</span>}
     </div>)}
   </section>
 }
@@ -115,7 +134,7 @@ const dashLine = (part, whole, total = 14) => ({ type: 'dashes', share: (Math.ab
 const gaugeLine = (part, whole, options = {}) => ({ type: 'gauge', share: (Math.abs(part) || 0) / (Math.abs(whole) || 1), ...options })
 const centerLine = (value, scale) => ({ type: 'center', share: (value || 0) / (Math.abs(scale) || 1) })
 
-function Segmented({ options, value, onChange, label, className = '' }) {
+export function Segmented({ options, value, onChange, label, className = '' }) {
   return <div className={`ws-seg ${className}`.trim()} role="tablist" aria-label={label}>
     {options.map((option) => <button
       key={option} type="button" role="tab" aria-selected={value === option}
@@ -124,20 +143,21 @@ function Segmented({ options, value, onChange, label, className = '' }) {
   </div>
 }
 
-function Card({ title, aside, className = '', children }) {
-  return <section className={`home-card ws-card ${className}`}>
-    {(title || aside) && <div className="ws-card-head">
-      {title && <div className="card-title">{title}</div>}
-      {aside}
-    </div>}
-    {children}
+export function Card({ title, aside, className = '', shell = false, children }) {
+  const head = (title || aside) && <div className={`ws-card-head${shell ? ' shell-head' : ''}`}>
+    {title && <div className="card-title">{title}</div>}
+    {aside}
+  </div>
+  return <section className={`home-card ws-card ${shell ? 'duo ' : ''}${className}`}>
+    {head}
+    {shell ? <div className="shell-body">{children}</div> : children}
   </section>
 }
 
 /* ============================================================ charts */
 
 /** Horizontal bars diverging from a shared zero. */
-function BarList({ rows, format }) {
+export function BarList({ rows, format }) {
   const values = rows.map((row) => row.value)
   const min = Math.min(0, ...values)
   const max = Math.max(0, ...values)
@@ -146,7 +166,7 @@ function BarList({ rows, format }) {
   return <ul className="bar-list">
     {rows.map((row) => {
       const width = (Math.abs(row.value) / span) * 100
-      return <li key={row.label} title={row.hint}>
+      return <li key={row.label}>
         <span className="bl-label">{row.label}{row.meta && <small>{row.meta}</small>}</span>
         <span className="bl-track">
           <i className="bl-axis" style={{ left: `${axis}%` }}/>
@@ -159,7 +179,7 @@ function BarList({ rows, format }) {
 }
 
 /** Vertical columns by category, coloured by sign, with a frosted tooltip. */
-function CategoryColumns({ data, height = 220, axisFormat, tip, neutral = false, toneKey }) {
+export function CategoryColumns({ data, height = 220, axisFormat, tip, neutral = false, toneKey }) {
   const [ref, size] = useSize()
   const [active, setActive] = useState(null)
   const width = size.width || 480
@@ -201,7 +221,7 @@ function CategoryColumns({ data, height = 220, axisFormat, tip, neutral = false,
 
 /** Two series side by side per period (e.g. money spent vs payouts). */
 // Designs by RNSENCE Studio
-function GroupedColumns({ data, height = 240, privacy, series, netLoss = false }) {
+export function GroupedColumns({ data, height = 240, privacy, series, netLoss = false }) {
   const [ref, size] = useSize()
   const [active, setActive] = useState(null)
   const width = size.width || 520
@@ -251,7 +271,7 @@ function GroupedColumns({ data, height = 240, privacy, series, netLoss = false }
 }
 
 /** Smooth trend with an optional dashed reference and fill. */
-function TrendLine({ points, height = 220, axisFormat, tipFormat, reference, referenceLabel, tone = 'accent', fillTo = 'min', smooth = true }) {
+export function TrendLine({ points, height = 220, axisFormat, tipFormat, reference, referenceLabel, tone = 'accent', fillTo = 'min', smooth = true }) {
   const [ref, size] = useSize()
   const [active, setActive] = useState(null)
   const width = size.width || 480
@@ -345,11 +365,109 @@ const SUGGESTED_TAGS = ['a+ setup', 'patient', 'chased', 'early exit', 'oversize
 
 const GRADE_STARS = { 'A+': 5, A: 4, B: 3, C: 2, D: 1 }
 const PAGE_SIZE = 14
+
+/** Rows that fit under the blotter header on this screen, so the page has no dead space. */
+function useFittedRows(ref, fallback = PAGE_SIZE) {
+  const [rows, setRows] = useState(fallback)
+  const tries = useRef(0)
+  useEffect(() => {
+    const rowHeight = () => ref.current?.querySelector('tbody tr.jt-row')?.getBoundingClientRect().height || 46
+    // settle on the count that just fills the viewport, then stop
+    const settle = () => {
+      if (tries.current > 10) return
+      const page = ref.current?.closest('.page')
+      const tail = page?.lastElementChild
+      if (!tail) return
+      const step = rowHeight()
+      const slack = window.innerHeight - tail.getBoundingClientRect().bottom - 58
+      if (slack < 0) { tries.current += 1; setRows((current) => Math.max(6, current - Math.max(1, Math.ceil(-slack / step)))) }
+      else if (slack > step) { tries.current += 1; setRows((current) => Math.min(60, current + Math.floor(slack / step))) }
+    }
+    const frame = requestAnimationFrame(settle)
+    const onResize = () => { tries.current = 0; requestAnimationFrame(settle) }
+    window.addEventListener('resize', onResize)
+    return () => { cancelAnimationFrame(frame); window.removeEventListener('resize', onResize) }
+  }, [ref, rows])
+  return rows
+}
+
 const SORTS = {
   date: (a, b) => a.timestamp - b.timestamp,
   symbol: (a, b) => a.symbol.localeCompare(b.symbol),
   pnl: (a, b) => a.pnl - b.pnl,
   qty: (a, b) => a.qty - b.qty,
+}
+
+/** The trade drawer: summary with prev/next, a fills & details view, and the add-fills sheet. Shared by the blotter and the journal. */
+export function TradeDrawer({ trades, selectedId, onSelect, onClose, reviews = {}, onArchive, privacy = false }) {
+  const [view, setView] = useState('summary')
+  const [sheet, setSheet] = useState(null)
+  const index = trades.findIndex((trade) => trade.id === selectedId)
+  const selected = trades[index]
+  if (!selected) return null
+  const step = (delta) => { const next = trades[index + delta]; if (next) onSelect(next.id) }
+  const panel = <>
+          <div className="tp-head">
+            <div>
+              <div className="tp-title">
+                <SymbolToken symbol={selected.symbol}/>
+                <b>{selected.symbol}</b>
+                <span className={`side-mark ${selected.side.toLowerCase()}`} aria-label={selected.side}>{selected.side[0]}</span>
+              </div>
+              <small>{shortDay(selected.date)} · {selected.time} · {selected.setup}</small>
+            </div>
+            <div className="tp-nav">
+              <button type="button" aria-label="Previous trade" disabled={index <= 0} onClick={() => step(-1)}><ChevronLeft size={15}/></button>
+              <button type="button" aria-label="Next trade" disabled={index >= trades.length - 1} onClick={() => step(1)}><ChevronRight size={15}/></button>
+            </div>
+          </div>
+
+          <div className="tp-result">
+            <strong className={`tone-${toneOf(selected.pnl)}`}>{money(selected.pnl, { privacy })}</strong>
+          </div>
+
+          <TradeCardActions
+            trade={selected} review={reviews[selected.id]}
+            onAddFills={() => setSheet('fills')} onDetail={() => setView('detail')}
+            onArchive={() => { onArchive?.(selected.id); onClose() }}
+          />
+
+          <dl className="tp-figures">
+            <div><dt>Gross</dt><dd>{money(selected.pnl + selected.fees, { privacy })}</dd></div>
+            <div><dt>Fees</dt><dd>{money(selected.fees, { privacy, sign: false })}</dd></div>
+            <div><dt>Quantity</dt><dd>{selected.qty}</dd></div>
+            <div><dt>Hold time</dt><dd>{selected.closed ? `${clockMinutes(selected.closed) - clockMinutes(selected.time)}m` : '—'}</dd></div>
+            <div><dt>Return</dt><dd className={`tone-${toneOf(selected.pnl)}`}>{percent((selected.pnl / (selected.qty * selected.entry)) * 100, { decimals: 2 })}</dd></div>
+          </dl>
+
+          <ExecutionTrack trade={selected} privacy={privacy}/>
+
+        </>
+
+  return <>
+    <Drawer label={`${selected.symbol} trade`} viewKey={view} width={440} onClose={() => { setView('summary'); onClose() }}>
+      {view === 'detail'
+        ? <div className="dw-trade">
+            <DrawerHeader
+              title={<span className="tp-title">
+                <SymbolToken symbol={selected.symbol}/>
+                <b>{selected.symbol}</b>
+                <span className={`side-mark ${selected.side.toLowerCase()}`} aria-label={selected.side}>{selected.side[0]}</span>
+              </span>}
+              description={`${shortDay(selected.date)} · ${selected.time} · ${selected.setup} · ${selected.qty} @ ${selected.entry}`}
+              onBack={() => setView('summary')}
+            />
+            <TradeDetail trade={selected} review={reviews[selected.id]} privacy={privacy}/>
+          </div>
+        : <div className="trade-panel dw-trade">{panel}</div>}
+    </Drawer>
+    {sheet === 'fills' && <Sheet title={`Add fills to ${selected.symbol ?? 'this trade'}`} subtitle="Replace the typed P&L with the fills it came from." onClose={() => setSheet(null)} width={580} className="tr-sheet">
+      <ManualFillsForm
+        trade={selected} privacy={privacy} onCancel={() => setSheet(null)}
+        onSaved={(batch) => setFlash('trades', { selectedId: selected.id, message: recordedMessage(batch) })}
+      />
+    </Sheet>}
+  </>
 }
 
 // Designs by RNSENCE Studio
@@ -361,28 +479,35 @@ export function TradesPage({ privacy, range = 'All', initialQuery = '', openLog 
   const [setup, setSetup] = useState('All setups')
   const [sort, setSort] = useState({ key: 'date', dir: 'desc' })
   const [pageIndex, setPageIndex] = useState(0)
-  const [selectedId, setSelectedId] = useState(null)
+  const [selectedId, setSelectedId] = useState(() => peekFlash('trades')?.selectedId ?? null)
   const [reviews, setReviews] = useState(() => readStore('trade-reviews', {}))
   const [tagDraft, setTagDraft] = useState('')
   const [tagFocus, setTagFocus] = useState(false)
   const [noteOpen, setNoteOpen] = useState(false)
+  const [archived, setArchived] = useState(() => readStore('cc-trade-archived', []))
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const tableRef = useRef(null)
+  const [flash] = useState(() => peekFlash('trades'))
+  useEffect(() => { clearFlash('trades') }, [])
+  const active = useMemo(() => scoped.filter((trade) => !archived.includes(trade.id)), [scoped, archived])
 
-  const setups = useMemo(() => ['All setups', ...[...new Set(scoped.map((trade) => trade.setup))].sort()], [scoped])
+  const setups = useMemo(() => ['All setups', ...[...new Set(active.map((trade) => trade.setup))].sort()], [active])
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase()
-    const list = scoped.filter((trade) =>
+    const list = active.filter((trade) =>
       (!needle || trade.symbol.toLowerCase().includes(needle) || trade.setup.toLowerCase().includes(needle))
       && (outcome === 'All' || (outcome === 'Wins' ? trade.pnl > 0 : trade.pnl < 0))
       && (side === 'All' || trade.side === side)
       && (setup === 'All setups' || trade.setup === setup))
     const sorted = [...list].sort(SORTS[sort.key])
     return sort.dir === 'desc' ? sorted.reverse() : sorted
-  }, [scoped, query, outcome, side, setup, sort])
+  }, [active, query, outcome, side, setup, sort])
 
   useEffect(() => { setPageIndex(0) }, [query, outcome, side, setup, sort, range])
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-  const visible = filtered.slice(pageIndex * PAGE_SIZE, pageIndex * PAGE_SIZE + PAGE_SIZE)
-  const selected = filtered.find((trade) => trade.id === selectedId) || visible[0] || null
+  const pageSize = useFittedRows(tableRef)
+  const pages = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const visible = filtered.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize)
+  const selected = filtered.find((trade) => trade.id === selectedId) || null
   const selectedIndex = selected ? filtered.indexOf(selected) : -1
   const stats = useMemo(() => summarize(filtered), [filtered])
 
@@ -398,11 +523,16 @@ export function TradesPage({ privacy, range = 'All', initialQuery = '', openLog 
       return next
     })
   }
-  const step = (delta) => {
-    const next = filtered[selectedIndex + delta]
-    if (!next) return
-    setSelectedId(next.id)
-    setPageIndex(Math.floor((selectedIndex + delta) / PAGE_SIZE))
+  const patchReview = (id, patch) => setReviews((current) => {
+    const next = { ...current, [id]: { ...(current[id] || {}), ...patch } }
+    writeStore('trade-reviews', next)
+    return next
+  })
+  const archiveTrade = (id) => {
+    const next = [...archived, id]
+    setArchived(next)
+    writeStore('cc-trade-archived', next)
+    setSelectedId(null)
   }
   const exportCsv = () => {
     const columns = ['date', 'time', 'closed', 'symbol', 'side', 'setup', 'qty', 'entry', 'exit', 'fees', 'pnl', 'grade']
@@ -419,6 +549,7 @@ export function TradesPage({ privacy, range = 'All', initialQuery = '', openLog 
     ? <ChevronsUpDown size={12} className={`sort-icon ${sort.dir}`}/>
     : <ChevronsUpDown size={12} className="sort-icon idle"/>
 
+
   return <div className="page home ws-page trades-page">
     <PageHead
       title="Trades"
@@ -430,12 +561,12 @@ export function TradesPage({ privacy, range = 'All', initialQuery = '', openLog 
     />
 
     <MetricStrip items={[
-      { label: 'Trades', value: `${stats.trades}`, sub: `${stats.wins}W · ${stats.losses}L`, line: dashLine(stats.wins, stats.trades) },
-      { label: 'Win rate', value: percent(stats.winRate), sub: `${stats.wins} of ${stats.trades} trades`, line: gaugeLine(stats.winRate, 100, { mark: 0.5 }) },
+      { label: 'Trades', value: `${stats.trades}`, sub: <>{stats.wins}<span className="ms-pos">W</span> · {stats.losses}<span className="ms-neg">L</span></>, line: dashLine(stats.wins, stats.trades) },
+      { label: 'Win rate', value: percent(stats.winRate), sub: <><span className="ms-pos">{stats.wins}</span> of {stats.trades} trades</>, line: gaugeLine(stats.winRate, 100, { mark: 0.5 }) },
       { label: 'Net P&L', value: money(stats.netPnl, { privacy }), tone: toneOf(stats.netPnl),
         sub: <><b className={`metric-emph tone-${toneOf(stats.netPnl)}`}>{money(stats.netPnl / Math.max(1, equitySeries(scoped).length), { privacy, decimals: 0 })}</b> per session</>,
         line: splitLine(stats.grossProfit, stats.grossLoss) },
-      { label: 'Profit factor', value: ratio(stats.profitFactor), sub: `Avg win ${money(stats.avgWin, { privacy, decimals: 0 })} · loss ${money(-stats.avgLoss, { privacy, decimals: 0 })}`,
+      { label: 'Profit factor', value: ratio(stats.profitFactor), sub: <>Avg win <span className="ms-pos">{money(stats.avgWin, { privacy, decimals: 0 })}</span> · loss <span className="ms-neg">{money(-stats.avgLoss, { privacy, decimals: 0 })}</span></>,
         line: gaugeLine(stats.profitFactor, 3, { mark: 1 / 3 }) },
       { label: 'Expectancy', value: money(stats.expectancy, { privacy }), tone: toneOf(stats.expectancy ?? 0), sub: 'Per trade',
         line: centerLine(stats.expectancy, Math.max(Math.abs(stats.avgWin), Math.abs(stats.avgLoss))) },
@@ -452,14 +583,19 @@ export function TradesPage({ privacy, range = 'All', initialQuery = '', openLog 
       <select className="ws-select" value={setup} onChange={(event) => setSetup(event.target.value)} aria-label="Setup">
         {setups.map((option) => <option key={option}>{option}</option>)}
       </select>
-      <span className="ws-count">{plural(filtered.length, 'result')}</span>
+      <span className="ws-count">
+        {archived.length > 0 && <button type="button" className="tl-restore" onClick={() => { setArchived([]); writeStore('cc-trade-archived', []) }}>{plural(archived.length, 'archived trade')} · Restore</button>}
+        {plural(filtered.length, 'result')}
+      </span>
     </div>
 
+    {flash?.message && <p className="tl-status" role="status">{flash.message}</p>}
+
     <div className="trades-layout">
-      <Card className="trades-table-card">
+      <Card shell title="History" className="trades-table-card">
         {filtered.length
           ? <>
-              <div className="ws-table-wrap">
+              <div className="ws-table-wrap" ref={tableRef}>
                 <table className="feed-table ws-table">
                   <thead><tr>
                     <th><button type="button" onClick={() => toggleSort('date')}>Date {sortIcon('date')}</button></th>
@@ -467,20 +603,22 @@ export function TradesPage({ privacy, range = 'All', initialQuery = '', openLog 
                     <th>Side</th>
                     <th>Setup</th>
                     <th><button type="button" onClick={() => toggleSort('qty')}>Qty {sortIcon('qty')}</button></th>
-                    <th>Entry → Exit</th>
-                    <th>Grade</th>
-                    <th><button type="button" onClick={() => toggleSort('pnl')}>Net P&L {sortIcon('pnl')}</button></th>
+                    <th><span className="jt-prices head"><span>Entry</span><span className="jt-arrow" aria-hidden="true">→</span><span>Exit</span></span></th>
+                    <th className="tl-col-account">Account</th>
+                    <th className="tl-col-r">R</th>
+                    <th><button type="button" onClick={() => toggleSort('pnl')}>Net P&L</button></th>
                   </tr></thead>
                   <tbody>
+                    <tr className="tl-gap" aria-hidden="true"><td colSpan={9}/></tr>
                     {visible.map((trade) => <tr
                       key={trade.id}
                       className={`jt-row ${toneOf(trade.pnl)}${selected?.id === trade.id ? ' is-selected' : ''}`}
-                      onClick={() => setSelectedId(trade.id)}
+                      onClick={() => { setSelectedId(trade.id); setDrawerOpen(true) }}
                     >
                       <td className="jt-time"><span>{shortDay(trade.date)}</span><small>{trade.time}</small></td>
                       <td className="jt-symbol">
                         <span className="jt-sym">
-                          <span className={`jt-token c-${symbolClassSlug(trade.symbol)}`} aria-hidden="true">{trade.symbol.slice(0, 2)}</span>
+                          <SymbolToken symbol={trade.symbol}/>
                           <b>{trade.symbol}</b>
                         </span>
                       </td>
@@ -490,112 +628,40 @@ export function TradesPage({ privacy, range = 'All', initialQuery = '', openLog 
                       <td className="jt-route">
                         {privacy
                           ? <span className="jt-prices">••••</span>
-                          : <span className="jt-prices">{trade.entry.toFixed(2)}<i className={toneOf(trade.pnl)} aria-hidden="true"/>{trade.exit.toFixed(2)}</span>}
+                          : <span className="jt-prices"><span>{trade.entry.toFixed(2)}</span><span className={`jt-arrow ${toneOf(trade.pnl)}`} aria-hidden="true">→</span><span>{trade.exit.toFixed(2)}</span></span>}
                       </td>
-                      <td><span className={`grade-chip g-${trade.grade === 'A+' ? 'ap' : trade.grade.toLowerCase()}`}>{trade.grade}</span></td>
+                      <td className="tl-col-account">{(() => {
+                        const name = accountForTrade(trade)?.content.name ?? 'Unassigned'
+                        return <span className="tl-account"><FirmLogo firm={firmOf(name)}/>{name}</span>
+                      })()}</td>
+                      <td className="tl-col-r">{(() => { const value = trade.logged && !trade.fills?.length ? null : realizedR(trade, reviews[trade.id]); return value == null ? '' : <span className={`tl-r tone-${toneOf(value)}`}>{value.toFixed(2)}R</span> })()}</td>
                       <td className={`jt-pnl tone-${toneOf(trade.pnl)}`}>{money(trade.pnl, { privacy })}</td>
                     </tr>)}
                   </tbody>
                 </table>
               </div>
-              <div className="ws-pager">
-                <span>{pageIndex * PAGE_SIZE + 1}–{Math.min(filtered.length, (pageIndex + 1) * PAGE_SIZE)} of {filtered.length}</span>
-                <div>
-                  <button type="button" aria-label="Previous page" disabled={pageIndex === 0} onClick={() => setPageIndex(pageIndex - 1)}><ChevronLeft size={15}/></button>
-                  <span className="pager-index">{pageIndex + 1} / {pages}</span>
-                  <button type="button" aria-label="Next page" disabled={pageIndex >= pages - 1} onClick={() => setPageIndex(pageIndex + 1)}><ChevronRight size={15}/></button>
-                </div>
-              </div>
             </>
           : <ChartState state="empty" detail="No trades match these filters."/>}
       </Card>
 
-      <aside className="home-card trade-panel">
-        {selected ? <>
-          <div className="tp-head">
-            <div>
-              <div className="tp-title">
-                <b>{selected.symbol}</b>
-                <span className={`side-mark ${selected.side.toLowerCase()}`} title={selected.side} aria-label={selected.side}>{selected.side[0]}</span>
-              </div>
-              <small>{shortDay(selected.date)} · {selected.time} · {selected.setup}</small>
-            </div>
-            <div className="tp-nav">
-              <button type="button" aria-label="Previous trade" disabled={selectedIndex <= 0} onClick={() => step(-1)}><ChevronLeft size={15}/></button>
-              <button type="button" aria-label="Next trade" disabled={selectedIndex >= filtered.length - 1} onClick={() => step(1)}><ChevronRight size={15}/></button>
-            </div>
-          </div>
+      {filtered.length > 0 && <div className="ws-pager">
+        <span>Showing <b>{pageIndex * pageSize + 1}–{Math.min(filtered.length, (pageIndex + 1) * pageSize)}</b> of <b>{filtered.length}</b> trades</span>
+        <div>
+          <button type="button" aria-label="Previous page" disabled={pageIndex === 0} onClick={() => setPageIndex(pageIndex - 1)}><ChevronLeft size={15}/></button>
+          <span className="pager-index">Page <b>{pageIndex + 1}</b> of {pages}</span>
+          <button type="button" aria-label="Next page" disabled={pageIndex >= pages - 1} onClick={() => setPageIndex(pageIndex + 1)}><ChevronRight size={15}/></button>
+        </div>
+      </div>}
 
-          <div className="tp-result">
-            <strong className={`tone-${toneOf(selected.pnl)}`}>{money(selected.pnl, { privacy })}</strong>
-          </div>
-
-          <dl className="tp-figures">
-            <div><dt>Gross</dt><dd>{money(selected.pnl + selected.fees, { privacy })}</dd></div>
-            <div><dt>Fees</dt><dd>{money(selected.fees, { privacy, sign: false })}</dd></div>
-            <div><dt>Quantity</dt><dd>{selected.qty}</dd></div>
-            <div><dt>Hold time</dt><dd>{selected.closed ? `${clockMinutes(selected.closed) - clockMinutes(selected.time)}m` : '—'}</dd></div>
-            <div><dt>Return</dt><dd className={`tone-${toneOf(selected.pnl)}`}>{percent((selected.pnl / (selected.qty * selected.entry)) * 100, { decimals: 2 })}</dd></div>
-            <div><dt>Grade</dt><dd>{selected.grade}</dd></div>
-          </dl>
-
-          <ExecutionTrack trade={selected} privacy={privacy}/>
-
-          <div className="tp-review">
-            <div className="tp-review-head">
-              <span>Review{review.notes ? <em><Check size={11} strokeWidth={3}/> saved</em> : null}</span>
-              <button type="button" className={`tp-reviewed${review.reviewed ? ' on' : ''}`} aria-pressed={review.reviewed} onClick={() => updateReview({ reviewed: !review.reviewed })}>
-                <Check size={13} strokeWidth={2.6}/> {review.reviewed ? 'Reviewed' : 'Mark reviewed'}
-              </button>
-            </div>
-            <div className="tp-rating">
-              <span>Execution</span>
-              <div className="tp-scale" role="radiogroup" aria-label="Execution rating">
-                {[1, 2, 3, 4, 5].map((value) => <button
-                  key={value} type="button" role="radio" aria-checked={review.rating === value}
-                  aria-label={`${value} of 5 — ${RATING_WORDS[value]}`} title={RATING_WORDS[value]}
-                  className={`${value <= review.rating ? 'on' : ''} ${review.rating >= 4 ? 'good' : review.rating === 3 ? 'mid' : 'poor'}`}
-                  onClick={() => updateReview({ rating: review.rating === value ? 0 : value })}
-                />)}
-              </div>
-              <em>{RATING_WORDS[review.rating ?? 0]}</em>
-            </div>
-            <div className="tp-tags">
-              {review.tags.map((tag) => <span key={tag} className="tp-tag">{tag}<button type="button" aria-label={`Remove ${tag}`} onClick={() => updateReview({ tags: review.tags.filter((item) => item !== tag) })}><X size={11}/></button></span>)}
-              <input
-                value={tagDraft} placeholder={review.tags.length ? 'Add tag…' : 'Add a tag…'} aria-label="Add tag"
-                onFocus={() => setTagFocus(true)}
-                onBlur={() => window.setTimeout(() => setTagFocus(false), 140)}
-                onChange={(event) => setTagDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && tagDraft.trim()) {
-                    updateReview({ tags: [...new Set([...review.tags, tagDraft.trim().toLowerCase()])] })
-                    setTagDraft('')
-                  }
-                }}
-              />
-            </div>
-            {tagFocus && (() => {
-              const draft = tagDraft.trim().toLowerCase()
-              const suggestions = SUGGESTED_TAGS.filter((tag) => !review.tags.includes(tag) && (!draft || tag.includes(draft)))
-              return suggestions.length ? <div className="tp-suggest">
-                {suggestions.map((tag) => <button key={tag} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { updateReview({ tags: [...review.tags, tag] }); setTagDraft('') }}>{tag}</button>)}
-              </div> : null
-            })()}
-            <button type="button" className={`tp-note-toggle${noteOpen ? ' open' : ''}`} aria-expanded={noteOpen} onClick={() => setNoteOpen(!noteOpen)}>
-              <ChevronRight size={13} className="tp-note-caret"/>
-              <span>{review.notes ? 'Note' : 'Add a note'}</span>
-              {!noteOpen && review.notes && <em>{review.notes}</em>}
-            </button>
-            {noteOpen && <textarea
-              value={review.notes} placeholder="What did you see, and would you take it again?"
-              aria-label="Trade notes" autoFocus onChange={(event) => updateReview({ notes: event.target.value })}
-            />}
-
-          </div>
-        </> : <ChartState state="empty" detail="Select a trade to review it."/>}
-      </aside>
     </div>
+
+    <AllMetrics trades={active} reviews={reviews} privacy={privacy}/>
+
+    {selected && drawerOpen && <TradeDrawer
+      trades={filtered} selectedId={selected.id} reviews={reviews} privacy={privacy}
+      onSelect={(id) => { setSelectedId(id); setPageIndex(Math.floor(filtered.findIndex((trade) => trade.id === id) / pageSize)) }}
+      onArchive={archiveTrade} onClose={() => { setDrawerOpen(false); setSelectedId(null) }}
+    />}
   </div>
 }
 
@@ -662,13 +728,13 @@ export function ReportsPage({ privacy, range = 'All', openJournal, openTrades })
           { label: 'Net P&L', value: money(data.stats.netPnl, { privacy }), tone: toneOf(data.stats.netPnl),
             sub: `${money(data.stats.grossProfit, { privacy, decimals: 0, sign: false })} won · ${money(data.stats.grossLoss, { privacy, decimals: 0, sign: false })} lost`,
             line: splitLine(data.stats.grossProfit, data.stats.grossLoss) },
-          { label: 'Win rate', value: percent(data.stats.winRate), sub: `${data.stats.wins}W · ${data.stats.losses}L`,
+          { label: 'Win rate', value: percent(data.stats.winRate), sub: <>{data.stats.wins}<span className="ms-pos">W</span> · {data.stats.losses}<span className="ms-neg">L</span></>,
             line: gaugeLine(data.stats.winRate, 100, { mark: 0.5 }) },
           { label: 'Profit factor', value: ratio(data.stats.profitFactor), sub: 'Break-even marked at 1.00',
             line: gaugeLine(data.stats.profitFactor, 3, { mark: 1 / 3 }) },
           { label: 'Expectancy', value: money(data.stats.expectancy, { privacy }), tone: toneOf(data.stats.expectancy ?? 0), sub: 'Per trade',
             line: centerLine(data.stats.expectancy, Math.max(Math.abs(data.stats.avgWin), Math.abs(data.stats.avgLoss))) },
-          { label: 'Avg win / loss', value: ratio(data.stats.avgWinLoss), sub: `${fmt0(data.stats.avgWin)} vs ${fmt0(-data.stats.avgLoss)}`,
+          { label: 'Avg win / loss', value: ratio(data.stats.avgWinLoss), sub: <><span className="ms-pos">{fmt0(data.stats.avgWin)}</span> vs <span className="ms-neg">{fmt0(-data.stats.avgLoss)}</span></>,
             line: splitLine(data.stats.avgWin, data.stats.avgLoss) },
           { label: 'Max drawdown', value: money(data.stats.maxDrawdown, { privacy }), tone: 'neg',
             sub: `${Math.abs(data.stats.maxDrawdownPct).toFixed(1)}% of account`,
@@ -704,7 +770,7 @@ export function ReportsPage({ privacy, range = 'All', openJournal, openTrades })
           {[['Best trade', data.best], ['Worst trade', data.worst]].map(([title, trade]) => <Card key={title} title={title}>
             <div className="extreme-trade">
               <strong className={`tone-${toneOf(trade.pnl)}`}>{money(trade.pnl, { privacy })}</strong>
-              <span><b>{trade.symbol}</b> <span className={`side-mark ${trade.side.toLowerCase()}`} title={trade.side} aria-label={trade.side}>{trade.side[0]}</span></span>
+              <span><b>{trade.symbol}</b> <span className={`side-mark ${trade.side.toLowerCase()}`} aria-label={trade.side}>{trade.side[0]}</span></span>
               <small>{shortDay(trade.date)} · {trade.time} · {trade.setup}</small>
             </div>
           </Card>)}
@@ -814,7 +880,11 @@ const FIRM_LOGOS = {
   'Take Profit Trader': '/assets/marks/tpt.png',
 }
 
-function FirmLogo({ firm }) {
+/** Short firm names for tight spots. */
+const FIRM_SHORT = { MyFundedFutures: 'MFF', 'Take Profit Trader': 'TPT' }
+const firmShort = (firm) => FIRM_SHORT[firm] ?? firm
+
+export function FirmLogo({ firm }) {
   const [failed, setFailed] = useState(false)
   const src = FIRM_LOGOS[firm]
   return <span className="acct-logo">
@@ -900,7 +970,7 @@ function FirmNetList({ rows, format }) {
         <span className={`fn-value tone-${toneOf(row.value)}`}>{format(row.value)}</span>
       </div>
       <span className="fn-track" aria-hidden="true">
-        <i className={toneOf(row.value)} style={{ width: `${Math.max(2, (Math.abs(row.value) / peak) * 100)}%` }}/>
+        <i className={toneOf(row.value)} style={{ width: `${row.value < 0 ? 100 : Math.max(2, (Math.abs(row.value) / peak) * 100)}%` }}/>
       </span>
     </li>)}
   </ul>
@@ -909,11 +979,157 @@ function FirmNetList({ rows, format }) {
 const TYPE_TONE = { Payout: 'pos', Evaluation: 'neutral', Subscription: 'neutral', Activation: 'neutral', Reset: 'warn' }
 
 // Designs by RNSENCE Studio
+/** Month of prop-firm cash movement: payouts credited, fees charged, quiet days left blank. */
+function PayoutCalendar({ grid, privacy = false, today, footer }) {
+  return <div className="payout-cal">
+    <div className="pc-head">{['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => <span key={day}>{day}</span>)}</div>
+    <div className="pc-grid">
+      {grid.cells.map((cell) => {
+        if (cell.blank) return <i key={cell.key} className="pc-blank" aria-hidden="true"/>
+        const day = cell.session
+        const tone = day ? toneOf(day.pnl) : null
+        return <div key={cell.key} className={`pc-cell${day ? ` has-entry ${tone}` : ''}${cell.weekend ? ' weekend' : ''}${today === cell.date ? ' today' : ''}`}>
+          <span className="pc-day">{cell.day}</span>
+          {day && <span className="pc-foot-line">
+            <b className="pc-amount">{compactMoney(day.pnl, { privacy })}</b>
+            <small className="pc-count" aria-label={day.trades === 1 ? '1 trade' : `${day.trades} trades`} title={day.trades === 1 ? '1 trade' : `${day.trades} trades`}>{day.trades}</small>
+          </span>}
+        </div>
+      })}
+    </div>
+    {footer && <div className="pc-foot">{footer}</div>}
+  </div>
+}
+
+/** House payout rules per account, derived from its size and phase. */
+export function payoutRules(account, taken) {
+  const tier = account.size >= 150000 ? 'large' : account.size >= 100000 ? 'mid' : 'small'
+  const perPayout = { large: 5000, mid: 2500, small: 1500 }[tier]
+  const phaseCap = account.phase === 'Funded' ? null : { large: 25000, mid: 20000, small: 10000 }[tier]
+  const runway = { large: 5, mid: 4, small: 3 }[tier]
+  const monthly = perPayout * 2
+  return {
+    perPayout,
+    phaseCap,
+    runway,
+    taken: Math.min(taken, runway),
+    uncapped: account.phase === 'Funded' && taken >= runway,
+    cadence: account.phase === 'Funded' ? '90 / 10 · every 14 d' : '100% first $10K, then 90 / 10',
+    monthly,
+    netMonthly: Math.round(monthly * (account.phase === 'Funded' ? 0.9 : 1)),
+    state: account.phase === 'Funded' ? 'Live' : account.status === 'Passed' ? 'Funded' : 'Evaluation',
+  }
+}
+
+/** What each account is allowed to withdraw: per-payout size, runway to uncapped, and the monthly ceiling. */
+function PayoutCaps({ accounts, payouts, privacy }) {
+  const [view, setView] = useState('Caps')
+  const month = [...payouts].sort((a, b) => b.date.localeCompare(a.date))[0]?.date.slice(0, 7) ?? ''
+  const rows = accounts.map((account) => {
+    const mine = payouts.filter((item) => item.account === account.id && item.type === 'Payout')
+    const drawn = mine.filter((item) => item.date.startsWith(month)).reduce((total, item) => total + item.amount, 0)
+    return { account, drawn, taken: mine.length, rules: payoutRules(account, mine.length) }
+  })
+  return <ul className="firm-net caps-net">
+    {rows.map(({ account, drawn, rules }) => {
+      const cap = (value) => money(value, { privacy, sign: false, decimals: 0 })
+      return <li key={account.id}>
+        <div className="fn-head">
+          <FirmLogo firm={account.firm}/>
+          <span className="fn-name">
+            <span className="caps-name">{account.firm} · {account.size / 1000}K<span className={`caps-state ${rules.state.split(' ')[0].toLowerCase()}`}>{rules.state}</span></span>
+            <small>{cap(rules.perPayout)} per payout · {rules.taken} of {rules.runway} taken</small>
+          </span>
+          <span className="fn-value caps-used"><b className={`caps-drawn${drawn > 0 ? ' is-drawn' : ''}`}>{cap(drawn)}</b> / {cap(rules.monthly)}</span>
+        </div>
+        <span className="fn-track" aria-hidden="true">
+          {drawn > 0 && <i className="accent" style={{ width: `${Math.max(2, Math.min(100, (drawn / rules.monthly) * 100))}%` }}/>}
+        </span>
+      </li>
+    })}
+  </ul>
+}
+
+/** Most a trader can take home this month across every account's payout cap. */
+const capsTakeHome = (accounts, payouts) => accounts.reduce((total, account) => {
+  const taken = payouts.filter((item) => item.account === account.id && item.type === 'Payout').length
+  return total + payoutRules(account, taken).netMonthly
+}, 0)
+
+const ledgerKey = (item) => `${item.date}-${item.account}-${item.type}-${item.amount}`
+const longDay = (iso) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+const entryStatus = (item) => (item.type === 'Payout' ? item.status : 'Settled')
+
+/** One ledger entry in the drawer: the amount, where it sits in the account, and the firm's running total. */
+function LedgerDetail({ entry, index, total, onStep, onPick, privacy, dir = 'pick' }) {
+  const account = propAccounts.find((item) => item.id === entry.account)
+  const firmRows = propTransactions.filter((item) => item.firm === entry.firm)
+  const spent = firmRows.filter((item) => item.amount < 0).reduce((sum, item) => sum - item.amount, 0)
+  const paid = firmRows.filter((item) => item.type === 'Payout').reduce((sum, item) => sum + item.amount, 0)
+  const history = propTransactions.filter((item) => item.account === entry.account).sort((a, b) => b.date.localeCompare(a.date))
+  const status = entryStatus(entry)
+  const fmt = (value, options = {}) => money(value, { privacy, ...options })
+  const swap = `lg-swap ${dir}`
+  const key = ledgerKey(entry)
+  return <div className="trade-panel dw-trade dw-ledger">
+    <div className="tp-head">
+      <div key={`head-${key}`} className={swap}>
+        <div className="tp-title"><FirmLogo firm={entry.firm}/><b>{entry.firm}</b></div>
+        <small>{longDay(entry.date)} · {entry.type}</small>
+      </div>
+      <div className="tp-nav">
+        <button type="button" aria-label="Previous entry" disabled={index <= 0} onClick={() => onStep(-1)}><ChevronLeft size={15}/></button>
+        <button type="button" aria-label="Next entry" disabled={index >= total - 1} onClick={() => onStep(1)}><ChevronRight size={15}/></button>
+      </div>
+    </div>
+
+    <div key={`body-${key}`} className={`lg-body ${swap}`}>
+    <div className="tp-result">
+      <strong className={`tone-${toneOf(entry.amount)}`}>{fmt(entry.amount)}</strong>
+      <span className={`status-chip ${status.toLowerCase()}`}>{status}</span>
+    </div>
+
+    <dl className="tp-figures">
+      <div className="lg-wide"><dt>Account</dt><dd className="lg-mono">{entry.account}</dd></div>
+      <div><dt>Size</dt><dd className="lg-tagged">{account ? <>{account.size / 1000}K<span className={`caps-state ${account.phase.toLowerCase()}`}>{account.phase}</span></> : '—'}</dd></div>
+      {entry.type !== 'Activation' && <div><dt>Account status</dt><dd>{account ? <span className={`lg-status ${account.status.toLowerCase()}`}>{account.status}</span> : '—'}</dd></div>}
+      <div><dt>Entry</dt><dd><span className={`type-chip ${TYPE_TONE[entry.type] ?? 'neutral'}`}>{entry.type}</span></dd></div>
+    </dl>
+
+    <section className="lg-firm">
+      <div className="lg-firm-head"><span>{entry.firm} to date</span><b className={`tone-${toneOf(paid - spent)}`}>{fmt(paid - spent, { decimals: 0 })}</b></div>
+      <div className="lg-split" aria-hidden="true">
+        <i className="spent" style={{ flex: spent || 0.0001 }}/>
+        <i className="paid" style={{ flex: paid || 0.0001 }}/>
+      </div>
+      <small>{fmt(spent, { sign: false, decimals: 0 })} in · {fmt(paid, { sign: false, decimals: 0 })} out · {firmRows.length} {firmRows.length === 1 ? 'entry' : 'entries'}</small>
+    </section>
+
+    {history.length > 1 && <section className="lg-history">
+      <span className="lg-label">This account</span>
+      <ul>
+        {history.map((item) => <li key={ledgerKey(item)}>
+          <button type="button" className={item === entry ? 'is-current' : ''} aria-current={item === entry ? 'true' : undefined} onClick={() => onPick(item)}>
+            <span className="lg-when">{shortDay(item.date)}</span>
+            <span className="lg-type">{item.type}</span>
+            <span className={`lg-amt tone-${toneOf(item.amount)}`}>{fmt(item.amount, { decimals: 0 })}</span>
+          </button>
+        </li>)}
+      </ul>
+    </section>}
+    </div>
+  </div>
+}
+
 export function PropFirmsPage({ privacy }) {
+  const easternToday = useEasternToday()
   const [dialog, setDialog] = useState(null)
   const [ledgerView, setLedgerView] = useState('All')
   const [boneyardOpen, setBoneyardOpen] = useState(false)
   const [showAll, setShowAll] = useState(false)
+  const [entryKey, setEntryKey] = useState(null)
+  const [entryDir, setEntryDir] = useState('pick')
+  const ledgerRef = useRef(null)
   const [openAccounts, setOpenAccounts] = useState(() => new Set())
   const toggleAccount = (id) => setOpenAccounts((prev) => {
     const next = new Set(prev)
@@ -965,7 +1181,7 @@ export function PropFirmsPage({ privacy }) {
   }, [monthly])
 
   const firms = useMemo(() => {
-    const names = [...new Set(propTransactions.map((item) => item.firm))]
+    const names = [...new Set([...propAccounts.map((account) => account.firm), ...propTransactions.map((item) => item.firm)])]
     return names.map((firm) => {
       const rows = propTransactions.filter((item) => item.firm === firm)
       const spent = rows.filter((item) => item.amount < 0).reduce((sum, item) => sum - item.amount, 0)
@@ -977,7 +1193,52 @@ export function PropFirmsPage({ privacy }) {
   const ledger = [...propTransactions]
     .filter((item) => ledgerView === 'All' || (ledgerView === 'Payouts' ? item.type === 'Payout' : item.type !== 'Payout'))
     .sort((a, b) => b.date.localeCompare(a.date))
+  useEffect(() => {
+    if (!entryKey) return
+    const at = ledger.findIndex((item) => ledgerKey(item) === entryKey)
+    if (at >= 8 && !showAll) setShowAll(true)
+    const row = ledgerRef.current?.querySelectorAll('tbody tr')[at]
+    const wrap = ledgerRef.current
+    if (!row || !wrap) return
+    const top = row.offsetTop - wrap.querySelector('thead').offsetHeight - 4
+    if (top < wrap.scrollTop || row.offsetTop + row.offsetHeight > wrap.scrollTop + wrap.clientHeight) wrap.scrollTo({ top: Math.max(0, top - 40), behavior: 'smooth' })
+  }, [entryKey, showAll])
   const active = propAccounts.filter((account) => account.status === 'Active' || account.status === 'Passed').length
+
+  // payouts less fees, per day, so the calendar reflects prop accounts only
+  const propDays = useMemo(() => {
+    const byDate = new Map()
+    propTransactions.forEach((item) => {
+      const day = byDate.get(item.date) ?? { date: item.date, pnl: 0, trades: 0 }
+      day.pnl += item.amount
+      day.trades += 1
+      byDate.set(item.date, day)
+    })
+    return [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
+  }, [])
+  const [propMonth, setPropMonth] = useState(() => {
+    const latest = [...propTransactions].sort((a, b) => b.date.localeCompare(a.date))[0]?.date ?? new Date().toISOString().slice(0, 10)
+    return { year: Number(latest.slice(0, 4)), month: Number(latest.slice(5, 7)) - 1 }
+  })
+  const propGrid = useMemo(() => calendarGrid(propDays, propMonth.year, propMonth.month), [propDays, propMonth])
+  const propMonthStats = useMemo(() => {
+    const key = `${propMonth.year}-${String(propMonth.month + 1).padStart(2, '0')}`
+    const rows = propTransactions.filter((item) => item.date.startsWith(key))
+    const paid = rows.filter((item) => item.type === 'Payout')
+    const fees = rows.filter((item) => item.type !== 'Payout')
+    const best = paid.reduce((top, item) => (top && top.amount >= item.amount ? top : item), null)
+    return {
+      paidTotal: paid.reduce((total, item) => total + item.amount, 0),
+      feeTotal: Math.abs(fees.reduce((total, item) => total + item.amount, 0)),
+      payouts: paid.length,
+      best,
+      pending: rows.filter((item) => item.type === 'Payout' && item.status === 'Pending').length,
+    }
+  }, [propMonth])
+  const shiftPropMonth = (delta) => setPropMonth(({ year, month }) => {
+    const next = month + delta
+    return { year: year + Math.floor(next / 12), month: ((next % 12) + 12) % 12 }
+  })
 
   const liveAccounts = propAccounts.filter((account) => account.status !== 'Breached')
   const graveyard = propAccounts.filter((account) => account.status === 'Breached')
@@ -993,28 +1254,25 @@ export function PropFirmsPage({ privacy }) {
       const goal = account.target ?? Math.round(account.size * 1.06)
       const open = openAccounts.has(account.id)
       const drawerId = `acct-meters-${account.id}`
-      return <article key={account.id} className={`acct-card${account.status === 'Breached' ? ' is-breached' : ''}${open ? ' is-open' : ''}`}>
+      return <article
+        key={account.id} className={`acct-card${account.status === 'Breached' ? ' is-breached' : ''}${open ? ' is-open' : ''}`}
+        role="button" tabIndex={0} aria-expanded={open} aria-controls={drawerId}
+        onClick={() => toggleAccount(account.id)}
+        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleAccount(account.id) } }}
+      >
         <header>
           <FirmLogo firm={account.firm}/>
           <div className="acct-id">
-            <b title={`${account.firm} ${account.size / 1000}K`}>{account.firm} {account.size / 1000}K</b>
+            <b>{account.firm} {account.size / 1000}K</b>
             <span className="acct-sub">
               <span className={`acct-status ${statusLabel.toLowerCase()}`}>{statusLabel}</span>
-              <small title={account.id}>{account.id}</small>
+              <small>{account.id}</small>
             </span>
           </div>
-          <span className={`acct-delta ${toneOf(pnl)}`}>{money(pnl, { privacy, decimals: 0 })}</span>
+          <div className="acct-balance">
+            <strong>{money(account.balance, { privacy, sign: false, decimals: 0 })}<em className="acct-goal">/{money(goal, { privacy, sign: false, decimals: 0 })}</em></strong>
+          </div>
         </header>
-        <div className="acct-balance">
-          <strong>{money(account.balance, { privacy, sign: false, decimals: 0 })}<em className="acct-goal">/{money(goal, { privacy, sign: false, decimals: 0 })}</em></strong>
-          <button
-            type="button" className="acct-toggle" aria-expanded={open} aria-controls={drawerId}
-            aria-label={`${open ? 'Hide' : 'Show'} ${progress != null ? 'target' : 'payout'} and drawdown`}
-            title={open ? 'Hide details' : 'Show details'} onClick={() => toggleAccount(account.id)}
-          >
-            <ChevronDown size={13} strokeWidth={2.2}/>
-          </button>
-        </div>
         <div className="acct-drawer" id={drawerId} inert={!open}><div className="acct-meters">
           {progress != null
             ? <div className="acct-meter">
@@ -1038,7 +1296,7 @@ export function PropFirmsPage({ privacy }) {
       title="Prop firms"
       meta={`${plural(propAccounts.length, 'account')} · ${active} active · ${money(totals.fundedCapital, { privacy, sign: false, decimals: 0 })} funded capital`}
       actions={<>
-        <button className="ws-outline" onClick={() => setDialog('entry')}><FlagstickIcon size={14}/> Record payout</button>
+        <button className="ws-outline" onClick={() => setDialog('entry')}><HandCoins size={15}/> Record payout</button>
         <button className="start-day" onClick={() => setDialog('account')}><Plus size={16} strokeWidth={2.2}/> Add account</button>
       </>}
     />
@@ -1052,9 +1310,15 @@ export function PropFirmsPage({ privacy }) {
             {totals.monthChange >= 0 ? <ArrowUpRight size={13} strokeWidth={3}/> : <ArrowDownRight size={13} strokeWidth={3}/>}
             {Math.abs(Math.round(totals.monthChange))}%
           </span>
-          <span title={`${money(totals.monthPaid, { privacy, sign: false, decimals: 0 })} this month vs ${money(totals.priorPaid, { privacy, sign: false, decimals: 0 })} in ${totals.priorLabel}`}>vs {totals.priorLabel} payouts</span>
+          <span>vs {totals.priorLabel} payouts</span>
         </> },
-      { label: 'Net return', value: money(totals.net, { privacy }), tone: toneOf(totals.net), sub: <><b className={`metric-emph tone-${toneOf(totals.roi)}`}>{Math.round(totals.roi)}%</b> on money spent</>,
+      { label: 'Net return', value: money(totals.net, { privacy }), tone: toneOf(totals.net), sub: <>
+          <span className={`compare-delta ${totals.roi >= 0 ? 'pos' : 'neg'}`}>
+            {totals.roi >= 0 ? <ArrowUpRight size={13} strokeWidth={3}/> : <ArrowDownRight size={13} strokeWidth={3}/>}
+            {Math.abs(Math.round(totals.roi))}%
+          </span>
+          <span>on money spent</span>
+        </>,
         line: centerLine(totals.net, Math.max(totals.spent, totals.paid)) },
       { label: 'Pending payout', value: money(totals.pending, { privacy, sign: false }),
         sub: totals.pendingFrom ? <>Awaiting <b className="metric-emph">{totals.pendingFrom.firm}</b> · since {shortDay(totals.pendingFrom.date)}</> : 'Nothing pending',
@@ -1067,13 +1331,16 @@ export function PropFirmsPage({ privacy }) {
 
 
 
-    <div className="ws-grid two-one">
-      <Card title="Cash flow" aside={<div className="ws-legend"><span><i className="spent"/>Spent</span><span><i className="paid"/>Payouts</span><span><i className="loss"/>Net loss</span></div>}>
+    <div className="ws-grid two-one flow-row">
+      <Card shell title="Cash flow">
         <div className="flow-layout">
+          <div className="flow-chart">
           <GroupedColumns
-            data={monthly} height={260} privacy={privacy} netLoss
+            data={monthly} height={224} privacy={privacy} netLoss
             series={[{ key: 'spent', label: 'Spent', tone: 'spent' }, { key: 'paid', label: 'Payouts', tone: 'paid' }]}
           />
+            <div className="ws-legend flow-legend"><span><i className="spent"/>Spent</span><span><i className="paid"/>Payouts</span><span><i className="loss"/>Net loss</span></div>
+          </div>
           <aside className="flow-side">
             <div className="flow-lead">
               <span>Return on fees</span>
@@ -1086,22 +1353,37 @@ export function PropFirmsPage({ privacy }) {
             </div>
             <dl className="flow-stats">
               <div><dt>Best month <em>{flow.best?.label}</em></dt><dd className="tone-pos">{money(flow.best?.net ?? 0, { privacy, decimals: 0 })}</dd></div>
-              <div><dt>Avg per month</dt><dd className={`tone-${toneOf(flow.average)}`}>{money(flow.average, { privacy, decimals: 0 })}</dd></div>
+              <div><dt>Avg per month <em>YoY</em></dt><dd className={`tone-${toneOf(flow.average)}`}>{money(flow.average, { privacy, decimals: 0 })}</dd></div>
               {flow.lastPayout && <div><dt>Last payout <em>{shortDay(flow.lastPayout.date)}</em></dt><dd className="tone-pos">{money(flow.lastPayout.amount, { privacy, decimals: 0 })}</dd></div>}
             </dl>
           </aside>
         </div>
       </Card>
-      <Card title="Net by firm" className="firm-card">
+      <Card shell title="Net by firm" className="firm-card">
         <FirmNetList rows={firms} format={(value) => money(value, { privacy, decimals: 0 })}/>
+      </Card>
+      <Card
+        shell title="Payout caps" className="caps-card"
+        aside={<span className="ws-hint caps-hint"><b className="tone-pos">{money(capsTakeHome(liveAccounts, propTransactions), { privacy, sign: false, decimals: 0 })}</b> max this month · {liveAccounts.filter((account) => account.phase === 'Funded').length} funded</span>}
+      >
+        <PayoutCaps accounts={liveAccounts} payouts={propTransactions} privacy={privacy}/>
       </Card>
     </div>
 
-    <Card title="Ledger" aside={<Segmented options={['All', 'Payouts', 'Expenses']} value={ledgerView} onChange={setLedgerView} label="Ledger view" className="cal-match"/>}>
-      <div className="ws-table-wrap">
+
+
+    <div className="ws-grid halves ledger-row">
+    <Card shell title="Ledger" aside={<Segmented options={['All', 'Payouts', 'Expenses']} value={ledgerView} onChange={setLedgerView} label="Ledger view" className="cal-match"/>}>
+      <div className={`ws-table-wrap lg-scroll${showAll ? ' is-open' : ''}`} ref={ledgerRef}>
         <table className="feed-table ws-table compact ledger">
           <thead><tr><th>Date</th><th>Firm</th><th>Account</th><th>Type</th><th>Status</th><th>Amount</th></tr></thead>
-          <tbody>{(showAll ? ledger : ledger.slice(0, 8)).map((item, index) => <tr key={`${item.date}-${item.account}-${index}`}>
+          <tbody>{ledger.map((item, index) => <tr
+            key={`${item.date}-${item.account}-${index}`}
+            className={`lg-row${entryKey === ledgerKey(item) ? ' is-selected' : ''}`}
+            tabIndex={0} aria-label={`${item.firm} ${item.type}, ${shortDay(item.date)}`}
+            onClick={() => { setEntryDir('pick'); setEntryKey(ledgerKey(item)) }}
+            onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setEntryDir('pick'); setEntryKey(ledgerKey(item)) } }}
+          >
             <td>{shortDay(item.date)}, {item.date.slice(0, 4)}</td>
             <td><b>{item.firm}</b></td>
             <td className="cell-mono">{item.account}</td>
@@ -1113,26 +1395,68 @@ export function PropFirmsPage({ privacy }) {
           </tr>)}</tbody>
         </table>
       </div>
-      {ledger.length > 8 && <button type="button" className="ws-more" onClick={() => setShowAll(!showAll)}>
+      {ledger.length > 8 && <button type="button" className="ws-more" aria-expanded={showAll} onClick={() => {
+        if (showAll) ledgerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+        setShowAll(!showAll)
+      }}>
         {showAll ? 'Show fewer' : `Show all ${ledger.length} entries`}
       </button>}
     </Card>
+    {(() => {
+      const index = ledger.findIndex((item) => ledgerKey(item) === entryKey)
+      if (index < 0) return null
+      const entry = ledger[index]
+      return <Drawer label={`${entry.firm} ${entry.type}`} viewKey="ledger" width={420} onClose={() => setEntryKey(null)}>
+        <LedgerDetail
+          entry={entry} index={index} total={ledger.length} privacy={privacy} dir={entryDir}
+          onStep={(delta) => { const next = ledger[index + delta]; if (next) { setEntryDir(delta > 0 ? 'next' : 'prev'); setEntryKey(ledgerKey(next)) } }}
+          onPick={(item) => { if (!ledger.includes(item)) setLedgerView('All'); setEntryDir('pick'); setEntryKey(ledgerKey(item)) }}
+        />
+      </Drawer>
+    })()}
 
-    {graveyard.length > 0 && <section className={`graveyard${boneyardOpen ? ' is-open' : ''}`}>
+    <Card
+      shell title="Payout calendar" className="prop-cal-card"
+      aside={<div className="pc-legend">
+        <span><i className="pos"/>Payout</span>
+        <span><i className="neg"/>Fee</span>
+      </div>}
+    >
+      <div className="prop-cal-summary">
+        <span><em>Net</em><b className={`tone-${toneOf(propGrid.total)}`}>{money(propGrid.total, { privacy, decimals: 0 })}</b></span>
+        <span><em>Paid out</em><b className="tone-pos">{money(propMonthStats.paidTotal, { privacy, sign: false, decimals: 0 })}</b></span>
+        <span><em>Fees</em><b className="tone-neg">{money(propMonthStats.feeTotal, { privacy, sign: false, decimals: 0 })}</b></span>
+        <span><em>Payouts</em><b>{propMonthStats.payouts}{propMonthStats.pending > 0 && <small> · {propMonthStats.pending} pending</small>}</b></span>
+        <span><em>Biggest</em><b className={propMonthStats.best ? 'tone-pos' : undefined}>{propMonthStats.best ? money(propMonthStats.best.amount, { privacy, sign: false, decimals: 0 }) : '—'}{propMonthStats.best && <small title={propMonthStats.best.firm}> · {firmShort(propMonthStats.best.firm)}</small>}</b></span>
+      </div>
+      <PayoutCalendar
+        grid={propGrid} privacy={privacy} today={easternToday.iso}
+        footer={<div className="prop-cal-nav">
+          <button type="button" aria-label="Previous month" onClick={() => shiftPropMonth(-1)}><ChevronLeft size={15}/></button>
+          <span>{MONTH_NAMES[propMonth.month]} {propMonth.year}</span>
+          <button type="button" aria-label="Next month" onClick={() => shiftPropMonth(1)}><ChevronRight size={15}/></button>
+        </div>}
+      />
+    </Card>
+    </div>
+
+    {graveyard.length > 0 && <section className={`graveyard duo${boneyardOpen ? ' is-open' : ''}`}>
       <button
-        type="button" className="grave-head" aria-expanded={boneyardOpen}
+        type="button" className="grave-head shell-head" aria-expanded={boneyardOpen} aria-controls="grave-fold"
         onClick={() => setBoneyardOpen(!boneyardOpen)}
       >
-        <span className="grave-title">Graveyard <em>{graveyard.length}</em></span>
+        <span className="grave-title">Graveyard</span>
         <span className="grave-meta">{money(graveyardFees, { privacy, sign: false, decimals: 0 })} in fees burned</span>
-        <span className="grave-caret"><ChevronDown size={14} strokeWidth={2.2}/></span>
+        <span className="cc-caret-box"><ChevronDown size={14} strokeWidth={2.2}/></span>
       </button>
-      <div className="grave-body">
-        {graveyard.map((account, index) => <div
-          className="grave-slot" key={account.id}
-          style={{ '--i': index, '--back': graveyard.length - 1 - index, zIndex: graveyard.length - index }}
-        >{renderAccount(account)}</div>)}
-      </div>
+      <div className={`card-fold${boneyardOpen ? ' open' : ''}`} id="grave-fold"><div className="card-fold-inner"><div className="shell-body">
+        <div className="grave-body">
+          {graveyard.map((account, index) => <div
+            className="grave-slot" key={account.id}
+            style={{ '--i': index, '--back': graveyard.length - 1 - index, zIndex: graveyard.length - index }}
+          >{renderAccount(account)}</div>)}
+        </div>
+      </div></div></div>
     </section>}
 
     {dialog === 'entry' && <PropEntryDialog onClose={() => setDialog(null)}/>}

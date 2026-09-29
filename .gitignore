@@ -9,10 +9,9 @@ _shot.mjs
 # private reference copied from frontend-monolith-alpha; keep out of the public repo
 frontend-monolith-transfer/
 
-# third-party UI screenshots used as design references; local only
-design/references/
+# design references and vendored component sources; local only
+design/
 .verify/
-design/vendor/
 
 # agent instructions stay local
 AGENTS.md

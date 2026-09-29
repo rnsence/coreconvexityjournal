@@ -163,6 +163,7 @@ export const propTransactions = [
   { date: '2026-06-12', firm: 'Topstep', account: 'EXPRESS-V2-248193-73015942', type: 'Activation', amount: -149 },
   { date: '2026-06-26', firm: 'Apex', account: 'PA-APEX-248193-03', type: 'Payout', amount: 1650, status: 'Paid' },
   { date: '2026-07-02', firm: 'Apex', account: 'APEX-248193-17', type: 'Evaluation', amount: -207 },
+  { date: '2026-07-02', firm: 'Lucid', account: 'LCDSTR100K0084213', type: 'Evaluation', amount: -215 },
   { date: '2026-07-09', firm: 'MyFundedFutures', account: 'MFFUSFBLDR654871012', type: 'Evaluation', amount: -165 },
   { date: '2026-07-18', firm: 'Topstep', account: 'EXPRESS-V2-248193-73015942', type: 'Payout', amount: 2400, status: 'Paid' },
   { date: '2026-07-29', firm: 'Tradeify', account: 'TDFYSEL50K00318462', type: 'Reset', amount: -99 },

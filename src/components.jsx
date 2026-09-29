@@ -3,37 +3,37 @@ import { profile, propAccounts, tradeLog } from './data'
 import { equitySeries } from './analytics'
 import { money, useEasternToday, useMarketSession } from './viz'
 import { BufferGaugeIcon, PasswordIcon, ShieldRiskIcon, TargetProgressIcon } from './icons'
-import {
-  DashboardNavIcon, CalendarNavIcon, JournalNavIcon, TradesNavIcon, ReportsNavIcon, PropFirmsNavIcon,
-  NotebookNavIcon, PlaybooksNavIcon, ProgressNavIcon, MissedTradesNavIcon, ImportNavIcon, AccountsNavIcon,
-  SettingsNavIcon, MoreNavIcon,
-} from './nav-icons'
+import { Icon } from '@iconify/react'
+import viewSidebarIcon from '@iconify-icons/material-symbols/view-sidebar'
+import { MoreNavIcon } from './nav-icons'
 import AddSolidIcon from '@iconify-react/basil/add-solid'
 import SettingsSolidIcon from '@iconify-react/basil/settings-solid'
 import {
   SlidersHorizontal,
   ChevronDown, Sparkles, Search, Bell, Download, Image as ImageIcon, Mic, Star,
   ArrowUpRight, Menu, X, CircleHelp, GripVertical, ChevronLeft, ChevronRight, LogOut,
-  TrendingUp, TrendingDown, Target, CalendarDays,
+  TrendingUp, TrendingDown, Target, CalendarDays, Plus,
+  LayoutDashboard, NotebookPen, Receipt, Landmark, ChartNoAxesCombined, BookOpen, Library, ListChecks,
+  Import as ImportIcon, WalletCards, Settings, ChevronsUpDown,
 } from 'lucide-react'
 
 export const navGroups = [
   {
     id: 'workspace',
     items: [
-      ['Dashboard', DashboardNavIcon], ['Calendar', CalendarNavIcon], ['Daily journal', JournalNavIcon],
-      ['Trades', TradesNavIcon],
-      ['Prop firms', PropFirmsNavIcon], ['Reports', ReportsNavIcon],
+      ['Dashboard', LayoutDashboard], ['Calendar', CalendarDays], ['Daily journal', NotebookPen],
+      ['Trades', Receipt],
+      ['Prop firms', Landmark], ['Reports', ChartNoAxesCombined],
     ],
   },
   {
     id: 'journal',
     heading: 'Journal',
     items: [
-      ['Notebook', NotebookNavIcon], ['Playbooks', PlaybooksNavIcon], ['Progress', ProgressNavIcon], ['Missed trades', MissedTradesNavIcon],
+      ['Notebook', BookOpen], ['Playbooks', Library], ['Progress', ListChecks], ['Assistant', Sparkles],
     ],
     overflow: [
-      ['Import', ImportNavIcon], ['Accounts', AccountsNavIcon], ['Settings', SettingsNavIcon],
+      ['Import', ImportIcon], ['Accounts', WalletCards], ['Settings', Settings],
     ],
   },
 ]
@@ -76,25 +76,35 @@ function NavButton({ label, Icon, page, onSelect, badge, muted = false }) {
   const active = page === label
   return <button
     type="button"
-    title={label}
+
     aria-current={active ? 'page' : undefined}
     className={`nav-link${active ? ' active' : ''}${muted ? ' subtle' : ''}`}
     onClick={onSelect}
   >
-    <span className="nav-icon"><Icon size={14} /></span>
+    <span className="nav-icon"><Icon size={17} strokeWidth={1.75} /></span>
     <span className="sidebar-label">{label}</span>
     {badge && <em>{badge}</em>}
   </button>
 }
 
-function SidebarContents({ page, setPage, openLog, closeMobile, mobile = false }) {
+function SidebarContents({ page, setPage, openLog, closeMobile, mobile = false, collapsed = false, toggleRail }) {
   const [expandedGroups, setExpandedGroups] = React.useState({})
   const go = (label) => () => { setPage(label); closeMobile?.() }
 
   return <>
     <div className="sidebar-brand">
       <Logo />
-      <strong className="sidebar-label">Core Convexity</strong>
+      <span className="brand-switcher sidebar-label">
+        <strong>Journal</strong>
+        <ChevronDown className="brand-switch" size={14} strokeWidth={2} aria-hidden="true" />
+      </span>
+      {!mobile && <button
+        type="button" className="rail-toggle"
+        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+
+        aria-pressed={collapsed}
+        onClick={toggleRail}
+      ><Icon icon={viewSidebarIcon} width="17" height="17"/></button>}
       {mobile && <div className="brand-tools">
         <button className="brand-tool" aria-label="Close navigation" onClick={closeMobile}><X size={17} /></button>
       </div>}
@@ -103,7 +113,7 @@ function SidebarContents({ page, setPage, openLog, closeMobile, mobile = false }
 
     <div className="sidebar-quick top">
       <button className="quick-primary" onClick={() => { closeMobile?.(); openLog() }}>
-        <AddSolidIcon className="quick-add-icon" width="20" height="20" aria-hidden="true" />
+        <span className="quick-add"><Plus className="quick-add-icon" size={18} strokeWidth={1.8} aria-hidden="true" /></span>
         <span className="sidebar-label">Log a trade</span>
       </button>
     </div>
@@ -114,7 +124,7 @@ function SidebarContents({ page, setPage, openLog, closeMobile, mobile = false }
         return <div className="nav-group" key={group.id}>
           {group.heading && <div className="nav-section-label sidebar-label">{group.heading}</div>}
           {group.items.map(([label, Icon]) =>
-            <NavButton key={label} label={label} Icon={Icon} page={page} onSelect={go(label)} badge={label === 'Missed trades' ? '3' : null} />)}
+            <NavButton key={label} label={label} Icon={Icon} page={page} onSelect={go(label)} />)}
           {group.overflow && <>
             {showOverflow && group.overflow.map(([label, Icon]) =>
               <NavButton key={label} label={label} Icon={Icon} page={page} onSelect={go(label)} />)}
@@ -129,11 +139,11 @@ function SidebarContents({ page, setPage, openLog, closeMobile, mobile = false }
 
     <div className="sidebar-bottom">
       <div className="account-row">
-        <button className="profile-button" title="Open profile" onClick={go('Profile')}>
+        <button className="profile-button" onClick={go('Profile')}>
           <Avatar className="profile-avatar" />
           <span className="profile-copy sidebar-label"><b>{profile.name}</b><small>{profile.caption}</small></span>
         </button>
-        <button className="profile-signout sidebar-label" type="button" title="Sign out" aria-label="Sign out"><LogOut size={15} strokeWidth={2} /></button>
+        <button className="profile-signout sidebar-label" type="button" aria-label="Sign out"><LogOut size={15} strokeWidth={2} /></button>
       </div>
       <div className="sidebar-legal sidebar-label">
         {['Privacy', 'Terms', 'Disclaimer', 'Support'].map(item =>
@@ -144,10 +154,10 @@ function SidebarContents({ page, setPage, openLog, closeMobile, mobile = false }
 }
 
 // Designs by RNSENCE Studio
-export function Sidebar({ page, setPage, openLog, open, setOpen }) {
-  const shared = { page, setPage, openLog }
+export function Sidebar({ page, setPage, openLog, open, setOpen, collapsed, toggleRail }) {
+  const shared = { page, setPage, openLog, collapsed, toggleRail }
   return <>
-    <aside className="sidebar desktop-sidebar expanded">
+    <aside className={`sidebar desktop-sidebar${collapsed ? ' collapsed' : ' expanded'}`}>
       <SidebarContents {...shared} />
     </aside>
     <aside className={`sidebar mobile-sidebar ${open ? 'open' : ''}`} aria-hidden={!open}>
@@ -182,10 +192,12 @@ function SettingsMenu({ range, setRange, privacy, setPrivacy }) {
     return () => { document.removeEventListener('mousedown', onPointer); document.removeEventListener('keydown', onKey) }
   }, [open])
   return <div className="settings-menu" ref={rootRef}>
-    <button type="button" className={`settings-trigger${open ? ' is-open' : ''}`} aria-haspopup="true" aria-expanded={open} onClick={() => setOpen(!open)}>
-      <span>Settings</span>
-      <em>{range}</em>
-      <ChevronDown size={14} className="trigger-caret" />
+    <button
+      type="button" className={`settings-trigger${open ? ' is-open' : ''}${range !== 'All' ? ' is-scoped' : ''}`}
+      aria-haspopup="true" aria-expanded={open} aria-label={`Settings, range ${range}`} title="Settings" onClick={() => setOpen(!open)}
+    >
+      <SlidersHorizontal size={15} strokeWidth={1.9} />
+      {range !== 'All' && <em>{range}</em>}
     </button>
     {open && <div className="settings-panel" role="menu">
       <div className="menu-section">
@@ -207,15 +219,29 @@ function SettingsMenu({ range, setRange, privacy, setPrivacy }) {
 
 const SHORT_STATE = { open: 'Market open', pre: 'Pre-market', post: 'After hours', closed: 'Market closed' }
 
+/** The session a closed market reopens in: later today, tomorrow, or Monday after a weekend. */
+const nextOpenLabel = ({ weekday, minutes }) => {
+  if (weekday === 'Sat' || weekday === 'Sun' || (weekday === 'Fri' && minutes >= 1200)) return 'Opens Mon 9:30'
+  return minutes < 570 ? 'Opens 9:30' : 'Opens tomorrow 9:30'
+}
+
 /** Compact market clock for the navbar: status light, phase, and time remaining. */
 function MarketPill() {
   const market = useMarketSession()
-  const countdown = market.detail?.replace(/^(Closes in|Opens in|Ends in)\s*/, '')
-  return <span className={`market-pill ${market.state}`} title={`${market.label} · ${market.detail}`}>
+  const countdown = market.state === 'closed'
+    ? nextOpenLabel(market)
+    : market.detail?.replace(/^(Closes in|Opens in|Ends in)\s*/, '')
+  return <span className={`market-pill ${market.state}`}>
     <i aria-hidden="true" />
     <b>{SHORT_STATE[market.state] ?? market.label}</b>
     {countdown && countdown !== market.detail && <em>{countdown}</em>}
   </span>
+}
+
+/** Today's date, shown beside the market clock. */
+function TodayPill() {
+  const today = useEasternToday()
+  return <span className="today-pill">{today.label}</span>
 }
 
 // Designs by RNSENCE Studio
@@ -234,6 +260,7 @@ export function Topbar({ page, setPage, range, setRange, setSidebarOpen, privacy
       </div>
       <div className="top-actions">
         <MarketPill />
+        <TodayPill />
         <button type="button" className="jump-trigger" onClick={openJump} aria-label="Quick jump">
           <Search size={14} /><span>Jump to…</span><kbd>⌘K</kbd>
         </button>
@@ -385,7 +412,7 @@ export function Pill({ children, tone = '' }) { return <span className={`pill ${
 
 export function EmptyPage({ page }) {
   const today = useEasternToday()
-  return <div className="empty-page"><span className="home-date">{today.label}</span><h1>{page}</h1></div>
+  return <div className="page empty-page"><h1>{page}</h1></div>
 }
 
 export const icons = { Sparkles, Download, ImageIcon, Mic, Star, ArrowUpRight, GripVertical, ChevronLeft, ChevronRight }

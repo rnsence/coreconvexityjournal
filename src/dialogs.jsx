@@ -1,16 +1,16 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowRight, CalendarDays, Clock3, CornerDownLeft, FileText, Landmark, LayoutDashboard, ListFilter, NotebookPen, Plus, Search, X, ChartNoAxesCombined } from 'lucide-react'
+import { ArrowRight, CalendarDays, ChevronLeft, Clock3, CornerDownLeft, FileText, Landmark, LayoutDashboard, ListFilter, NotebookPen, Plus, Search, X, ChartNoAxesCombined } from 'lucide-react'
 import { SETUP_CODES } from './analytics'
 import { addCustomSymbol, allSymbols, searchSymbols } from './symbols'
 import { addPropAccount, logTrade, propAccounts, recordPropTransaction, tradeLog, tradingDays } from './data'
-import { money, toneOf } from './viz'
+import { SymbolToken, money, toneOf } from './viz'
 
 const easternIso = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 const dayLabel = (iso) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
 
 /** Centered dialog with a dimmed backdrop; Escape or a backdrop click closes it. */
-function Dialog({ title, subtitle, onClose, children, footer, width = 520, className = '' }) {
+export function Dialog({ title, subtitle, onClose, children, footer, width = 520, className = '' }) {
   const panelRef = useRef(null)
   const closeRef = useRef(onClose)
   closeRef.current = onClose
@@ -34,7 +34,189 @@ function Dialog({ title, subtitle, onClose, children, footer, width = 520, class
   </div>, document.body)
 }
 
-function Field({ label, children, hint, error, wide = false }) {
+/** Right-side drawer for longer forms and detail views; same header/body/footer styles as Dialog. */
+export function Sheet({ title, subtitle, onClose, children, footer, width = 480, className = '' }) {
+  const panelRef = useRef(null)
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+  useEffect(() => {
+    const onKey = (event) => { if (event.key === 'Escape') closeRef.current() }
+    const previous = document.activeElement
+    document.addEventListener('keydown', onKey)
+    document.body.classList.add('dlg-open')
+    panelRef.current?.querySelector('input, select, textarea, button:not(.dlg-close)')?.focus()
+    return () => { document.removeEventListener('keydown', onKey); document.body.classList.remove('dlg-open'); previous?.focus?.() }
+  }, [])
+  return createPortal(<div className="sheet-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <aside className={`sheet ${className}`} role="dialog" aria-modal="true" aria-label={title} style={{ '--sheet-width': `${width}px` }} ref={panelRef}>
+      <header className="dlg-head">
+        <div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>
+        <button type="button" className="dlg-close" aria-label="Close" onClick={onClose}><X size={16}/></button>
+      </header>
+      <div className="sheet-body">{children}</div>
+      {footer && <footer className="dlg-foot sheet-foot">{footer}</footer>}
+    </aside>
+  </div>, document.body)
+}
+
+const DrawerContext = React.createContext(null)
+
+/** Read the drawer's current view and move between views from anywhere inside it. */
+export const useDrawer = () => React.useContext(DrawerContext) ?? { view: 'default', setView: () => {}, back: () => {}, close: () => {} }
+
+/**
+ * Floating drawer for quick, in-place detail: it springs up from the bottom,
+ * grows and shrinks to whatever it holds, cross-fades between views, and
+ * dismisses on Escape, a backdrop click, or a downward drag.
+ *
+ * Pass `views` (a name → component map) for a multi-step flow, or plain
+ * children for a single pane.
+ */
+export function Drawer({ label, onClose, children, views, viewKey, defaultView = 'default', width = 420 }) {
+  const [shown, setShown] = useState(false)
+  const [leaving, setLeaving] = useState(false)
+  const [height, setHeight] = useState(null)
+  const [drag, setDrag] = useState(0)
+  const [view, setViewState] = useState(defaultView)
+  const [trail, setTrail] = useState([])
+  const [fading, setFading] = useState(null)
+  const bodyRef = useRef(null)
+  const dragRef = useRef(null)
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+
+  const dismiss = () => {
+    if (leaving) return
+    setLeaving(true)
+    window.setTimeout(() => closeRef.current(), 320)
+  }
+
+  const swap = (next, rewind) => {
+    if (!next || next === view) return
+    setFading(view)
+    setTrail((path) => (rewind ? path.slice(0, -1) : [...path, view]))
+    setViewState(next)
+    window.setTimeout(() => setFading(null), 240)
+  }
+  const setView = (next) => swap(next, false)
+  const back = () => swap(trail[trail.length - 1] ?? defaultView, true)
+
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setShown(true))
+    const onKey = (event) => { if (event.key === 'Escape') dismiss() }
+    const previous = document.activeElement
+    document.addEventListener('keydown', onKey)
+    document.body.classList.add('dlg-open')
+    return () => {
+      cancelAnimationFrame(frame)
+      document.removeEventListener('keydown', onKey)
+      document.body.classList.remove('dlg-open')
+      previous?.focus?.()
+    }
+  }, [])
+
+  // the panel follows its content, so swapping views animates instead of jumping
+  useEffect(() => {
+    const node = bodyRef.current
+    if (!node) return undefined
+    const measure = () => setHeight(node.scrollHeight)
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [children, view, viewKey])
+
+  const [ghost, setGhost] = useState(null)
+  const keyRef = useRef(viewKey)
+  const paneRef = useRef(children)
+  useEffect(() => {
+    if (views || viewKey === keyRef.current) { paneRef.current = children; return undefined }
+    setGhost({ id: keyRef.current, pane: paneRef.current })
+    keyRef.current = viewKey
+    paneRef.current = children
+    const timer = window.setTimeout(() => setGhost(null), 240)
+    return () => window.clearTimeout(timer)
+  }, [viewKey, children, views])
+
+  const startDrag = (event) => {
+    if (event.target.closest('button, a, input, textarea, select, label, [data-no-drag]')) return
+    dragRef.current = { y: event.clientY, at: performance.now() }
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+  const moveDrag = (event) => {
+    if (!dragRef.current) return
+    setDrag(Math.max(0, event.clientY - dragRef.current.y))
+  }
+  const endDrag = (event) => {
+    if (!dragRef.current) return
+    const travel = Math.max(0, event.clientY - dragRef.current.y)
+    const speed = travel / Math.max(1, performance.now() - dragRef.current.at)
+    dragRef.current = null
+    setDrag(0)
+    if (travel > 96 || speed > 0.8) dismiss()
+  }
+
+  const Active = views ? (views[view] ?? views[defaultView]) : null
+  const Fading = views && fading ? views[fading] : null
+  const state = leaving ? 'is-leaving' : shown ? 'is-open' : ''
+  const api = { view, setView, back, close: dismiss, canGoBack: trail.length > 0 }
+
+  return createPortal(
+    <DrawerContext.Provider value={api}>
+      <div
+        className={`dw-scrim ${state}`}
+        onMouseDown={(event) => { if (event.target === event.currentTarget) dismiss() }}
+      >
+        <section
+          className={`dw-panel ${state}`}
+          role="dialog" aria-modal="true" aria-label={label}
+          style={{ '--dw-width': `${width}px`, '--dw-drag': `${drag}px` }}
+          onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={endDrag} onPointerCancel={endDrag}
+        >
+          <span className="dw-grip" aria-hidden="true"/>
+          <div className="dw-stage" style={{ height: height == null ? undefined : `${height}px` }}>
+            {Fading && <div className="dw-view is-out" aria-hidden="true"><Fading/></div>}
+            {ghost && <div className="dw-view is-out" key={`ghost-${ghost.id}`} aria-hidden="true">{ghost.pane}</div>}
+            <div className="dw-view is-in" key={views ? view : (viewKey ?? 'default')} ref={bodyRef}>
+              {Active ? <Active/> : children}
+            </div>
+          </div>
+        </section>
+      </div>
+    </DrawerContext.Provider>,
+    document.body,
+  )
+}
+
+/** Icon, title and supporting line at the top of a drawer view. */
+export function DrawerHeader({ icon, title, description, onBack }) {
+  const { canGoBack, back } = useDrawer()
+  const goBack = onBack ?? (canGoBack ? back : null)
+  return <header className="dw-head">
+    {goBack && <button type="button" className="dw-back" aria-label="Back" onClick={goBack}><ChevronLeft size={16}/></button>}
+    {icon && <span className="dw-head-icon" aria-hidden="true">{icon}</span>}
+    <div>
+      <h2>{title}</h2>
+      {description && <p>{description}</p>}
+    </div>
+  </header>
+}
+
+/** Full-width row that moves the drawer to another view. */
+export function DrawerButton({ icon, children, tone = 'plain', onClick, disabled }) {
+  return <button type="button" className={`dw-button ${tone}`} onClick={onClick} disabled={disabled}>
+    {icon && <span className="dw-button-icon">{icon}</span>}
+    <span>{children}</span>
+    <ArrowRight size={15} className="dw-button-go"/>
+  </button>
+}
+
+/** Side-by-side actions pinned under a drawer view. */
+export function DrawerActions({ children }) {
+  return <div className="dw-actions">{children}</div>
+}
+
+export function Field({ label, children, hint, error, wide = false }) {
   return <label className={`dlg-field${wide ? ' wide' : ''}`}>
     <span>{label}</span>
     {children}
@@ -42,7 +224,7 @@ function Field({ label, children, hint, error, wide = false }) {
   </label>
 }
 
-function Choice({ options, value, onChange, label, format = (option) => option, tones = {} }) {
+export function Choice({ options, value, onChange, label, format = (option) => option, tones = {} }) {
   return <div className="dlg-choice" role="radiogroup" aria-label={label}>
     {options.map((option) => <button key={option} type="button" role="radio" aria-checked={value === option} className={`${value === option ? 'on' : ''} ${tones[option] ?? ''}`} onClick={() => onChange(option)}>{format(option)}</button>)}
   </div>
@@ -124,7 +306,7 @@ function SymbolPicker({ value, onChange, invalid = false }) {
   }
   return <div className={`sym-pick${open ? ' is-open' : ''}`} ref={rootRef}>
     <div className="sym-input">
-      <Search size={14}/>
+      {selected ? <SymbolToken symbol={selected[0]}/> : <Search size={14}/>}
       <input
         value={value} placeholder="Search symbol, e.g. QQQ or NQ" autoComplete="off" spellCheck={false}
         aria-label="Symbol" aria-invalid={invalid} aria-expanded={open} role="combobox"
@@ -142,7 +324,7 @@ function SymbolPicker({ value, onChange, invalid = false }) {
       >
         {option.kind === 'create'
           ? <><Plus size={14}/><span>Create custom symbol <b>{option.entry[0]}</b></span></>
-          : <><b>{option.entry[0]}</b><span>{option.entry[1]}</span><em className={`sym-class c-${option.entry[2].split(' ')[0].toLowerCase()}`}>{option.entry[2]}</em></>}
+          : <><SymbolToken symbol={option.entry[0]}/><b>{option.entry[0]}</b><span>{option.entry[1]}</span><em className={`sym-class c-${option.entry[2].split(' ')[0].toLowerCase()}`}>{option.entry[2]}</em></>}
       </li>)}
     </ul>}
   </div>

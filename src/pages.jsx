@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AArrowDown, AArrowUp, Copy, X, ArrowDownRight, ArrowLeft, Bold, Italic, List, ArrowRight, ArrowUpRight, Bot, Settings2, Trash2, Check, ChevronDown, ChevronLeft, ChevronRight, Download, FileImage, Info, Rocket, Scaling, Sigma, TrendingDown,
-  GripVertical, Image as ImageIcon, Maximize2, MoveRight, Pencil, Plus, Scale, Search, Send, SlidersHorizontal, Sparkles, Star, Target, TrendingUp, Wallet,
+  AArrowDown, AArrowUp, Copy, X, ArrowDownRight, Bold, Italic, List, ArrowUpRight, Bot, Settings2, Trash2, Check, ChevronDown, ChevronLeft, ChevronRight, Download, FileImage, Info, Rocket, Scaling, Sigma, TrendingDown,
+  GripVertical, Image as ImageIcon, Maximize2, MoreHorizontal, MoveRight, Pencil, Plus, Scale, Search, Send, SlidersHorizontal, Sparkles, Star, Target, TrendingUp, Wallet,
 } from 'lucide-react'
 import SettingsSolidIcon from '@iconify-react/basil/settings-solid'
 import { Card, Metric, PageHeading, Pill } from './components'
 import { BarsStaggeredIcon, ChartPieSliceIcon, PercentIcon, TargetArrowIcon } from './icons'
 import { LineChart, BarChart } from './charts'
 import {
-  BulletBars, ChartState, ColumnPlot, CumulativeChart, DailyColumns, EquityPlot, HeatCalendar, Module,
-  IntradayChart, RollingPlot, RowPlot, ScoreMeter, ScoreRadar, DailyPulse, MiniBars, MiniLine, MiniRing, easternLabel, scoreBand, useEasternToday, useMarketSession, SessionLine, WinDonut, WinLines, WinPairBars,
+  BulletBars, ChartState, ColumnPlot, SymbolToken, CumulativeChart, DailyColumns, EquityPlot, HeatCalendar, Module,
+  IntradayChart, RollingPlot, RowPlot, ScoreMeter, ScoreRings, DailyPulse, MiniBars, MiniLine, MiniRing, easternLabel, scoreBand, useEasternToday, useMarketSession, SessionLine, WinDonut, WinLines, WinPairBars,
   compactMoney, money, percent, ratio, shortDate, toneOf,
 } from './viz'
 import {
@@ -18,6 +18,12 @@ import {
 } from './analytics'
 import { accounts, activity, avgLine, calendarDays, dayEntries, profile, trades, tradeLog, tradingDays, trendLine } from './data'
 import { symbolClassSlug } from './symbols'
+import { FirmLogo, TradeDrawer, firmOf } from './workspace'
+import { AreaLine, Spark, Split } from './port/tile-viz'
+import { Drawer, DrawerHeader } from './dialogs'
+import { accountForTrade } from './port/trading-data'
+import { DaySheet, TodayJournalButton } from './port/calendar-day'
+import { MonthSummary } from './port/calendar-routine'
 
 function SectionTitle({ title, subtitle, action }) {
   return <div className="section-title"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>
@@ -31,6 +37,8 @@ const RANGES = [
 ]
 
 const WIN_PERIODS = ['Year', 'Month', 'Week', 'Day']
+
+const WIN_TITLES = { donut: 'Win rate', bars: 'Wins vs losses', lines: 'Win-rate trend' }
 
 function WinRatioCard({ trades, variant }) {
   const [period, setPeriod] = useState('Month')
@@ -56,9 +64,9 @@ function WinRatioCard({ trades, variant }) {
       : <ChartState state="insufficient" detail={`Needs at least two ${unit}s of trades to chart a trend.`}/>
   }
 
-  return <section className="win-card">
-    <div className="compare-head">
-      <span className="compare-label">Win ratio</span>
+  return <section className="win-card shell chart-shell">
+    <div className="shell-head compare-head">
+      <span className="compare-label">{WIN_TITLES[variant] ?? 'Win rate'}</span>
       <div className="ws-seg compact" role="tablist" aria-label="Win ratio period">
         {WIN_PERIODS.map((item) => <button
           key={item} type="button" role="tab" aria-selected={period === item}
@@ -66,13 +74,15 @@ function WinRatioCard({ trades, variant }) {
         >{item}</button>)}
       </div>
     </div>
+    <div className="shell-body">
     <div className="win-body">{body}</div>
-    <p className="win-note">
+    {variant === 'donut' && <p className="win-note">
       {change == null
         ? `No trades in the prior ${unit} to compare against`
         : <>Your win % is {Math.round(change) === 0 ? 'unchanged' : <>{change > 0 ? 'higher' : 'lower'} by <b className={change > 0 ? 'tone-pos' : 'tone-neg'}>{Math.abs(change).toFixed(0)}%</b></>} compared to
           {' '}<b className="tone-pos">{prior.wins} winning</b> / <b className="tone-neg">{prior.losses} losing</b> past {unit}</>}
-    </p>
+    </p>}
+    </div>
   </section>
 }
 
@@ -85,25 +95,29 @@ const SCORE_TIPS = {
   'Consistency': 'Spread profit across more days instead of one big session.',
 }
 
+/** Parts of the score the card doesn't show; the headline score still counts them. */
+const HIDDEN_SCORE_AXES = ['Profit factor', 'Recovery']
+
 function OverallScoreCard({ edge, priorEdge, axes, enough }) {
-  const [view, setView] = useState('Radar')
+  const [view, setView] = useState('Rings')
   const rows = edge.components.map((component, index) => ({
     label: axes[index],
     value: component.value ?? 0,
     display: component.display,
     target: component.target,
     prior: priorEdge?.components[index]?.value ?? null,
-  }))
+  })).filter((row) => !HIDDEN_SCORE_AXES.includes(row.label))
   const ranked = [...rows].sort((a, b) => b.value - a.value)
   const strongest = ranked[0]
   const focus = ranked[ranked.length - 1]
   const delta = priorEdge?.score != null && edge.score != null ? edge.score - priorEdge.score : null
 
   return <section className="home-card radar-card">
+    <div className="radar-main">
     <div className="score-card-head">
       <div className="card-title">Overall score</div>
       {enough && <div className="ws-seg compact" role="tablist" aria-label="Score view">
-        {['Radar', 'Breakdown'].map((option) => <button
+        {['Rings', 'Breakdown'].map((option) => <button
           key={option} type="button" role="tab" aria-selected={view === option}
           className={view === option ? 'active' : ''} onClick={() => setView(option)}
         >{option}</button>)}
@@ -113,11 +127,11 @@ function OverallScoreCard({ edge, priorEdge, axes, enough }) {
     {!enough
       ? <ChartState state="insufficient" minData={5}/>
       : <div className={`score-body view-${view.toLowerCase()}`}>
-        <ScoreRadar axes={axes} current={rows.map((row) => row.value)} compare={priorEdge ? rows.map((row) => row.prior ?? 0) : null}/>
+        <ScoreRings items={rows} title={edge.score ?? '—'} subtitle="Trading score"/>
         {view === 'Breakdown' && <ul className="score-breakdown">
             {rows.map((row) => {
               const change = row.prior == null ? null : Math.round(row.value - row.prior)
-              return <li key={row.label} title={`${row.display} now · full marks at ${row.target}`}>
+              return <li key={row.label}>
                 <div className="sb-top">
                   <span>{row.label}</span>
                   <span className="sb-num">
@@ -127,33 +141,35 @@ function OverallScoreCard({ edge, priorEdge, axes, enough }) {
                 </div>
                 <div className="sb-track">
                   <i className="sb-fill" style={{ width: `${row.value}%` }}/>
-                  {row.prior != null && <i className="sb-prior" style={{ left: `${row.prior}%` }} title={`First half ${Math.round(row.prior)}`}/>}
+                  {row.prior != null && <i className="sb-prior" style={{ left: `${row.prior}%` }}/>}
                 </div>
               </li>
             })}
           </ul>}</div>}
+    </div>
 
-    {enough && <footer className="score-foot">
-      <div className="sf-score">
-        <strong>{edge.score ?? '—'}</strong><small>/100</small>
-        {delta != null && <span className={`compare-delta ${delta >= 0 ? 'pos' : 'neg'}`}>
-          {delta >= 0 ? <ArrowUpRight size={12} strokeWidth={2.4}/> : <ArrowDownRight size={12} strokeWidth={2.4}/>}
-          {Math.abs(delta)} pts
-        </span>}
+    {enough && <footer className="score-foot sf-meter">
+      <div className="score-head">
+        <div className="score-line">
+          <strong className="score-value">{edge.score == null ? '—' : Math.round(edge.score)}<small>/100</small></strong>
+          <span className="panel-caption">Trading score <em>All-time</em></span>
+        </div>
+        {delta != null
+          ? <span className={`score-shift ${delta >= 0 ? 'pos' : 'neg'}`}>
+              {delta >= 0 ? <ArrowUpRight size={13} strokeWidth={2.4}/> : <ArrowDownRight size={13} strokeWidth={2.4}/>}
+              {Math.abs(Math.round(delta))} pts <em>vs first half</em>
+            </span>
+          : edge.score != null && <span className="score-band">{scoreBand(edge.score)}</span>}
       </div>
-      {priorEdge && <div className="sf-legend">
-        <span><i className="now"/>Now</span>
-        <span><i className="then"/>First half</span>
-      </div>}
-      <div className="sf-chips">
-        <span className="sf-chip strong" title={`Strongest: ${strongest.label}`}><span className="lbl">{strongest.label}</span><b>{Math.round(strongest.value)}</b></span>
-        <span className="sf-chip focus" title={`Focus: ${focus.label} — ${SCORE_TIPS[focus.label]}`}><span className="lbl">{focus.label}</span><b>{Math.round(focus.value)}</b></span>
-      </div>
+      <ScoreMeter value={edge.score ?? 0}/>
     </footer>}
   </section>
 }
 
 // Designs by RNSENCE Studio
+
+/** Bottom-anchored trend for a comparison cell: fine line over a rising haze. */
+
 export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTrades, openLog }) {
   const [feedEnd, setFeedEnd] = useState(false)
   const [feedTab, setFeedTab] = useState('Recent')
@@ -189,14 +205,6 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
     return edgeScore({ ...summarize(earlier), consistency: consistencyScore(earlierSeries) })
   }, [scoped, half])
 
-  const monthly = useMemo(() => {
-    if (!scoped.length) return { now: summarize([]), prior: null }
-    const latest = Date.parse(`${scoped[scoped.length - 1].date}T00:00:00Z`)
-    const cut = (days) => new Date(latest - days * 86400000).toISOString().slice(0, 10)
-    const thisMonth = scoped.filter((trade) => trade.date > cut(30))
-    const lastMonth = source.filter((trade) => trade.date > cut(60) && trade.date <= cut(30))
-    return { now: summarize(thisMonth), prior: lastMonth.length >= 5 ? summarize(lastMonth) : null }
-  }, [scoped, source])
 
   const recent = useMemo(() => {
     if (feedTab === 'Best') return [...scoped].sort((a, b) => b.pnl - a.pnl).slice(0, 20)
@@ -206,7 +214,7 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
   const easternToday = useEasternToday()
   const dateLine = easternToday.label
   const market = useMarketSession()
-  const [pulseRange, setPulseRange] = useState('30D')
+  const [pulseRange, setPulseRange] = useState('90D')
   const pulseDays = useMemo(() => {
     const all = equitySeries(source)
     if (!all.length) return all
@@ -242,141 +250,154 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
     series.forEach((day) => byMonth.set(day.date.slice(0, 7), (byMonth.get(day.date.slice(0, 7)) ?? 0) + day.pnl))
     return [...byMonth.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-6).map(([key, pnl]) => ({ key, pnl }))
   }, [series])
+  const bestSession = series.length ? Math.max(...series.map((day) => day.pnl)) : 0
+  const worstSession = series.length ? Math.min(...series.map((day) => day.pnl)) : 0
+  const avgSession = stats.netPnl / Math.max(1, series.length)
+  const breakeven = Math.max(0, stats.trades - stats.wins - stats.losses)
+  const greenDays = series.filter((day) => day.pnl > 0).length
+  const redDays = series.filter((day) => day.pnl < 0).length
   const tiles = [
     {
-      label: 'Net P&L', value: money(stats.netPnl, { privacy, decimals: 0, sign: false }), tone: toneOf(stats.netPnl), hero: true,
-      note: `${plural(series.length, 'session')} · avg ${money(stats.netPnl / Math.max(1, series.length), { privacy, decimals: 0 })}`,
+      label: 'Net P&L', value: money(stats.netPnl, { privacy, decimals: 0 }), tone: toneOf(stats.netPnl),
+      chart: <Split won={series.reduce((sum, day) => sum + Math.max(0, day.pnl), 0)} lost={series.reduce((sum, day) => sum + Math.max(0, -day.pnl), 0)}/>,
+      foot: [
+        { label: 'Avg / session', value: money(avgSession, { privacy, decimals: 0 }), tone: toneOf(avgSession) },
+        { label: 'Best session', value: money(bestSession, { privacy, decimals: 0 }), tone: 'pos' },
+        { label: 'Worst session', value: money(worstSession, { privacy, decimals: 0 }), tone: 'neg' },
+      ],
     },
     {
       label: 'Trade win%', value: percent(stats.winRate, { decimals: 1 }),
-      note: `${stats.wins}W · ${stats.losses}L`,
-      chart: <TileSplit left={stats.wins} right={stats.losses}/>,
-    },
-    {
-      label: 'Profit factor', value: ratio(stats.profitFactor),
-      note: `${money(stats.grossProfit, { privacy, decimals: 0, sign: false })} won · ${money(stats.grossLoss, { privacy, decimals: 0, sign: false })} lost`,
-      chart: <TileSplit left={stats.grossProfit} right={stats.grossLoss}/>,
+      chart: <Split won={stats.wins} lost={stats.losses}/>,
+      foot: [
+        { label: 'Winning', value: `${stats.wins}`, tone: 'pos' },
+        { label: 'Breakeven', value: `${breakeven}` },
+        { label: 'Losing', value: `${stats.losses}`, tone: 'neg' },
+      ],
     },
     {
       label: 'Day win%', value: percent(stats.dayWinRate, { decimals: 1 }),
-      note: `${series.filter((day) => day.pnl > 0).length} of ${plural(series.length, 'day')} green`,
-      chart: <TileTape sessions={series.slice(-16)}/>,
+      chart: <Split won={greenDays} lost={redDays}/>,
+      foot: [
+        { label: 'Green days', value: `${greenDays}`, tone: 'pos' },
+        { label: 'Red days', value: `${redDays}`, tone: 'neg' },
+      ],
+    },
+    {
+      label: 'Profit factor', value: ratio(stats.profitFactor),
+      chart: <Split won={stats.grossProfit} lost={stats.grossLoss}/>,
+      foot: [
+        { label: 'Gross profit', value: money(stats.grossProfit, { privacy, decimals: 0, sign: false }), tone: 'pos' },
+        { label: 'Gross loss', value: money(stats.grossLoss, { privacy, decimals: 0, sign: false }), tone: 'neg' },
+      ],
     },
   ]
 
-  const change = (now, before, invert = false) => {
-    if (before == null || now == null || before === 0) return null
-    const delta = ((now - before) / Math.abs(before)) * 100
-    return invert ? -delta : delta
-  }
-  const month = monthly.now
-  const prior = monthly.prior
-  const compareCards = [
-    {
-      label: 'Total trades', value: `${month.trades}`,
-      delta: change(month.trades, prior?.trades),
-      caption: prior ? <>Compared to <b>{prior.trades} trades</b> past month</> : 'No trades in the prior month',
-    },
-    {
-      label: 'Total trades', note: '(Winning)', value: `${month.wins}`,
-      delta: change(month.wins, prior?.wins),
-      caption: prior ? <>Compared to <b>{prior.wins} trades</b> past month</> : 'No trades in the prior month',
-    },
-    {
-      label: 'Net P&L', value: money(month.netPnl, { privacy, decimals: 0, sign: false }),
-      delta: change(month.netPnl, prior?.netPnl),
-      caption: prior ? <>Compared to <b>{money(prior.netPnl, { privacy, decimals: 0, sign: false })}</b> past month</> : 'No trades in the prior month',
-    },
-    {
-      label: 'Profit factor', value: ratio(month.profitFactor),
-      delta: change(month.profitFactor, prior?.profitFactor),
-      caption: prior ? <>Compared to profit factor <b>{ratio(prior.profitFactor)}</b> past month</> : 'No trades in the prior month',
-    },
-  ]
+
+
+  // top earners: best symbols by net P&L, with their average return per trade and running P&L
+  const earners = useMemo(() => {
+    const groups = new Map()
+    ;[...scoped].sort((a, b) => (a.date === b.date ? a.time.localeCompare(b.time) : a.date.localeCompare(b.date))).forEach((trade) => {
+      if (!groups.has(trade.symbol)) groups.set(trade.symbol, [])
+      groups.get(trade.symbol).push(trade)
+    })
+    return [...groups.entries()].map(([symbol, list]) => {
+      const net = list.reduce((sum, trade) => sum + trade.pnl, 0)
+      const avgReturn = list.reduce((sum, trade) => sum + trade.pnl / (trade.qty * trade.entry), 0) / list.length * 100
+      const run = list.reduce((acc, trade) => [...acc, (acc.at(-1) ?? 0) + trade.pnl], [0])
+      const recent = run.slice(-Math.min(run.length, 31))
+      return { symbol, net, avgReturn, trades: list.length, run: run.slice(-60), tone: recent.at(-1) - recent[0] >= 0 ? 'pos' : 'neg' }
+    }).sort((a, b) => b.net - a.net).slice(0, 6)
+  }, [scoped])
+
+
 
   const scoreShift = priorEdge?.score != null && edge.score != null ? edge.score - priorEdge.score : null
   const radarAxes = ['Win%', 'Profit factor', 'Avg win/loss', 'Max drawdown', 'Recovery', 'Consistency']
 
   return <div className="page home">
-    <header className="home-header">
+    <header className="home-header dashboard-overview">
       <div className="home-greeting">
-        <span className="home-date">{dateLine}</span>
         <div className="greeting-plate">
-          <h1 className="welcome-title"><span className="welcome-muted">Welcome Back,</span> {profile.name}</h1>
+          <h1 className="welcome-title"><span className="welcome-muted">Welcome back,</span> {profile.name}</h1>
           <p className="page-lede">{series.length
             ? `${plural(series.length, 'session')} journaled · last trade ${shortDate(series[series.length - 1].date)}`
             : 'No sessions journaled yet — log your first trade to get started.'}</p>
         </div>
       </div>
-      <div className="compare-row">
-        {compareCards.map((card) => <section className="compare-card" key={`${card.label}-${card.note ?? ''}`}>
-          <div className="compare-head">
-            <span className="compare-label">{card.label}{card.note && <em> {card.note}</em>}</span>
-          </div>
-          <div className="compare-value">
-            <strong>{card.value}</strong>
-            {card.delta != null && <span className={`compare-delta ${card.delta >= 0 ? 'pos' : 'neg'}`}>
-              {card.delta >= 0 ? <ArrowUpRight size={14} strokeWidth={2.4}/> : <ArrowDownRight size={14} strokeWidth={2.4}/>}
-              {Math.abs(card.delta).toFixed(0)}%
-            </span>}
-          </div>
-          <small className="compare-caption">{card.caption}</small>
-        </section>)}
-      </div>
     </header>
 
     <div className="home-top">
-      <section className="score-panel">
-        <div className="score-card">
-          <div className="score-head">
-            <div>
-              <span className="panel-caption">Your score</span>
-              <strong className="score-value">{edge.score == null ? '—' : Math.round(edge.score)}<small>/100</small></strong>
-            </div>
-            {scoreShift != null
-              ? <span className={`score-shift ${scoreShift >= 0 ? 'pos' : 'neg'}`}>
-                  {scoreShift >= 0 ? <ArrowUpRight size={13} strokeWidth={2.4}/> : <ArrowDownRight size={13} strokeWidth={2.4}/>}
-                  {Math.abs(Math.round(scoreShift))} pts <em>vs first half</em>
-                </span>
-              : edge.score != null && <span className="score-band">{scoreBand(edge.score)}</span>}
+      <OverallScoreCard edge={edge} priorEdge={priorEdge} axes={radarAxes} enough={scoped.length >= 5}/>
+      <div className="compare-row">
+        <section className="compare-card shell te-shell">
+          <div className="shell-head">Top earners<em>{range === 'All' ? 'All time' : range}</em></div>
+          <div className="te-list" onScroll={(event) => { const el = event.currentTarget; el.classList.toggle('at-end', el.scrollTop + el.clientHeight >= el.scrollHeight - 2) }}>
+            {earners.map((item) => <button
+              key={item.symbol} type="button" className="te-card" onClick={() => openTrades?.(item.symbol)}
+              aria-label={`${item.symbol}: ${money(item.net, { privacy })} net over ${item.trades} trades, ${item.avgReturn >= 0 ? '+' : '−'}${Math.abs(item.avgReturn).toFixed(2)}% average return. Open trades`}
+            >
+              <span className="te-id"><SymbolToken symbol={item.symbol}/><b>{item.symbol}</b></span>
+              <strong className="te-value">{item.net < 0 && '−'}{money(Math.abs(item.net), { privacy, sign: false })}</strong>
+              <small className={`te-chg ${item.avgReturn >= 0 ? 'pos' : 'neg'}`} title="Average return per trade">{privacy ? '••••' : `${item.avgReturn >= 0 ? '+' : '−'}${Math.abs(item.avgReturn).toFixed(2)}%`}</small>
+              <span className="te-chart"><AreaLine values={item.run} tone={item.tone} density={5}/></span>
+            </button>)}
+            {!earners.length && <p className="te-empty">No trades in this range yet.</p>}
           </div>
-          <ScoreMeter value={edge.score ?? 0}/>
-        </div>
+        </section>
+      </div>
+      <section className="score-panel">
         <div className="tile-grid">
-          {tiles.map((tile) => <div className={`stat-tile${tile.hero ? ' is-hero' : ''}`} key={tile.label}>
-            <span className="tile-head">
-              <span className="tile-label">{tile.label}</span>
-              {tile.delta != null && Number.isFinite(tile.delta) && <span className={`tile-delta ${tile.delta >= 0 ? 'pos' : 'neg'}`}>
-                {tile.delta >= 0 ? '+' : '−'}{Math.abs(tile.delta).toFixed(tile.deltaUnit ? 1 : 0)}{tile.deltaUnit ? ` ${tile.deltaUnit}` : '%'}
-              </span>}
-            </span>
-            <strong className={tile.tone ? `tone-${tile.tone}` : undefined}>{tile.value}</strong>
-            {tile.note && <small className="tile-note">{tile.note}</small>}
+          {tiles.map((tile) => <div className="stat-tile dash-tile shell" key={tile.label}>
+            <div className="shell-head">{tile.label}</div>
+            <div className="shell-body">
+            <div className="tile-main">
+              <strong className={tile.tone ? `tone-${tile.tone}` : undefined}>{tile.value}</strong>
+              {tile.aside}
+            </div>
             {tile.chart && <span className="tile-chart">{tile.chart}</span>}
+            {tile.rows && <dl className="tile-rows ruled">
+              {tile.rows.map((row) => <div key={row.label}>
+                <dt>{row.label}</dt>
+                <dd>{row.value}</dd>
+                <span className="tr-bar"><i className={row.tone} style={{ width: `${Math.max(2, Math.min(100, (row.share ?? 0) * 100))}%` }}/></span>
+              </div>)}
+            </dl>}
+            {tile.foot && <dl className="tile-rows">
+              {tile.foot.map((row) => <div key={row.label}><dt>{row.label}</dt><dd className={row.tone ? `tone-${row.tone}` : undefined}>{row.value}</dd></div>)}
+            </dl>}
+            </div>
           </div>)}
         </div>
       </section>
 
-      <section className="home-card cume-card">
-        <div className="card-title">Daily Net Cumulative P&L</div>
-        {dataState === 'ready'
-          ? <CumulativeChart series={series} height={286} fill privacy={privacy}/>
-          : <ChartState state={dataState}/>}
+    </div>
+
+    <div className="home-wide">
+      <section className="home-card cume-card shell chart-shell">
+        <div className="shell-head">Daily Net Cumulative P&L</div>
+        <div className="shell-body">
+          {dataState === 'ready'
+            ? <CumulativeChart series={series} height={320} fill privacy={privacy}/>
+            : <ChartState state={dataState}/>}
+        </div>
       </section>
     </div>
 
     <div className="home-bottom">
       <div className="pulse-col">
-        <section className="home-card">
-          <div className="score-card-head">
-            <div className="card-title">Net Daily P&L</div>
-          <div className="ws-seg compact" role="tablist" aria-label="Daily P&L window">
-            {['7D', '30D', '90D'].map((option) => <button
-              key={option} type="button" role="tab" aria-selected={pulseRange === option}
-              className={pulseRange === option ? 'active' : ''} onClick={() => setPulseRange(option)}
-            >{option}</button>)}
+        <section className="home-card shell chart-shell pulse-shell">
+          <div className="shell-head">
+            <span>Net Daily P&L</span>
+            <div className="ws-seg compact" role="tablist" aria-label="Daily P&L window">
+              {['7D', '30D', '90D'].map((option) => <button
+                key={option} type="button" role="tab" aria-selected={pulseRange === option}
+                className={pulseRange === option ? 'active' : ''} onClick={() => setPulseRange(option)}
+              >{option}</button>)}
+            </div>
           </div>
-        </div>
+          <div className="shell-body">
         {dataState === 'ready'
           ? <>
               <div className="pulse-head">
@@ -389,6 +410,7 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
               <DailyPulse series={pulseDays} privacy={privacy}/>
             </>
           : <ChartState state={dataState}/>}
+          </div>
         </section>
 
         {dataState === 'ready' && <section className="home-card pulse-summary">
@@ -401,11 +423,10 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
         </section>}
       </div>
 
-      <OverallScoreCard edge={edge} priorEdge={priorEdge} axes={radarAxes} enough={scoped.length >= 5}/>
 
-      <section className="home-card feed-card">
-        <div className="score-card-head">
-          <div className="card-title">Trades</div>
+      <section className="home-card feed-card shell chart-shell">
+        <div className="shell-head">
+          <span>Trades</span>
           <div className="ws-seg compact" role="tablist" aria-label="Trade feed">
             {['Recent', 'Best', 'Worst'].map((tab) => <button
               key={tab} type="button" role="tab" aria-selected={feedTab === tab}
@@ -413,23 +434,25 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
             >{tab}</button>)}
           </div>
         </div>
+        <div className="shell-body">
         {recent.length
           ? <div key={feedTab} ref={(el) => { if (el && !feedEnd && el.scrollHeight <= el.clientHeight + 2) setFeedEnd(true) }} className={`feed-scroll${feedEnd ? ' at-end' : ''}`} onScroll={(event) => {
               const el = event.currentTarget
               setFeedEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 2)
             }}>
             <table className="feed-table">
-              <thead><tr><th>Close Date</th><th>Symbol</th><th>Net P&L</th></tr></thead>
+              <thead><tr><th>Date</th><th>Symbol</th><th>Net P&L</th></tr></thead>
               <tbody>
-                {recent.map((trade) => <tr key={trade.id} onClick={() => openJournal(trade.date)} title="Open this day in the journal">
-                  <td>{new Date(`${trade.date}T00:00:00Z`).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', timeZone: 'UTC' })}</td>
-                  <td>{trade.symbol}</td>
+                {recent.map((trade) => <tr key={trade.id} onClick={() => openJournal(trade.date)}>
+                  <td className="ft-date">{shortDate(trade.date)}</td>
+                  <td className="ft-sym"><span><SymbolToken symbol={trade.symbol}/>{trade.symbol}</span></td>
                   <td className={`tone-${toneOf(trade.pnl)}`}>{money(trade.pnl, { privacy, decimals: 2 })}</td>
                 </tr>)}
               </tbody>
             </table>
           </div>
           : <ChartState state="empty"/>}
+        </div>
       </section>
     </div>
 
@@ -468,18 +491,38 @@ const isJournaled = (date) => {
 }
 
 /** Facet rows arrive as a fanned deck and unshuffle into a list on the first click. */
-function RailDeck({ items, isMuted, onToggle }) {
+function RailDeck({ items, isMuted, onToggle, symbols = false }) {
   const [spread, setSpread] = useState(false)
+  const listRef = useRef(null)
+  const [step, setStep] = useState(24)
+  // stacked: overlap tighter as the deck grows, and keep the last chip inside the card
+  useEffect(() => {
+    const list = listRef.current
+    if (!list || spread) return undefined
+    const fit = () => {
+      const chips = [...list.querySelectorAll('.rail-chip')]
+      if (chips.length < 2) return
+      const room = list.clientWidth - chips[chips.length - 1].getBoundingClientRect().width
+      setStep(Math.max(6, Math.min(symbols ? 18 : 28, room / (chips.length - 1))))
+    }
+    fit()
+    const observer = new ResizeObserver(fit)
+    observer.observe(list)
+    return () => observer.disconnect()
+  }, [items, spread])
   return <div className={`rail-deck${spread ? ' is-spread' : ''}`}>
     <ul
-      className="rail-list" style={{ '--rows': items.length }}
+      ref={listRef}
+      className="rail-list" style={{ '--rows': items.length, '--deck-step': `${step}px` }}
       onClickCapture={(event) => { if (!spread) { event.preventDefault(); event.stopPropagation(); setSpread(true) } }}
     >
       {items.map(([label, count], index) => {
         const on = !isMuted(label)
         return <li key={label} style={{ '--i': index, '--back': items.length - 1 - index }}>
           <button type="button" className={`rail-row${on ? '' : ' off'}`} aria-pressed={on} tabIndex={spread ? 0 : -1} onClick={() => onToggle(label)}>
-            <span className="rail-chip" style={{ '--hue': labelHue(label) }}>{label}</span>
+            {symbols
+              ? <span className="rail-chip rail-sym"><SymbolToken symbol={label}/><span>{label}</span></span>
+              : <span className="rail-chip" style={{ '--hue': labelHue(label) }}>{label}</span>}
             <em>{count}</em>
           </button>
         </li>
@@ -506,6 +549,9 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
   const [mutedSymbols, setMutedSymbols] = useState(() => new Set())
   const [mutedSetups, setMutedSetups] = useState(() => new Set())
   const [openFacet, setOpenFacet] = useState('symbols')
+  const [openDay, setOpenDay] = useState(null)
+  const [dayVersion, setDayVersion] = useState(0)
+  const todayIso = `${easternToday.year}-${String(easternToday.month).padStart(2, '0')}-${String(easternToday.day).padStart(2, '0')}`
   const toggleIn = (set, value, apply) => { const next = new Set(set); if (next.has(value)) next.delete(value); else next.add(value); apply(next) }
 
   const month = useMemo(() => {
@@ -586,7 +632,6 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
   return <div className="page calendar-page">
     <header className="cal-header">
       <div className="home-greeting">
-        <span className="home-date">{easternToday.label}</span>
         <div className="greeting-plate">
           <h1>Calendar</h1>
           <p className="page-lede">{monthStats.sessions
@@ -608,12 +653,13 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
 
     <div className="cal-layout">
     <aside className="cal-rail">
-      <div className="mini-cal">
-        <div className="mc-head">
+      <div className="mini-cal duo">
+        <div className="mc-head shell-head">
           <button type="button" aria-label="Previous month" onClick={() => { setMonthOffset(monthOffset - 1); setWeekIndex(null) }}><ChevronLeft size={15}/></button>
           <strong>{month.longName}</strong>
           <button type="button" aria-label="Next month" onClick={() => { setMonthOffset(monthOffset + 1); setWeekIndex(null) }}><ChevronRight size={15}/></button>
         </div>
+        <div className="shell-body">
         <div className="mc-week">{['S','M','T','W','T','F','S'].map((day, index) => <span key={index}>{day}</span>)}</div>
         <div className="mc-grid">
           {month.cells.map((cell, index) => {
@@ -623,14 +669,16 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
               type="button" key={`${cell.edge || 'in'}-${cell.day}-${index}`}
               className={`mc-day${cell.outside ? ' out' : ''}${traded ? ` ${toneOf(cell.pnl)}` : ''}${today ? ' today' : ''}`}
               disabled={!traded}
-              title={traded ? `${easternLabel(cell.iso)} · ${money(cell.pnl, { privacy, decimals: 0 })}` : undefined}
+
               onClick={traded ? () => openJournal(cell.iso) : undefined}
             >{cell.day}</button>
           })}
         </div>
       </div>
+      </div>
 
-      <div className="rail-facets">
+      <div className="rail-facets duo">
+        <div className="shell-head rail-facets-head">
         <div className="ws-seg compact rail-switch" role="tablist" aria-label="Filter by">
           {[['symbols', 'Symbols', symbolFacets.length], ['setups', 'Setups', setupFacets.length]].map(([key, label, count]) => <button
             key={key} type="button" role="tab" aria-selected={openFacet === key}
@@ -638,9 +686,11 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
             onClick={() => setOpenFacet(openFacet === key ? null : key)}
           >{label}<em>{count}</em></button>)}
         </div>
+        </div>
 
+        <div className={`card-fold${openFacet ? ' open' : ''}`}><div className="card-fold-inner"><div className="shell-body">
         {openFacet === 'symbols' && <RailDeck
-          key="symbols" items={symbolFacets}
+          key="symbols" items={symbolFacets} symbols
           isMuted={(value) => mutedSymbols.has(value)}
           onToggle={(value) => toggleIn(mutedSymbols, value, setMutedSymbols)}
         />}
@@ -650,20 +700,21 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
           isMuted={(value) => mutedSetups.has(value)}
           onToggle={(value) => toggleIn(mutedSetups, value, setMutedSetups)}
         />}
+        </div></div></div>
       </div>
 
       {(mutedSymbols.size > 0 || mutedSetups.size > 0) && <button type="button" className="rail-reset" onClick={() => { setMutedSymbols(new Set()); setMutedSetups(new Set()) }}>Show everything</button>}
     </aside>
 
     <div className="cal-main">
-    <section className="month-board">
-      <div className="board-toolbar">
+    <section className="month-board duo">
+      <div className="board-toolbar shell-head">
         <div className="board-title"><h2>{month.longName}</h2><p>{view === 'Week' ? `Week ${currentWeek + 1} of ${weeks}` : month.range}</p></div>
         <div className="board-tools">
           <div className="board-steps">
-            <button aria-label={view === 'Week' ? 'Previous week' : 'Previous month'} onClick={() => step(-1)}><ArrowLeft size={15} strokeWidth={1.8}/></button>
+            <button aria-label={view === 'Week' ? 'Previous week' : 'Previous month'} onClick={() => step(-1)}><ChevronLeft size={16} strokeWidth={2}/></button>
             <button className="board-today" onClick={resetMonth}>Today</button>
-            <button aria-label={view === 'Week' ? 'Next week' : 'Next month'} onClick={() => step(1)}><ArrowRight size={15} strokeWidth={1.8}/></button>
+            <button aria-label={view === 'Week' ? 'Next week' : 'Next month'} onClick={() => step(1)}><ChevronRight size={16} strokeWidth={2}/></button>
           </div>
           <label className="board-select">
             <select value={view} aria-label="Calendar view" onChange={(event) => { setView(event.target.value); setWeekIndex(null) }}>
@@ -672,42 +723,58 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
             </select>
             <ChevronDown size={14}/>
           </label>
+          <TodayJournalButton onClick={() => setOpenDay(todayIso)}/>
           <button className="board-primary" onClick={openLog}><Plus size={14} strokeWidth={2.4}/> Log trade</button>
         </div>
       </div>
 
+      <div className="shell-body">
       <div className="month-weekdays">{['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => <span key={d}>{d}</span>)}</div>
       <div className={`month-grid ${view === 'Week' ? 'week-view' : ''}`}>{visibleCells.map((cell, index) => {
         const entries = (cell.entries || []).filter(matches)
-        const shown = entries.slice(0, 3)
-        const hidden = entries.length - shown.length
+        const dayNet = entries.reduce((sum, entry) => sum + entry.pnl, 0)
         const today = month.isEasternMonth && !cell.outside && cell.day === easternToday.day
-        const open = !cell.outside && cell.entries?.length ? () => openJournal(cell.iso) : null
+        const open = !cell.outside ? () => setOpenDay(cell.iso) : null
         return <div
-          key={`${cell.edge || 'current'}-${cell.day}-${index}`}
-          className={`day-cell${cell.outside ? ' outside' : ''}${open ? ' has-trades' : ''}`}
+          key={`${cell.edge || 'current'}-${cell.day}-${index}-${dayVersion}`}
+          className={`day-cell${cell.outside ? ' outside' : ''}${open ? ' has-trades' : ''}${entries.length ? ` is-${toneOf(dayNet)}` : ''}`}
           onClick={open ?? undefined}
-          title={open ? `Open ${easternLabel(cell.iso)} in the journal` : undefined}
+          role={open ? 'button' : undefined}
+          tabIndex={open ? 0 : undefined}
+          aria-label={open ? `Open ${cell.iso}` : undefined}
+          onKeyDown={open ? (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open() } } : undefined}
+
         >
           <span className={`day-number${today ? ' today' : ''}`}>{cell.day}</span>
-          <div className="day-chips">
-            {shown.map((entry) =>
-              <span key={entry.id} className={`day-chip ${entry.pnl > 0 ? 'win' : 'loss'}`} title={`${entry.symbol} · ${entry.time}`}>
-                <b>{entry.symbol}</b><small>{privacy ? '••••' : `${entry.pnl > 0 ? '+' : '−'}$${Math.abs(entry.pnl).toFixed(0)}`}</small>
-              </span>)}
-            {hidden > 0 && <span className="day-more">{hidden} more…</span>}
-          </div>
+          {entries.length > 0 && (() => {
+            const net = entries.reduce((sum, entry) => sum + entry.pnl, 0)
+            const symbols = [...new Set(entries.map((entry) => entry.symbol))]
+            return <div className="day-sum">
+              <b className={`day-net tone-${toneOf(net)}`}>{money(net, { privacy, decimals: 0 })}</b>
+              <div className="day-foot">
+                <span className="day-tickers" aria-label={symbols.join(', ')}>
+                  {symbols.slice(0, 3).map((symbol) => <SymbolToken key={symbol} symbol={symbol}/>)}
+                  {symbols.length > 3 && <em>+{symbols.length - 3}</em>}
+                </span>
+                <small>{entries.length} trade{entries.length === 1 ? '' : 's'}</small>
+              </div>
+            </div>
+          })()}
         </div>
       })}</div>
 
       <div className="month-summary">
-        <span>{monthStats.sessions ? `${plural(monthStats.sessions, 'trading day')} · ${monthStats.green} green` : 'No trades this month'}{hasFilter ? ' · filtered' : ''}</span>
+        <span>{monthStats.sessions ? <>{plural(monthStats.sessions, 'trading day')} · <b className="ms-green">{monthStats.green}</b> green</> : 'No trades this month'}{hasFilter ? ' · filtered' : ''}</span>
         <strong>Month total <b className={monthStats.total >= 0 ? 'positive' : 'negative'}>{money(monthStats.total, privacy)}</b></strong>
+      </div>
       </div>
     </section>
 
+    <MonthSummary trades={filtered} privacy={privacy}/>
+
     </div>
     </div>
+    {openDay && <DaySheet key={openDay} date={openDay} privacy={privacy} onClose={() => setOpenDay(null)} onSaved={() => setDayVersion((value) => value + 1)} openJournal={openJournal}/>}
   </div>
 }
 
@@ -811,7 +878,6 @@ export function PerformanceInsights({ month, stats, privacy, openJournal, openTr
                     key={column}
                     className={`cg-cell${cell.outside ? ' out' : ''}${day ? (day.pnl > 0 ? ' pos' : ' neg') : ''}`}
                     style={day ? { '--a': strength } : undefined}
-                    title={day ? `${shortDate(day.iso)} · ${money(day.pnl, { privacy, decimals: 0 })}` : cell.outside ? undefined : `${shortDate(cell.iso)} · no trades`}
                     onClick={day ? () => openJournal(day.iso) : undefined}
                   />
                 })}
@@ -826,7 +892,6 @@ export function PerformanceInsights({ month, stats, privacy, openJournal, openTr
 
 const DEFAULT_NOTE_HTML = [
   '<h2>Session review</h2>',
-  '<div class="note-tags" contenteditable="false"><span>Selective</span><span>Patient</span><span>Late-day edge</span></div>',
   '<p>Stayed patient through the opening range and only took confirmed setups. The SPY short had the cleanest alignment with the broader market.</p>',
   '<h3>What worked</h3>',
   '<ul><li>Waited for confirmation before entry.</li><li>Kept risk consistent across positions.</li><li>Stopped after the planned session window.</li></ul>',
@@ -926,13 +991,16 @@ function shrinkImage(file, max = 1400) {
   })
 }
 
+/** The session timeline always shows at least this many lanes, so quiet days keep the same height. */
+const TIMELINE_MIN_ROWS = 3
+
 // Designs by RNSENCE Studio
 export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) {
   const sessionFills = useMemo(() => tradeLog.filter((trade) => trade.date === date).sort((a, b) => a.time.localeCompare(b.time)), [date])
   const days = tradingDays()
   if (!sessionFills.length) {
     return <div className="page home journal">
-      <header className="home-header"><div><span className="home-date">{easternLabel(date)}</span><h1>Daily journal</h1></div></header>
+      <header className="home-header"><div><h1>Daily journal</h1></div></header>
       <ChartState state="empty" detail="No trades on this day yet — log one to start the journal."/>
       {days.length > 0 && <button type="button" className="start-day jr-empty-cta" onClick={() => setDate?.(days[days.length - 1])}>Go to the latest session</button>}
     </div>
@@ -976,22 +1044,43 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
   const [tableEnd, setTableEnd] = useState(false)
   const [tradesOpen, setTradesOpen] = useState(true)
   const [tradeFilter, setTradeFilter] = useState('All')
+  const [drawerTradeId, setDrawerTradeId] = useState(null)
+  const [tradeReviews] = useState(() => { try { return JSON.parse(localStorage.getItem('trade-reviews')) ?? {} } catch { return {} } })
+  const archiveTrade = (id) => {
+    try {
+      const archived = JSON.parse(localStorage.getItem('cc-trade-archived')) ?? []
+      localStorage.setItem('cc-trade-archived', JSON.stringify([...new Set([...archived, id])]))
+    } catch { /* storage unavailable */ }
+  }
   const visibleFills = useMemo(() => sessionFills.filter((fill) =>
     tradeFilter === 'Wins' ? fill.pnl > 0 : tradeFilter === 'Losses' ? fill.pnl < 0 : true), [sessionFills, tradeFilter])
   const [timelineView, setTimelineView] = useState('Packed')
   const NOTE_KEY = `journal-note-${date}`
   const noteRef = useRef(null)
-  const [noteHtml] = useState(() => {
+  const [noteHtml, setNoteHtml] = useState(() => {
     const fallback = date === REVIEWED_DAY ? DEFAULT_NOTE_HTML : blankNote(date)
-    try { return localStorage.getItem(NOTE_KEY) || fallback } catch { return fallback }
+    let html = fallback
+    try { html = localStorage.getItem(NOTE_KEY) || fallback } catch { /* storage unavailable */ }
+    return html.replace(/<div class="note-tags"[^>]*>[\s\S]*?<\/div>/g, '')
   })
+  const [noteDrawer, setNoteDrawer] = useState(false)
+  const [openedHtml, setOpenedHtml] = useState('')
+  const openNote = () => { setOpenedHtml(noteHtml); setNoteDrawer(true) }
+  const notePreview = useMemo(() => {
+    const doc = new DOMParser().parseFromString(noteHtml, 'text/html')
+    const title = doc.querySelector('h2')?.textContent.trim() || 'Session review'
+    const body = [...doc.querySelectorAll('p, li')].map((node) => node.textContent.trim()).filter(Boolean).join(' ')
+    return { title, body }
+  }, [noteHtml])
   const [noteScale, setNoteScale] = useState(() => {
     try { return Math.max(-3, Math.min(3, Number(localStorage.getItem(`${NOTE_KEY}-scale`)) || 0)) } catch { return 0 }
   })
   const [savedAt, setSavedAt] = useState(null)
   const [formats, setFormats] = useState({ bold: false, italic: false, list: false })
   const saveNote = () => {
-    try { localStorage.setItem(NOTE_KEY, noteRef.current?.innerHTML ?? '') } catch { /* storage unavailable */ }
+    const html = noteRef.current?.innerHTML ?? ''
+    try { localStorage.setItem(NOTE_KEY, html) } catch { /* storage unavailable */ }
+    setNoteHtml(html)
     setSavedAt(new Date())
   }
   const changeScale = (step) => setNoteScale((current) => {
@@ -1084,7 +1173,7 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
   const SESSION_CLOSE = 16 * 60
   const timelineAt = (minutes) => Math.max(0, Math.min(100, ((minutes - SESSION_OPEN) / (SESSION_CLOSE - SESSION_OPEN)) * 100))
   const packedRows = useMemo(() => {
-    const LABEL_MINUTES = 36
+const LABEL_MINUTES = 36
     const rows = []
     ;[...sessionFills].sort((a, b) => a.time.localeCompare(b.time)).forEach((fill) => {
       const start = toMinutes(fill.time)
@@ -1097,17 +1186,9 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
   const heldMinutes = sessionFills.reduce((sum, fill) => sum + (fill.closed ? toMinutes(fill.closed) - toMinutes(fill.time) : 0), 0)
   const extras = [
     { label: 'Expectancy', value: money(day.net / sessionFills.length, { privacy }), tone: toneOf(day.net), caption: 'Average net result per trade',
-      viz: <span className="trade-seq" title={`${ordered.filter((fill) => fill.pnl > 0).length} winners · ${ordered.filter((fill) => fill.pnl < 0).length} losers, in order`}>{ordered.map((fill) => <i key={fill.id} className={toneOf(fill.pnl)}/>)}</span> },
-    { label: 'Average grade', value: gradeLetter,
-      caption: `${sessionFills.filter((fill) => ['A+', 'A', 'B'].includes(fill.grade)).length} of ${sessionFills.length} trades B or better`,
-      viz: <span className="grade-bar" title={['A+', 'A', 'B', 'C', 'D'].map((grade) => `${grade}: ${sessionFills.filter((fill) => fill.grade === grade).length}`).join(' · ')}>
-        {['A+', 'A', 'B', 'C', 'D'].map((grade) => {
-          const count = sessionFills.filter((fill) => fill.grade === grade).length
-          return count ? <i key={grade} className={`g-${grade === 'A+' ? 'ap' : grade.toLowerCase()}`} style={{ flex: count }}/> : null
-        })}
-      </span> },
+      viz: <span className="trade-seq">{ordered.map((fill) => <i key={fill.id} className={toneOf(fill.pnl)}/>)}</span> },
     { label: 'Reward : risk', value: breakdown.avgWinner != null && breakdown.avgLoser ? `${(breakdown.avgWinner / Math.abs(breakdown.avgLoser)).toFixed(2)}R` : '—',
-      caption: `Avg win ${money(breakdown.avgWinner ?? 0, { privacy, decimals: 0 })} · loss ${money(breakdown.avgLoser ?? 0, { privacy, decimals: 0 })}`,
+      caption: <>Avg win <span className="tone-pos">{money(breakdown.avgWinner ?? 0, { privacy, decimals: 0 })}</span> · loss <span className="tone-neg">{money(breakdown.avgLoser ?? 0, { privacy, decimals: 0 })}</span></>,
       viz: <span className="rr-bar" aria-hidden="true">
         <i className="pos" style={{ flex: breakdown.avgWinner ?? 0 }}/>
         <i className="neg" style={{ flex: Math.abs(breakdown.avgLoser ?? 0) }}/>
@@ -1143,49 +1224,24 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
   const disciplineAverage = disciplineScored.length ? Math.round(disciplineScored.reduce((sum, item) => sum + item.score, 0) / disciplineScored.length) : null
   const disciplineTone = (score) => (score >= 80 ? 'pos' : score >= 60 ? 'mid' : 'neg')
 
-  const holds = ordered.filter((fill) => fill.closed).map((fill) => toMinutes(fill.closed) - toMinutes(fill.time))
-  const avgHold = holds.length ? Math.round(holds.reduce((sum, value) => sum + value, 0) / holds.length) : null
-  const longFills = sessionFills.filter((fill) => fill.side === 'Long')
-  const shortFills = sessionFills.filter((fill) => fill.side === 'Short')
-  const giveBack = intraday.close - intraday.high
-  const keptShare = intraday.high > 0 ? Math.max(0, Math.min(1, intraday.close / intraday.high)) : 1
-  const topWin = breakdown.largestWin
-  const topShare = day.won && topWin ? topWin.pnl / day.won : 0
-  const holdLabel = (minutes) => (minutes >= 60 ? `${Math.floor(minutes / 60)}h ${minutes % 60}m` : `${minutes}m`)
+  const rulesKept = checked.filter(Boolean).length
+  const versusAverage = day.net - baseline.net
 
+  // Key insights: did the day pay, how often you were right, how wins paid for losses, and whether you followed the plan.
   const tiles = [
-    { label: 'Peak to close', value: money(giveBack, { privacy, decimals: 0 }), tone: giveBack < 0 ? 'neg' : null,
-      caption: `Ran to ${money(intraday.high, { privacy, decimals: 0 })} · kept ${percent(keptShare * 100, { decimals: 0 })}`,
-      viz: <span className="tile-line" aria-hidden="true">
-        <i className="pos" style={{ flex: Math.max(keptShare, 0.02) }}/>
-        {keptShare < 0.995 && <i className="neg" style={{ flex: 1 - keptShare }}/>}
-      </span> },
-    { label: 'Long vs short', value: `${longFills.length}L · ${shortFills.length}S`,
-      caption: `Long ${money(breakdown.long, { privacy, decimals: 0 })} · short ${money(breakdown.short, { privacy, decimals: 0 })}`,
-      viz: <span className="tile-line" aria-hidden="true">
-        <i className={toneOf(breakdown.long)} style={{ flex: Math.max(Math.abs(breakdown.long), 1) }}/>
-        <i className={toneOf(breakdown.short)} style={{ flex: Math.max(Math.abs(breakdown.short), 1) }}/>
-      </span> },
-    { label: 'Avg hold', value: avgHold == null ? '—' : holdLabel(avgHold),
-      caption: holds.length ? `Longest ${holdLabel(Math.max(...holds))} · ${plural(sessionFills.length, 'trade')}` : `${plural(sessionFills.length, 'trade')} this session`,
-      viz: <span className="tile-line" aria-hidden="true">
-        {ordered.map((fill, index) => <i
-          key={fill.id} className={toneOf(fill.pnl)}
-          style={{ flex: Math.max(1, holds[index] ?? 1) }}
-        />)}
-      </span> },
-    { label: 'Top trade share', value: topWin ? percent(topShare * 100, { decimals: 0 }) : '—',
-      caption: topWin ? `${topWin.symbol} ${money(topWin.pnl, { privacy, decimals: 0 })} of gross profit` : 'No winners this session',
-      viz: <span className="tile-line" aria-hidden="true">
-        <i className="pos" style={{ flex: Math.max(topShare, 0.04) }}/>
-        <i className="idle" style={{ flex: Math.max(1 - topShare, 0.04) }}/>
-      </span> },
+    { label: 'Net P&L', value: money(day.net, { privacy, decimals: 0 }), tone: toneOf(day.net),
+      caption: <><span className={`tone-${toneOf(versusAverage)}`}>{money(versusAverage, { privacy, decimals: 0 })}</span> vs your average day</> },
+    { label: 'Win rate', value: percent(day.winRate, { decimals: 0 }), tone: day.winRate >= 50 ? 'pos' : 'neg',
+      caption: <><span className="tone-pos">{day.wins} won</span> · <span className="tone-neg">{day.losses} lost</span></> },
+    { label: 'Profit factor', value: day.profitFactor == null ? 'No losses' : ratio(day.profitFactor), tone: day.profitFactor == null || day.profitFactor >= 1 ? 'pos' : 'neg',
+      caption: <><span className="tone-pos">Won {money(day.won, { privacy, sign: false, decimals: 0 })}</span> · <span className="tone-neg">lost {money(day.lost, { privacy, sign: false, decimals: 0 })}</span></> },
+    { label: 'Rules kept', value: `${discipline}%`, tone: disciplineTone(discipline) === 'mid' ? null : disciplineTone(discipline),
+      caption: <><span className="tone-accent">{rulesKept}</span> of {checklistItems.length} checklist rules</> },
   ]
 
   return <div className="page home journal">
     <header className="home-header">
       <div className="home-greeting">
-        <span className="home-date">{easternLabel(date)}</span>
         <div className="greeting-plate">
         <h1>Daily journal</h1>
         <p className="journal-lede">{date === REVIEWED_DAY
@@ -1193,12 +1249,18 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
           : `${day.net >= 0 ? 'Green' : 'Red'} session · ${plural(sessionFills.length, 'trade')} · ${breakdown.largestWin ? `best ${breakdown.largestWin.symbol} ${money(breakdown.largestWin.pnl, { privacy, decimals: 0 })}` : 'no winners'}`}</p>
         </div>
       </div>
-      <div className="jr-bar">
+      <div className="jr-bar duo">
+        <div className="jr-nav shell-head">
+          <button type="button" aria-label="Previous trading day" disabled={!previousDay} onClick={() => setDate?.(previousDay)}><ChevronLeft size={16} strokeWidth={2}/></button>
+          <span className="jr-date" aria-live="polite">{new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</span>
+          <button type="button" aria-label="Next trading day" disabled={!nextDay} onClick={() => setDate?.(nextDay)}><ChevronRight size={16} strokeWidth={2}/></button>
+        </div>
+        <div className="shell-body">
       <div className="jr-week" role="list" aria-label="This week">
         {week.map((item) => <button
           type="button" role="listitem" key={item.date}
           className={`jr-day${item.date === JOURNAL_DAY ? ' current' : ''}${item.pnl == null ? ' idle' : ` ${toneOf(item.pnl)}`}`}
-          title={item.pnl == null ? `${item.weekday} · no trades` : `${item.weekday} · ${plural(item.trades, 'trade')}`}
+
           disabled={item.pnl == null}
           aria-current={item.date === JOURNAL_DAY ? 'date' : undefined}
           onClick={() => setDate?.(item.date)}
@@ -1212,9 +1274,6 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
           <b className={`tone-${toneOf(weekNet)}`}>{money(weekNet, { privacy, decimals: 0 })}</b>
         </div>
       </div>
-        <div className="jr-nav">
-          <button type="button" aria-label="Previous trading day" title={previousDay ? easternLabel(previousDay) : 'No earlier sessions'} disabled={!previousDay} onClick={() => setDate?.(previousDay)}><ChevronLeft size={16} strokeWidth={2}/></button>
-          <button type="button" aria-label="Next trading day" title={nextDay ? easternLabel(nextDay) : 'Latest session'} disabled={!nextDay} onClick={() => setDate?.(nextDay)}><ChevronRight size={16} strokeWidth={2}/></button>
         </div>
       </div>
     </header>
@@ -1223,8 +1282,10 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
       <div className="journal-main">
         <div className="journal-kpis">
           {tiles.map((tile) => <div className="stat-tile" key={tile.label}>
-            <span className="tile-label">{tile.label}</span>
-            <strong className={`tile-number${tile.tone ? ` tone-${tile.tone}` : ''}`}>{tile.value}</strong>
+            <div className="tile-top">
+              <strong className={`tile-number${tile.tone ? ` tone-${tile.tone}` : ''}`}>{tile.value}</strong>
+              <span className="tile-label">{tile.label}</span>
+            </div>
             <small className="tile-caption">{tile.caption}</small>
             {tile.viz}
           </div>)}
@@ -1235,7 +1296,6 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
             <div className="st-head">
               <span className="card-title">Session timeline</span>
               <div className="st-tools">
-                <span className="st-meta">{sessionFills.length} trades · {Math.floor(heldMinutes / 60)}h {heldMinutes % 60}m in market · US Eastern</span>
                 <div className="ws-seg compact" role="tablist" aria-label="Timeline view">
                   {['Packed', 'By trade'].map((option) => <button
                     key={option} type="button" role="tab" aria-selected={timelineView === option}
@@ -1245,7 +1305,7 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
               </div>
             </div>
             {timelineView === 'Packed' && <div className="stl stl-packed" role="list">
-              {packedRows.map((row, rowIndex) => <div className="stl-row full" key={rowIndex}>
+              {[...packedRows, ...Array.from({ length: Math.max(0, TIMELINE_MIN_ROWS - packedRows.length) }, () => [])].map((row, rowIndex) => <div className={`stl-row full${row.length ? '' : ' is-empty'}`} key={rowIndex} aria-hidden={row.length ? undefined : true}>
                 <span className="stl-lane">
                   <i className="stl-lunch" style={{ left: `${timelineAt(12 * 60)}%`, width: `${timelineAt(13 * 60 + 30) - timelineAt(12 * 60)}%` }}/>
                   {[10, 11, 12, 13, 14, 15].map((hour) => <i key={hour} className="stl-hour" style={{ left: `${timelineAt(hour * 60)}%` }}/>)}
@@ -1256,7 +1316,7 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
                     return <span
                       key={fill.id} role="listitem" className="stp-item"
                       style={{ left: `${start}%`, width: `${Math.max(0.6, end - start)}%` }}
-                      title={`${fill.symbol} ${fill.side} · ${fill.time} → ${fill.closed} ET · ${held}m · ${fill.setup}`}
+
                     >
                       <span className="stp-label">{fill.symbol} <b className={`tone-${toneOf(fill.pnl)}`}>{money(fill.pnl, { privacy, decimals: 0 })}</b></span>
                       <i className={`stl-bar ${toneOf(fill.pnl)}`}/>
@@ -1277,20 +1337,28 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
                 const end = timelineAt(toMinutes(fill.closed ?? fill.time))
                 const held = toMinutes(fill.closed ?? fill.time) - toMinutes(fill.time)
                 return <div className="stl-row" role="listitem" key={fill.id}>
-                  <span className="stl-name"><b>{fill.symbol}</b><i className={`side-mark ${fill.side.toLowerCase()}`} title={fill.side} aria-label={fill.side}>{fill.side[0]}</i></span>
+                  <span className="stl-name"><b>{fill.symbol}</b><i className={`side-mark ${fill.side.toLowerCase()}`} aria-label={fill.side}>{fill.side[0]}</i></span>
                   <span className="stl-lane">
                     <i className="stl-lunch" style={{ left: `${timelineAt(12 * 60)}%`, width: `${timelineAt(13 * 60 + 30) - timelineAt(12 * 60)}%` }}/>
                     {[10, 11, 12, 13, 14, 15].map((hour) => <i key={hour} className="stl-hour" style={{ left: `${timelineAt(hour * 60)}%` }}/>)}
                     <span
                       className={`stl-bar ${toneOf(fill.pnl)}`}
                       style={{ left: `${start}%`, width: `${Math.max(0.6, end - start)}%` }}
-                      title={`${fill.symbol} ${fill.side} · ${fill.time} → ${fill.closed} ET · ${held}m · ${fill.setup}`}
+
                     />
                     <span className="stl-when" style={end > 72 ? { right: `${100 - start}%`, paddingRight: 8 } : { left: `${end}%`, paddingLeft: 8 }}>{fill.time}–{fill.closed} · {held}m</span>
                   </span>
                   <span className={`stl-pnl tone-${toneOf(fill.pnl)}`}>{money(fill.pnl, { privacy, decimals: 0 })}</span>
                 </div>
               })}
+              {Array.from({ length: Math.max(0, TIMELINE_MIN_ROWS - ordered.length) }, (_, index) => <div className="stl-row is-empty" key={`pad-${index}`} aria-hidden="true">
+                <span className="stl-name"/>
+                <span className="stl-lane">
+                  <i className="stl-lunch" style={{ left: `${timelineAt(12 * 60)}%`, width: `${timelineAt(13 * 60 + 30) - timelineAt(12 * 60)}%` }}/>
+                  {[10, 11, 12, 13, 14, 15].map((hour) => <i key={hour} className="stl-hour" style={{ left: `${timelineAt(hour * 60)}%` }}/>)}
+                </span>
+                <span className="stl-pnl"/>
+              </div>)}
               <div className="stl-row stl-axis" aria-hidden="true">
                 <span/>
                 <span className="stl-lane">
@@ -1300,14 +1368,20 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
                 <span/>
               </div>
             </div>}
+            <p className="st-meta st-foot">{sessionFills.length} trades · {Math.floor(heldMinutes / 60)}h {heldMinutes % 60}m in market · US Eastern</p>
           </div>
         </section>
 
+        {drawerTradeId && <TradeDrawer
+          trades={visibleFills.some((fill) => fill.id === drawerTradeId) ? visibleFills : sessionFills} selectedId={drawerTradeId} reviews={tradeReviews} privacy={privacy}
+          onSelect={setDrawerTradeId} onArchive={archiveTrade} onClose={() => setDrawerTradeId(null)}
+        />}
+
         <div className="versus-row">
           {extras.map((item) => <section className="compare-card" key={item.label}>
-            <div className="compare-head"><span className="compare-label">{item.label}</span></div>
             <div className="compare-value">
               <strong className={item.tone ? `tone-${item.tone}` : undefined}>{item.value}</strong>
+              <span className="compare-label">{item.label}</span>
             </div>
             <div className="compare-foot">
               <small className="compare-caption">{item.caption}</small>
@@ -1316,11 +1390,10 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
           </section>)}
         </div>
 
-        <section className="home-card">
-          <div className="card-collapse-head">
+        <section className="home-card duo jr-trades">
+          <div className="card-collapse-head shell-head" onClick={(event) => { if (!event.target.closest('button')) setTradesOpen(!tradesOpen) }}>
             <button type="button" className="card-collapse" aria-expanded={tradesOpen} onClick={() => setTradesOpen(!tradesOpen)}>
-              <span className="card-title">Trades <span className="card-count">{visibleFills.length}</span></span>
-              <span className="cc-caret-box"><ChevronDown size={14} strokeWidth={2.2} className="cc-caret"/></span>
+              <span className="card-title">Trades</span>
             </button>
             <div className="ws-seg compact" role="tablist" aria-label="Filter session trades">
               {['All', 'Wins', 'Losses'].map((option) => <button
@@ -1330,24 +1403,32 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
               >{option}</button>)}
             </div>
           </div>
-          <div className={`card-fold${tradesOpen ? ' open' : ''}`}><div className="card-fold-inner">
+          <div className="shell-body"><div className={`card-fold${tradesOpen ? ' open' : ''}`}><div className="card-fold-inner">
           <div ref={(el) => { if (el && !tableEnd && el.scrollHeight <= el.clientHeight + 2) setTableEnd(true) }} className={`journal-table-wrap${tableEnd ? ' at-end' : ''}`} onScroll={(event) => {
             const el = event.currentTarget
             setTableEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 2)
           }}>
             <table className="feed-table journal-table">
-              <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Setup</th><th>Qty · Entry → Exit</th><th>Grade</th><th>Net P&L</th></tr></thead>
+              <thead><tr><th>Time</th><th>Symbol</th><th>Side</th><th>Setup</th><th className="jt-route-head"><span className="jt-route">
+                <span className="jt-qty">Qty</span>
+                <span className="jt-prices"><span>Entry</span><span className="jt-arrow" aria-hidden="true">→</span><span>Exit</span></span>
+              </span></th><th className="jt-col-account">Account</th><th>Net P&L</th></tr></thead>
               <tbody>
                 {visibleFills.map((fill) => {
                   const held = fill.closed ? toMinutes(fill.closed) - toMinutes(fill.time) : null
-                  return <tr key={fill.id} className={`jt-row ${toneOf(fill.pnl)}`}>
+                  return <tr
+                    key={fill.id} className={`jt-row ${toneOf(fill.pnl)}${drawerTradeId === fill.id ? ' is-selected' : ''}`}
+                    tabIndex={0} aria-label={`${fill.symbol} ${fill.side} at ${fill.time}`}
+                    onClick={() => setDrawerTradeId(fill.id)}
+                    onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); setDrawerTradeId(fill.id) } }}
+                  >
                     <td className="jt-time">
                       <span>{fill.time}</span>
                       {held != null && <small>{held >= 60 ? `${Math.floor(held / 60)}h ${held % 60}m` : `${held}m`}</small>}
                     </td>
                     <td className="jt-symbol">
                       <span className="jt-sym">
-                        <span className={`jt-token c-${symbolClassSlug(fill.symbol)}`} aria-hidden="true">{fill.symbol.slice(0, 2)}</span>
+                        <SymbolToken symbol={fill.symbol}/>
                         <b>{fill.symbol}</b>
                       </span>
                     </td>
@@ -1355,9 +1436,12 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
                     <td><span className="jt-setup">{fill.setup}</span></td>
                     <td className="jt-route">
                       <span className="jt-qty">{fill.qty}</span>
-                      <span className="jt-prices">{fill.entry.toFixed(2)}<i className={toneOf(fill.pnl)} aria-hidden="true"/>{fill.exit.toFixed(2)}</span>
+                      <span className="jt-prices"><span>{fill.entry.toFixed(2)}</span><span className={`jt-arrow ${toneOf(fill.pnl)}`} aria-hidden="true">→</span><span>{fill.exit.toFixed(2)}</span></span>
                     </td>
-                    <td><span className={`grade-chip g-${fill.grade === 'A+' ? 'ap' : fill.grade.toLowerCase()}`}>{fill.grade}</span></td>
+                    <td className="jt-col-account">{(() => {
+                      const name = accountForTrade(fill)?.content.name ?? 'Unassigned'
+                      return <span className="tl-account"><FirmLogo firm={firmOf(name)}/>{name}</span>
+                    })()}</td>
                     <td className={`jt-pnl tone-${toneOf(fill.pnl)}`}>
                       <span className="pnl-cell">
                         <span className="pnl-bar" aria-hidden="true"><i className={toneOf(fill.pnl)} style={{ width: `${(Math.abs(fill.pnl) / pnlPeak) * 100}%` }}/></span>
@@ -1369,8 +1453,10 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
               </tbody>
             </table>
           </div>
-          </div></div>
+          </div></div></div>
+        </section>
 
+        <section className="home-card intraday-card">
           <div className="intraday-head">
             <div className="card-title">Intraday Net Cumulative P&L</div>
             <dl className="intraday-stats">
@@ -1379,51 +1465,56 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
               <div><dt>Close</dt><dd className={`tone-${toneOf(intraday.close)}`}>{money(intraday.close, { privacy, decimals: 0 })}</dd></div>
             </dl>
           </div>
-          <IntradayChart fills={sessionFills} height={250} privacy={privacy}/>
+          <IntradayChart fills={sessionFills} height={250} privacy={privacy} onSelect={setDrawerTradeId}/>
         </section>
       </div>
 
       <aside className="journal-side">
-      <section className="home-card journal-note">
-        <div className="note-head">
-          <button type="button" className="card-collapse note-collapse" aria-expanded={noteOpen} onClick={() => setNoteOpen(!noteOpen)}>
-            <span className="card-title">Session note</span>
-            <span className="cc-caret-box"><ChevronDown size={14} strokeWidth={2.2} className="cc-caret"/></span>
-          </button>
-          <div className="note-tools">
-            <button className="note-button" aria-pressed={editing} onClick={() => { setNoteOpen(true); if (editing) saveNote(); setEditing(!editing) }}>
+      <section
+        className="home-card journal-note note-preview" role="button" tabIndex={0}
+        aria-label="Open session note" onClick={openNote}
+        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openNote() } }}
+      >
+        <div className="np-head">
+          <span className="card-title">Session note</span>
+          <span className="np-meta">{savedAt ? `Saved ${savedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : 'Saved'}<ChevronRight size={14}/></span>
+        </div>
+        <div className="np-body">
+          <b className="np-title">{notePreview.title}</b>
+          {notePreview.body && <p className="np-text">{notePreview.body}</p>}
+          <span className="np-lines" aria-hidden="true"><i/><i/><i/></span>
+          {attachments.length > 0 && <small className="np-shots">{attachments.length} screenshot{attachments.length === 1 ? '' : 's'}</small>}
+        </div>
+        {toast && <span className="note-toast" role="status">{toast}</span>}
+      </section>
+      {noteDrawer && <Drawer label="Session note" width={560} onClose={() => { if (editing) { saveNote(); setEditing(false) } setNoteDrawer(false) }}>
+        <div className="note-drawer journal-note">
+          <div className="nd-head">
+            <DrawerHeader title="Session note" description={easternLabel(date)}/>
+            <button className="note-button" aria-pressed={editing} onClick={() => { if (editing) saveNote(); setEditing(!editing) }}>
               {editing ? <Check size={14}/> : <Pencil size={14}/>} {editing ? 'Done' : 'Edit'}
             </button>
           </div>
-        </div>
-        <div className={`card-fold${noteOpen ? ' open' : ''}`}><div className="card-fold-inner">
         {editing && <div className="note-toolbar" role="toolbar" aria-label="Formatting">
-          <button type="button" className={formats.bold ? 'on' : ''} aria-pressed={formats.bold} aria-label="Bold" title="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => runFormat('bold')}><Bold size={14} strokeWidth={2.4}/></button>
-          <button type="button" className={formats.italic ? 'on' : ''} aria-pressed={formats.italic} aria-label="Italic" title="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => runFormat('italic')}><Italic size={14} strokeWidth={2.2}/></button>
-          <button type="button" className={formats.list ? 'on' : ''} aria-pressed={formats.list} aria-label="Bullet list" title="Bullet list" onMouseDown={(event) => event.preventDefault()} onClick={() => runFormat('insertUnorderedList')}><List size={15} strokeWidth={2.2}/></button>
+          <button type="button" className={formats.bold ? 'on' : ''} aria-pressed={formats.bold} aria-label="Bold" onMouseDown={(event) => event.preventDefault()} onClick={() => runFormat('bold')}><Bold size={14} strokeWidth={2.4}/></button>
+          <button type="button" className={formats.italic ? 'on' : ''} aria-pressed={formats.italic} aria-label="Italic" onMouseDown={(event) => event.preventDefault()} onClick={() => runFormat('italic')}><Italic size={14} strokeWidth={2.2}/></button>
+          <button type="button" className={formats.list ? 'on' : ''} aria-pressed={formats.list} aria-label="Bullet list" onMouseDown={(event) => event.preventDefault()} onClick={() => runFormat('insertUnorderedList')}><List size={15} strokeWidth={2.2}/></button>
           <span className="nt-divider" aria-hidden="true"/>
-          <button type="button" aria-label="Smaller text" title="Smaller text" disabled={noteScale <= -3} onMouseDown={(event) => event.preventDefault()} onClick={() => changeScale(-1)}><AArrowDown size={15} strokeWidth={2}/></button>
+          <button type="button" aria-label="Smaller text" disabled={noteScale <= -3} onMouseDown={(event) => event.preventDefault()} onClick={() => changeScale(-1)}><AArrowDown size={15} strokeWidth={2}/></button>
           <span className="nt-scale" aria-live="polite">{noteScale > 0 ? `+${noteScale}` : noteScale}</span>
-          <button type="button" aria-label="Larger text" title="Larger text" disabled={noteScale >= 3} onMouseDown={(event) => event.preventDefault()} onClick={() => changeScale(1)}><AArrowUp size={15} strokeWidth={2}/></button>
+          <button type="button" aria-label="Larger text" disabled={noteScale >= 3} onMouseDown={(event) => event.preventDefault()} onClick={() => changeScale(1)}><AArrowUp size={15} strokeWidth={2}/></button>
         </div>}
-        <article
-          ref={noteRef}
-          className={editing ? 'is-editing' : undefined}
-          style={{ '--note-scale': noteScale }}
-          contentEditable={editing}
-          suppressContentEditableWarning
-          spellCheck={editing}
-          aria-label="Session note"
-          onInput={saveNote}
-          dangerouslySetInnerHTML={{ __html: noteHtml }}
-        />
-        <div className="note-foot">
-          <span className="save-state"><Check size={13} strokeWidth={2.2}/> {savedAt ? `Saved ${savedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : 'Saved just now'}</span>
-          <div className="note-tools">
-            <button type="button" className="note-button" onClick={copyNote}><Copy size={14}/> Copy</button>
-            <button type="button" className="note-button" onClick={downloadNote}><Download size={14}/> Download</button>
-          </div>
-        </div>
+          <article
+            ref={noteRef}
+            className={editing ? 'is-editing' : undefined}
+            style={{ '--note-scale': noteScale }}
+            contentEditable={editing}
+            suppressContentEditableWarning
+            spellCheck={editing}
+            aria-label="Session note"
+            onInput={saveNote}
+            dangerouslySetInnerHTML={{ __html: openedHtml }}
+          />
         {attachments.length > 0 && <div className="note-shots">
           {attachments.map((item) => <figure key={item.id}>
             <button type="button" className="shot-open" onClick={() => setPreview(item)} aria-label={`Open ${item.name}`}><img src={item.src} alt=""/></button>
@@ -1437,65 +1528,84 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
           onDragOver={(event) => event.preventDefault()}
           onDrop={(event) => { event.preventDefault(); addFiles(event.dataTransfer.files) }}
         ><Plus size={15}/> Attach screenshots <small>Click or drop images</small></button>
-        </div></div>
-        {toast && <span className="note-toast" role="status">{toast}</span>}
-        {preview && <div className="shot-preview" onClick={() => setPreview(null)} role="dialog" aria-label={preview.name}>
-          <img src={preview.src} alt={preview.name}/>
-        </div>}
-      </section>
+          <div className="note-foot">
+            <span className="save-state"><Check size={13} strokeWidth={2.2}/> {savedAt ? `Saved ${savedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : 'Saved'}</span>
+            <div className="note-tools">
+              <button type="button" className="note-button" onClick={copyNote}><Copy size={14}/> Copy</button>
+              <button type="button" className="note-button" onClick={downloadNote}><Download size={14}/> Download</button>
+            </div>
+          </div>
+        </div>
+      </Drawer>}
+      {preview && <div className="shot-preview" onClick={() => setPreview(null)} role="dialog" aria-label={preview.name}>
+        <img src={preview.src} alt={preview.name}/>
+      </div>}
 
       <section className="home-card day-breakdown">
         <div className="card-title">Day breakdown</div>
-        <dl className="breakdown-list">
-          <div><dt>Largest win</dt><dd className="tone-pos">{breakdown.largestWin ? money(breakdown.largestWin.pnl, { privacy }) : '—'}<small>{breakdown.largestWin?.symbol}</small></dd></div>
-          <div><dt>Largest loss</dt><dd className="tone-neg">{breakdown.largestLoss ? money(breakdown.largestLoss.pnl, { privacy }) : '—'}<small>{breakdown.largestLoss?.symbol}</small></dd></div>
-          <div><dt>Average winner</dt><dd className="tone-pos">{money(breakdown.avgWinner, { privacy })}</dd></div>
-          <div><dt>Average loser</dt><dd className="tone-neg">{money(breakdown.avgLoser, { privacy })}</dd></div>
-        </dl>
-        <div className="side-split">
-          <div className="side-split-head"><span>Long <b className={`tone-${toneOf(breakdown.long)}`}>{money(breakdown.long, { privacy, decimals: 0 })}</b></span><span>Short <b className={`tone-${toneOf(breakdown.short)}`}>{money(breakdown.short, { privacy, decimals: 0 })}</b></span></div>
-          <div className="side-split-bar">
-            <i className={toneOf(breakdown.long)} style={{ flex: Math.abs(breakdown.long) || 1 }}/>
-            <i className={toneOf(breakdown.short)} style={{ flex: Math.abs(breakdown.short) || 1 }}/>
-          </div>
+        <div className="db-rows">
+          {[
+            { label: 'Largest trade', left: breakdown.largestWin?.pnl, leftMeta: breakdown.largestWin?.symbol, right: breakdown.largestLoss?.pnl, rightMeta: breakdown.largestLoss?.symbol },
+            { label: 'Average trade', left: breakdown.avgWinner, right: breakdown.avgLoser },
+            { label: 'Long vs short', left: breakdown.long, leftMeta: 'Long', right: breakdown.short, rightMeta: 'Short', sides: true },
+          ].map((row) => {
+            const left = row.left ?? 0, right = row.right ?? 0
+            return <div className="db-row" key={row.label}>
+              <div className="db-line">
+                <span className="db-side"><b className={`tone-${toneOf(left)}`}>{row.left == null ? '—' : money(left, { privacy, decimals: 0 })}</b>{row.leftMeta && <small>{row.leftMeta}</small>}</span>
+                <span className="db-label">{row.label}</span>
+                <span className="db-side end">{row.rightMeta && <small>{row.rightMeta}</small>}<b className={`tone-${toneOf(right)}`}>{row.right == null ? '—' : money(right, { privacy, decimals: 0 })}</b></span>
+              </div>
+              <span className={`db-bar${row.sides ? ' sides' : ''}`} aria-hidden="true">
+                <i className={toneOf(left)} style={{ flex: Math.abs(left) || 0.0001 }}/>
+                <i className={toneOf(right)} style={{ flex: Math.abs(right) || 0.0001 }}/>
+              </span>
+            </div>
+          })}
         </div>
       </section>
 
       <section className="home-card checklist-card">
-        <button type="button" className="checklist-head as-toggle" aria-expanded={checklistOpen} onClick={() => setChecklistOpen(!checklistOpen)}>
+        <button type="button" className="checklist-head as-toggle" aria-haspopup="dialog" onClick={() => setChecklistOpen(true)}>
           <div>
-            <div className="card-title">Execution checklist <ChevronDown size={14} strokeWidth={2.2} className="cc-caret"/></div>
+            <div className="card-title">Execution checklist <ChevronRight size={14} strokeWidth={2.2} className="cc-caret"/></div>
             <span className="checklist-sub">{checked.filter(Boolean).length} of {checklistRules.length} rules kept</span>
           </div>
-          <span className={`discipline-ring ${disciplineTone(discipline)}`} style={{ '--share': discipline }} role="img" aria-label={`${discipline}% discipline`}>
-            <b>{discipline}<small>%</small></b>
-          </span>
+          <span className={`discipline-ring ${disciplineTone(discipline)}`} style={{ '--share': discipline }} role="img" aria-label={`${discipline}% discipline`}/>
         </button>
-        <div className={`card-fold${checklistOpen ? ' open' : ''}`}><div className="card-fold-inner">
-        <ul className="checklist">
-          {checklistRules.map((rule, index) => <li key={rule.label} className={checked[index] ? 'kept' : 'missed'} style={{ '--hue': rule.hue }}>
-            <label>
-              <input type="checkbox" checked={!!checked[index]} onChange={() => toggleCheck(index)}/>
-              <span className="check-box" aria-hidden="true"><Check size={12} strokeWidth={3}/></span>
-              <span className="check-label">{rule.label}</span>
-              <span className="check-tag">{checked[index] ? rule.group : 'Missed'}</span>
-            </label>
-          </li>)}
-        </ul>
-        </div></div>
         <div className="checklist-foot">
           <div className="cw-head">
             <span>This week</span>
             {disciplineAverage != null && <span>Avg <b className={`tone-${disciplineTone(disciplineAverage) === 'pos' ? 'pos' : disciplineTone(disciplineAverage) === 'neg' ? 'neg' : 'mid'}`}>{disciplineAverage}%</b></span>}
           </div>
           <div className="cw-bars" aria-hidden="true">
-            {disciplineWeek.map((item) => <div key={item.date} className={`cw-day${item.date === JOURNAL_DAY ? ' current' : ''}`} title={item.score == null ? item.weekday : `${item.weekday} · ${item.score}%`}>
-              <span className="cw-track"><i className={item.score == null ? '' : disciplineTone(item.score)} style={{ height: `${item.score ?? 0}%` }}/></span>
-              <small>{item.weekday.slice(0, 1)}</small>
+            {disciplineWeek.map((item) => <div key={item.date} className={`cw-day${item.date === JOURNAL_DAY ? ' current' : ''}`}>
+              <small>{item.weekday}</small>
+              <span className="cw-track"><i className={item.score == null ? '' : disciplineTone(item.score)} style={{ '--score': `${item.score ?? 0}%` }}/></span>
+              <em>{item.score == null ? '—' : `${item.score}%`}</em>
             </div>)}
           </div>
         </div>
       </section>
+      {checklistOpen && <Drawer label="Execution checklist" width={460} onClose={() => setChecklistOpen(false)}>
+        <div className="checklist-drawer">
+          <DrawerHeader title="Execution checklist" description={easternLabel(date)}/>
+          <div className="cd-score">
+            <span className={`discipline-ring ${disciplineTone(discipline)}`} style={{ '--share': discipline }} aria-hidden="true"/>
+            <span><b>{checked.filter(Boolean).length} of {checklistRules.length}</b> rules kept · {discipline}%</span>
+          </div>
+            <ul className="checklist">
+              {checklistRules.map((rule, index) => <li key={rule.label} className={checked[index] ? 'kept' : 'missed'} style={{ '--hue': rule.hue }}>
+                <label>
+                  <input type="checkbox" checked={!!checked[index]} onChange={() => toggleCheck(index)}/>
+                  <span className="check-box" aria-hidden="true"><Check size={12} strokeWidth={3}/></span>
+                  <span className="check-label">{rule.label}</span>
+                  <span className="check-tag">{checked[index] ? rule.group : 'Missed'}</span>
+                </label>
+              </li>)}
+            </ul>
+        </div>
+      </Drawer>}
       </aside>
     </div>
   </div>
