@@ -73,7 +73,7 @@ export function RefLine({ values: raw, rest: rawRest = [], tone = 'pos', label, 
   </div>
 }
 
-export const AREA_POS = '#32d583', AREA_NEG = '#f97066'
+export const AREA_POS = '#22c47d', AREA_NEG = '#f5615a'
 
 /** Price-card sparkline: a lively 2.5px line over a fill that fades to nothing, drawn at real pixel size. */
 export function AreaLine({ values: raw, tone = 'pos', density = 7 }) {

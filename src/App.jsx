@@ -65,7 +65,7 @@ export default function App() {
 
   return <div className={`app-shell${railCollapsed ? ' rail-collapsed' : ''}`}>
     <Sidebar page={page} setPage={setPage} openLog={openLog} open={sidebarOpen} setOpen={setSidebarOpen} collapsed={railCollapsed} toggleRail={() => setRailCollapsed((value) => !value)}/>
-    {sidebarOpen && <div className="scrim" onClick={() => setSidebarOpen(false)}/>}
+    <div className={`scrim${sidebarOpen ? ' is-open' : ''}`} aria-hidden="true" onClick={() => setSidebarOpen(false)}/>
     <div className="workspace">
       <Topbar page={page} setPage={setPage} range={range} setRange={setRange} setSidebarOpen={setSidebarOpen} privacy={privacy} setPrivacy={setPrivacy} openJump={() => setJumpOpen(true)}/>
       <main key={`${page}-${dataVersion}-${page === 'Daily journal' ? journalDate : ''}`}>{view}</main>

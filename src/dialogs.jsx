@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowRight, CalendarDays, ChevronLeft, Clock3, CornerDownLeft, FileText, Landmark, LayoutDashboard, ListFilter, NotebookPen, Plus, Search, X, ChartNoAxesCombined } from 'lucide-react'
 import { SETUP_CODES } from './analytics'
@@ -35,23 +35,67 @@ export function Dialog({ title, subtitle, onClose, children, footer, width = 520
 }
 
 /** Right-side drawer for longer forms and detail views; same header/body/footer styles as Dialog. */
+/**
+ * Side panel: floats in from the right on a spring. Closes on Escape, a backdrop click or a swipe to the right,
+ * and animates out whichever way it closes: on unmount it leaves a still copy of itself that slides away.
+ */
 export function Sheet({ title, subtitle, onClose, children, footer, width = 480, className = '' }) {
   const panelRef = useRef(null)
+  const backdropRef = useRef(null)
   const closeRef = useRef(onClose)
   closeRef.current = onClose
+  const drag = useRef(null)
+  const [dx, setDx] = useState(0)
   useEffect(() => {
     const onKey = (event) => { if (event.key === 'Escape') closeRef.current() }
     const previous = document.activeElement
     document.addEventListener('keydown', onKey)
     document.body.classList.add('dlg-open')
-    panelRef.current?.querySelector('input, select, textarea, button:not(.dlg-close)')?.focus()
+    panelRef.current?.querySelector('input, select, textarea, button')?.focus({ preventScroll: true })
     return () => { document.removeEventListener('keydown', onKey); document.body.classList.remove('dlg-open'); previous?.focus?.() }
   }, [])
-  return createPortal(<div className="sheet-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-    <aside className={`sheet ${className}`} role="dialog" aria-modal="true" aria-label={title} style={{ '--sheet-width': `${width}px` }} ref={panelRef}>
+  // exit: however the parent removes the sheet, a still copy slides out in its place
+  useLayoutEffect(() => {
+    const node = backdropRef.current
+    return () => {
+      if (!node || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+      const ghost = node.cloneNode(true)
+      const body = node.querySelector('.sheet-body')
+      ghost.classList.add('is-leaving')
+      ghost.setAttribute('aria-hidden', 'true')
+      ghost.inert = true
+      document.body.appendChild(ghost)
+      const ghostBody = ghost.querySelector('.sheet-body')
+      if (body && ghostBody) ghostBody.scrollTop = body.scrollTop
+      window.setTimeout(() => ghost.remove(), 380)
+    }
+  }, [])
+  const start = (event) => {
+    if (event.target.closest('button, a, input, textarea, select, label, [contenteditable="true"]')) return
+    drag.current = { x: event.clientX, y: event.clientY, at: performance.now(), locked: null }
+  }
+  const move = (event) => {
+    const d = drag.current; if (!d) return
+    const x = event.clientX - d.x, y = event.clientY - d.y
+    if (d.locked == null && Math.abs(x) + Math.abs(y) > 8) d.locked = x > 0 && Math.abs(x) > Math.abs(y)
+    if (d.locked) setDx(Math.max(0, x))
+  }
+  const end = (event) => {
+    const d = drag.current; drag.current = null
+    if (!d?.locked) { setDx(0); return }
+    const x = event.clientX - d.x, speed = x / Math.max(1, performance.now() - d.at)
+    setDx(0)
+    if (x > 110 || speed > 0.7) closeRef.current()
+  }
+  return createPortal(<div ref={backdropRef} className="sheet-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <aside
+      className={`sheet ${className}${dx ? ' is-dragging' : ''}`} role="dialog" aria-modal="true" aria-label={title}
+      style={{ '--sheet-width': `${width}px`, '--sheet-drag': `${dx}px` }} ref={panelRef}
+      onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
+    >
+      <span className="sheet-grip" aria-hidden="true"/>
       <header className="dlg-head">
         <div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>
-        <button type="button" className="dlg-close" aria-label="Close" onClick={onClose}><X size={16}/></button>
       </header>
       <div className="sheet-body">{children}</div>
       {footer && <footer className="dlg-foot sheet-foot">{footer}</footer>}

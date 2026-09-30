@@ -11,7 +11,7 @@ import SettingsSolidIcon from '@iconify-react/basil/settings-solid'
 import {
   SlidersHorizontal,
   ChevronDown, Sparkles, Search, Bell, Download, Image as ImageIcon, Mic, Star,
-  ArrowUpRight, Menu, X, CircleHelp, GripVertical, ChevronLeft, ChevronRight, LogOut,
+  ArrowUpRight, Menu, CircleHelp, GripVertical, ChevronLeft, ChevronRight, LogOut,
   TrendingUp, TrendingDown, Target, CalendarDays, Plus,
   LayoutDashboard, NotebookPen, Receipt, Landmark, ChartNoAxesCombined, BookOpen, Library, ListChecks,
   Import as ImportIcon, WalletCards, Settings, ChevronsUpDown,
@@ -105,9 +105,6 @@ function SidebarContents({ page, setPage, openLog, closeMobile, mobile = false, 
         aria-pressed={collapsed}
         onClick={toggleRail}
       ><Icon icon={viewSidebarIcon} width="17" height="17"/></button>}
-      {mobile && <div className="brand-tools">
-        <button className="brand-tool" aria-label="Close navigation" onClick={closeMobile}><X size={17} /></button>
-      </div>}
     </div>
 
 
@@ -126,11 +123,16 @@ function SidebarContents({ page, setPage, openLog, closeMobile, mobile = false, 
           {group.items.map(([label, Icon]) =>
             <NavButton key={label} label={label} Icon={Icon} page={page} onSelect={go(label)} />)}
           {group.overflow && <>
-            {showOverflow && group.overflow.map(([label, Icon]) =>
-              <NavButton key={label} label={label} Icon={Icon} page={page} onSelect={go(label)} />)}
+            <div className={`nav-fold${showOverflow ? ' open' : ''}`} inert={!showOverflow}>
+              <div className="nav-fold-inner">
+                {group.overflow.map(([label, Icon]) =>
+                  <NavButton key={label} label={label} Icon={Icon} page={page} onSelect={go(label)} />)}
+              </div>
+            </div>
             <button type="button" className="nav-link subtle nav-more" aria-expanded={showOverflow} onClick={() => setExpandedGroups(prev => ({ ...prev, [group.id]: !prev[group.id] }))}>
               <MoreNavIcon size={18} />
               <span className="sidebar-label">{showOverflow ? 'Less' : 'More'}</span>
+              <ChevronDown className="nav-more-caret sidebar-label" size={14} strokeWidth={2} aria-hidden="true" />
             </button>
           </>}
         </div>
@@ -153,6 +155,42 @@ function SidebarContents({ page, setPage, openLog, closeMobile, mobile = false, 
   </>
 }
 
+/** Phone navigation: a rounded panel that springs in from the left and follows the finger when swiped closed. */
+function MobileSidebar({ open, setOpen, children }) {
+  const ref = React.useRef(null)
+  const drag = React.useRef(null)
+  const [dx, setDx] = React.useState(0)
+  React.useEffect(() => {
+    if (!open) return undefined
+    const onKey = (event) => { if (event.key === 'Escape') setOpen(false) }
+    const previous = document.activeElement
+    document.addEventListener('keydown', onKey)
+    document.body.classList.add('nav-open')
+    const frame = requestAnimationFrame(() => ref.current?.querySelector('.nav-link.active, .nav-link')?.focus({ preventScroll: true }))
+    return () => { document.removeEventListener('keydown', onKey); document.body.classList.remove('nav-open'); cancelAnimationFrame(frame); previous?.focus?.() }
+  }, [open])
+  const start = (event) => { drag.current = { x: event.clientX, y: event.clientY, at: performance.now(), locked: null } }
+  const move = (event) => {
+    const d = drag.current; if (!d) return
+    const x = event.clientX - d.x, y = event.clientY - d.y
+    if (d.locked == null && Math.abs(x) + Math.abs(y) > 8) d.locked = Math.abs(x) > Math.abs(y)
+    if (d.locked) setDx(Math.min(0, x))
+  }
+  const end = (event) => {
+    const d = drag.current; drag.current = null
+    if (!d?.locked) { setDx(0); return }
+    const x = event.clientX - d.x, speed = x / Math.max(1, performance.now() - d.at)
+    setDx(0)
+    if (x < -80 || speed < -0.6) setOpen(false)
+  }
+  return <aside
+    ref={ref} className={`sidebar mobile-sidebar${open ? ' open' : ''}${dx ? ' is-dragging' : ''}`}
+    aria-hidden={!open} inert={!open} aria-label="Navigation"
+    style={dx ? { '--nav-drag': `${dx}px` } : undefined}
+    onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
+  >{children}</aside>
+}
+
 // Designs by RNSENCE Studio
 export function Sidebar({ page, setPage, openLog, open, setOpen, collapsed, toggleRail }) {
   const shared = { page, setPage, openLog, collapsed, toggleRail }
@@ -160,9 +198,9 @@ export function Sidebar({ page, setPage, openLog, open, setOpen, collapsed, togg
     <aside className={`sidebar desktop-sidebar${collapsed ? ' collapsed' : ' expanded'}`}>
       <SidebarContents {...shared} />
     </aside>
-    <aside className={`sidebar mobile-sidebar ${open ? 'open' : ''}`} aria-hidden={!open}>
+    <MobileSidebar open={open} setOpen={setOpen}>
       <SidebarContents {...shared} mobile closeMobile={() => setOpen(false)} />
-    </aside>
+    </MobileSidebar>
   </>
 }
 
