@@ -38,9 +38,9 @@
 .ac-btn {
   display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border: 0; border-radius: 8px; background: #fff;
   color: var(--ink, #2b2f35); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer;
-  box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 2px 6px -2px rgba(16,24,40,.12); transition: box-shadow .15s ease, transform .1s ease;
+  box-shadow: var(--shadow-tight); transition: box-shadow .15s ease, transform .1s ease;
 }
-.ac-btn:hover:not(:disabled) { box-shadow: 0 1px 2px rgba(16,24,40,.1), 0 3px 8px -2px rgba(16,24,40,.16); }
+.ac-btn:hover:not(:disabled) { box-shadow: var(--shadow-tight-hover); }
 .ac-btn:active:not(:disabled) { transform: translateY(1px); }
 .ac-btn:disabled { opacity: .5; cursor: default; }
 .ac-btn svg { color: var(--ink-faint, #98a2b3); }
@@ -74,7 +74,7 @@
 
 .ac-page .ac-row-closed td { opacity: .62; }
 .ac-page .ac-closed { margin-top: 16px; }
-.ac-closed-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: 0; border-radius: 14px; background: #fff; color: inherit; font: inherit; text-align: left; cursor: pointer; box-shadow: 0 1px 1px rgba(16,24,40,.05), 0 1.5px 3px -1.5px rgba(16,24,40,.1); }
+.ac-closed-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 16px; border: 0; border-radius: 14px; background: #fff; color: inherit; font: inherit; text-align: left; cursor: pointer; box-shadow: var(--shadow-tight); }
 .ac-closed-title { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); font-size: 13px; font-weight: 650; }
 .ac-closed-title em { min-width: 20px; height: 20px; display: inline-grid; place-items: center; padding: 0 6px; border-radius: 999px; background: var(--fill); color: var(--ink-soft); font-size: 11px; font-style: normal; font-weight: 600; }
 .ac-closed-meta { flex: 1; color: var(--ink-faint); font-size: 12px; }

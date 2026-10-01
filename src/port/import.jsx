@@ -14,6 +14,7 @@ import {
   peekFlash, pointValueFor, readJSON, recordBatch, round, saveBatches, saveUngrouped, setFlash, stamp, symbolRoot, tradeFromFills,
   undoBatch, uid, writeJSON,
 } from './trading-data'
+import { Select } from '../select'
 import './import.css'
 
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`
@@ -321,20 +322,20 @@ function ImportFills({ privacy, flash }) {
 
     <div className="im-options">
       <label><span>Format</span>
-        <select aria-label="Import format" value={options.format} onChange={set('format')}>
+        <Select aria-label="Import format" value={options.format} onChange={set('format')}>
           <option value="">Detect from the file</option>
           {IMPORT_FORMATS.map((format) => <option key={format.id} value={format.id}>{format.label}</option>)}
-        </select>
+        </Select>
       </label>
       <label><span>Point values (futures, optional)</span><input aria-label="Point values" placeholder="ES=50, MNQ=2" value={options.points} onChange={set('points')}/></label>
       <label><span>Statement timezone</span><input aria-label="Statement timezone" value={options.timezone} onChange={set('timezone')}/></label>
       <label><span>Currency (no column)</span><input aria-label="Import currency" maxLength={3} value={options.currency} onChange={set('currency')}/></label>
       <label><span>Contract multiplier</span><input aria-label="Contract multiplier" inputMode="decimal" value={options.multiplier} onChange={set('multiplier')}/></label>
       <label><span>Journal account</span>
-        <select aria-label="Import account" value={options.account} onChange={set('account')}>
+        <Select aria-label="Import account" value={options.account} onChange={set('account')}>
           <option value="">No account</option>
           {accounts.map((account) => <option key={account.id} value={account.id}>{account.content.name}</option>)}
-        </select>
+        </Select>
       </label>
       <label><span>Statement net realized P&L</span><input inputMode="decimal" placeholder="optional" value={options.statementNet} onChange={set('statementNet')}/></label>
       <label><span>Statement fees</span><input inputMode="decimal" placeholder="optional" value={options.statementFees} onChange={set('statementFees')}/></label>
@@ -347,24 +348,24 @@ function ImportFills({ privacy, flash }) {
     </div>}
 
     {preview && preview.sourceAccounts.length > 1 && <label className="im-source"><span>Source account in the file</span>
-      <select aria-label="Source account" value={options.sourceAccount} onChange={set('sourceAccount')}>
+      <Select aria-label="Source account" value={options.sourceAccount} onChange={set('sourceAccount')}>
         <option value="">Choose one</option>
         {preview.sourceAccounts.map((name) => <option key={name}>{name}</option>)}
-      </select>
+      </Select>
     </label>}
 
     {preview?.generic && <fieldset className="im-mapping">
       <legend>Column mapping</legend>
       <div className="im-map-grid">{MAP_FIELDS.map(([field, label, hint]) => <label key={field}>
         <span>{label} {hint && <em>{hint}</em>}</span>
-        <select aria-label={`Map ${label}`} value={options.mapping[field] ?? ''} onChange={(event) => {
+        <Select aria-label={`Map ${label}`} value={options.mapping[field] ?? ''} onChange={(event) => {
           const next = { ...options.mapping }
           if (event.target.value) next[field] = event.target.value; else delete next[field]
           remap({ mapping: next })
         }}>
           <option value="">Not mapped</option>
           {preview.headers.map((header) => <option key={header}>{header}</option>)}
-        </select>
+        </Select>
       </label>)}</div>
       <div className="im-fees">
         <span>Fee columns (summed):</span>
@@ -613,7 +614,7 @@ function BrokerSync() {
         <summary>Connect a Tradovate account</summary>
         <p className="im-muted">Needs a Tradovate API key (Application Settings → API Access). The password and secret are encrypted on the server and never shown again.</p>
         <div className="im-connect-grid">
-          <label><span>Environment</span><select value={credentials.environment} onChange={set('environment')} autoComplete="off"><option value="live">Live</option><option value="demo">Demo (simulation)</option></select></label>
+          <label><span>Environment</span><Select value={credentials.environment} onChange={set('environment')} autoComplete="off"><option value="live">Live</option><option value="demo">Demo (simulation)</option></Select></label>
           <label><span>Username</span><input value={credentials.username} onChange={set('username')} autoComplete="off"/></label>
           <label><span>Password</span><input type="password" value={credentials.password} onChange={set('password')} autoComplete="off"/></label>
           <label><span>App ID</span><input value={credentials.appId} onChange={set('appId')} autoComplete="off"/></label>
@@ -623,11 +624,11 @@ function BrokerSync() {
         {error && <Feedback tone="error">{error}</Feedback>}
         {!found && <button type="button" className="im-btn" disabled={!complete || busy === 'find'} onClick={findAccounts}>{busy === 'find' ? 'Signing in…' : 'Find accounts'}</button>}
         {found && <div className="im-found">
-          <label><span>Tradovate account</span><select value={pick.source} onChange={(event) => setPick({ ...pick, source: event.target.value })}>{found.map((name) => <option key={name}>{name}</option>)}</select></label>
-          <label><span>File under</span><select value={pick.account} onChange={(event) => setPick({ ...pick, account: event.target.value })}>
+          <label><span>Tradovate account</span><Select value={pick.source} onChange={(event) => setPick({ ...pick, source: event.target.value })}>{found.map((name) => <option key={name}>{name}</option>)}</Select></label>
+          <label><span>File under</span><Select value={pick.account} onChange={(event) => setPick({ ...pick, account: event.target.value })}>
             <option value="">No journal account</option>
             {accounts.map((account) => <option key={account.id} value={account.id}>{account.content.name}</option>)}
-          </select></label>
+          </Select></label>
           <button type="button" className="start-day im-connect-btn" disabled={busy === 'connect'} onClick={connect}>{busy === 'connect' ? 'Connecting…' : 'Connect'}</button>
         </div>}
       </details>

@@ -1,7 +1,7 @@
 import React from 'react'
 import { profile, propAccounts, tradeLog } from './data'
 import { equitySeries } from './analytics'
-import { money, useEasternToday, useMarketSession } from './viz'
+import { money, useEasternToday, useMarketSession, titleCase } from './viz'
 import { BufferGaugeIcon, PasswordIcon, ShieldRiskIcon, TargetProgressIcon } from './icons'
 import { Icon } from '@iconify/react'
 import viewSidebarIcon from '@iconify-icons/material-symbols/view-sidebar'
@@ -404,7 +404,7 @@ export function SideDock({ setPage }) {
 
 export function Card({ children, className = '', title, action }) {
   return <section className={`card ${className}`}>
-    {(title || action) && <div className="card-head">{title && <span className="eyebrow">{title}</span>}{action}</div>}
+    {(title || action) && <div className="card-head">{title && <span className="eyebrow">{titleCase(title)}</span>}{action}</div>}
     {children}
   </section>
 }
@@ -443,7 +443,7 @@ export function Metric({ label, value, detail, tone = '', privacy = false, icon,
 }
 
 export function PageHeading({ eyebrow, title, text, action }) {
-  return <div className="page-heading"><div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h1>{title}</h1>{text && <p>{text}</p>}</div>{action}</div>
+  return <div className="page-heading"><div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h1>{titleCase(title)}</h1>{text && <p>{text}</p>}</div>{action}</div>
 }
 
 export function Pill({ children, tone = '' }) { return <span className={`pill ${tone}`}>{children}</span> }

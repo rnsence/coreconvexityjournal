@@ -10,6 +10,7 @@ import { Sheet, Field } from '../dialogs'
 import { money, toneOf } from '../viz'
 import { tradeLog } from '../data'
 import { STATUS_LABELS, accountForTrade, loadAccounts, saveAccounts, sizePosition, uid } from './trading-data'
+import { Select } from '../select'
 import './accounts.css'
 
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`
@@ -114,11 +115,11 @@ function PropRuleFields({ draft, set }) {
     <div className="dlg-grid">
       <Field label="Max drawdown"><input inputMode="decimal" placeholder="2000" {...text('buffer')}/></Field>
       <Field label="Drawdown type">
-        <select value={draft.drawdown_mode} onChange={(event) => set('drawdown_mode', event.target.value)}>
+        <Select value={draft.drawdown_mode} onChange={(event) => set('drawdown_mode', event.target.value)}>
           <option value="trailing">Trailing (intraday)</option>
           <option value="end-of-day">Trailing (end of day)</option>
           <option value="static">Static</option>
-        </select>
+        </Select>
       </Field>
       <label className="ac-check wide">
         <input type="checkbox" checked={!!draft.drawdown_locks_at_start} onChange={(event) => set('drawdown_locks_at_start', event.target.checked)}/>
@@ -145,9 +146,9 @@ function AccountForm({ initial, onSubmit, onCancel }) {
       <Field label="Name"><input required maxLength={255} value={draft.name} onChange={(event) => set('name', event.target.value)}/></Field>
       <Field label="Starting size"><input required inputMode="decimal" placeholder="50000" value={draft.size} onChange={(event) => set('size', event.target.value)}/></Field>
       <Field label="Type">
-        <select value={draft.type} onChange={(event) => set('type', event.target.value)}>
+        <Select value={draft.type} onChange={(event) => set('type', event.target.value)}>
           <option value="personal">Personal</option><option value="prop">Prop</option>
-        </select>
+        </Select>
       </Field>
       <Field label="Firm (optional)"><input maxLength={255} value={draft.firm ?? ''} onChange={(event) => set('firm', event.target.value || null)}/></Field>
     </div>
@@ -187,19 +188,19 @@ function PositionSizer({ accounts, statuses, privacy }) {
   return <Card title="Position sizer" className="ac-sizer" aside={<span className="ws-hint">Risk per unit = |entry − stop| × point value</span>}>
     <div className="ac-sizer-grid" role="group" aria-label="Position sizer">
       <Field label="Account">
-        <select value={form.account} onChange={set('account')}>
+        <Select value={form.account} onChange={set('account')}>
           <option value="">No account</option>
           {accounts.map((account) => <option key={account.id} value={account.id}>{account.content.name}</option>)}
-        </select>
+        </Select>
       </Field>
       <Field label="Symbol"><input value={form.symbol} onChange={set('symbol')} placeholder="MNQ"/></Field>
       <Field label="Entry"><input inputMode="decimal" value={form.entry} onChange={set('entry')} placeholder="21450.25"/></Field>
       <Field label="Stop"><input inputMode="decimal" value={form.stop} onChange={set('stop')} placeholder="21430"/></Field>
       <Field label="Risk as">
-        <select aria-label="Risk as" value={form.mode} onChange={set('mode')}>
+        <Select aria-label="Risk as" value={form.mode} onChange={set('mode')}>
           <option value="money">Money</option>
           <option value="percent" disabled={!form.account}>% of account</option>
-        </select>
+        </Select>
       </Field>
       <Field label="Risk budget"><input aria-label="Risk budget" inputMode="decimal" value={form.budget} onChange={set('budget')} placeholder={form.mode === 'money' ? '500' : '1'}/></Field>
       <button
@@ -298,7 +299,7 @@ export function AccountsPage({ privacy }) {
     </div>
     {sorted.some(isClosed) && <section className={`ac-closed${showClosed ? ' is-open' : ''}`}>
       <button type="button" className="ac-closed-head" aria-expanded={showClosed} onClick={() => setShowClosed(!showClosed)}>
-        <span className="ac-closed-title">Closed out <em>{sorted.filter(isClosed).length}</em></span>
+        <span className="ac-closed-title">Closed Out <em>{sorted.filter(isClosed).length}</em></span>
         <span className="ac-closed-meta">Blown or failed evaluations keep their rules and history</span>
         <span className="cc-caret-box"><ChevronDown size={14} strokeWidth={2.2}/></span>
       </button>

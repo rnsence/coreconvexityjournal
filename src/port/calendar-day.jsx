@@ -10,6 +10,7 @@ import { tradeLog } from '../data'
 import { money, toneOf } from '../viz'
 import { metricRows, pickRows } from './calendar-metrics'
 import { EMPTY_DAY, readDay, readRoutine, saveDay } from './calendar-store'
+import { Select } from '../select'
 import './calendar.css'
 
 const SCORES = ['Not set', '5', '4', '3', '2', '1']
@@ -117,10 +118,10 @@ export function DaySheet({ date, privacy, onClose, onSaved, openJournal }) {
           <label className="cal-mini"><span>Symbol</span><input required value={item.symbol} onChange={(event) => setMissed(index, { symbol: event.target.value.toUpperCase() })}/></label>
           <div className="cal-mini"><span>Direction</span><Choice label="Direction" options={['long', 'short']} value={item.direction} tones={{ long: 'long', short: 'short' }} format={(option) => (option === 'long' ? 'Long' : 'Short')} onChange={(value) => setMissed(index, { direction: value })}/></div>
           <label className="cal-mini span-2"><span>Setup</span>
-            <select value={item.playbook_id ?? ''} onChange={(event) => setMissed(index, { playbook_id: event.target.value || null })}>
+            <Select value={item.playbook_id ?? ''} onChange={(event) => setMissed(index, { playbook_id: event.target.value || null })}>
               <option value="">No setup</option>
               {SETUPS.map((setup) => <option key={setup} value={setup}>{setup}</option>)}
-            </select>
+            </Select>
           </label>
           {['entry', 'stop', 'target'].map((field) => <label key={field} className="cal-mini"><span>{field[0].toUpperCase() + field.slice(1)}</span>
             <input inputMode="decimal" value={item[field] ?? ''} placeholder="0.00" onChange={(event) => setMissed(index, { [field]: text(event.target.value) })}/>

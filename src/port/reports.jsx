@@ -1,27 +1,32 @@
 /**
- * Reports: Insights, Compare, Report builder, What if and Publish. Every figure is
+ * Reports: Insights, Compare, Report builder and Publish. Every figure is
  * computed locally from the trade log; published reports, share links and saved
  * reports live in localStorage. Any group on the page (a leak, a set, a bar, a
  * heatmap cell) opens a drawer with its trades, stepping through its siblings.
  */
 import React, { useEffect, useMemo, useState } from 'react'
-import { ArrowLeftRight, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, Link2, Printer, RotateCcw, Save, Send, X } from 'lucide-react'
+import { ArrowLeftRight, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Link2, Printer, RotateCcw, Save, Send, X } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CalendarBlank, CaretDown, Clock, Crosshair, Hourglass, ShieldWarning, SignOut, SquaresFour, Star, Tag, Wallet, Warning } from '@phosphor-icons/react'
 import { Card, MetricStrip, PageHead, Segmented, TradeDrawer } from '../workspace'
-import { SymbolToken, TipRows, compactMoney, money, percent, toneOf } from '../viz'
-import { Drawer, Field, Sheet } from '../dialogs'
+import { SymbolToken, TipRows, compactMoney, money, percent, toneOf, titleCase } from '../viz'
+import { Drawer, Field } from '../dialogs'
 import { scopeByRange } from '../analytics'
 import { tradeLog } from '../data'
 import { HeatmapChart, ScatterChart } from './reports-charts'
-import { Spark } from './tile-viz'
+import { AreaLine, Spark } from './tile-viz'
 import {
   ACCOUNTS, DIMENSIONS, MONEY_METRICS, POINT_FIELDS, REPORT_METRICS, SAVED_LIMIT, SIGNED,
   applyFilter, breakdown, cleanFilter, computeMetrics, createShare, crossBreakdown, duration, filterCount,
   formatMetric, insights as buildInsights, keysOf, labelOf, loadPublished, loadSavedReports, metricRows, metricValue,
-  readStore, scatterPoints, shareActive, shareURL, simulate, snapshot, storePublished, storeSavedReports, toScenario, writeStore,
+  readStore, scatterPoints, shareActive, shareURL, snapshot, storePublished, storeSavedReports, writeStore,
 } from './reports-data'
+import { TradeFilter } from './reports-filter'
+import { DuelChart, EdgeMap, ProfitMix, ReportCover, Tornado } from './reports-visuals'
+import { EquityDrawdown, HourBars, OutcomeHistogram } from './reports-insight-charts'
+import { Select } from '../select'
 import './reports.css'
 
-const TABS = ['Insights', 'Compare', 'Report builder', 'What if', 'Publish']
+const TABS = ['Insights', 'Compare', 'Publish']
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`
 const MINUS = '−'
 const dateTime = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -51,49 +56,6 @@ function Empty({ title, detail }) {
     <b>{title}</b>
     <span>{detail}</span>
   </div>
-}
-
-function Disclosure({ label, count, children, defaultOpen = false }) {
-  const [open, setOpen] = useState(defaultOpen)
-  return <div className={`rp-disclosure${open ? ' is-open' : ''}`}>
-    <button type="button" className="rp-disclosure-toggle" aria-expanded={open} onClick={() => setOpen(!open)}>
-      <ChevronRight size={14} strokeWidth={2.2} className="rp-caret"/>
-      <span>{label}</span>
-      {count > 0 && <em>{count} set</em>}
-    </button>
-    <div className="card-fold" inert={!open}><div className="card-fold-inner">{children}</div></div>
-  </div>
-}
-
-/** Account, setup, direction, symbol, tag, mistake and period. */
-function FilterForm({ name, value, onChange, setups }) {
-  const set = (key) => (event) => onChange({ ...value, [key]: event.target.value === '' ? undefined : event.target.value })
-  return <fieldset className="rp-filter" aria-label={`Filter ${name}`}>
-    <Field label="Account">
-      <select value={value.account ?? ''} onChange={set('account')}>
-        <option value="">All</option>
-        {ACCOUNTS.map((account) => <option key={account}>{account}</option>)}
-      </select>
-    </Field>
-    <Field label="Setup">
-      <select value={value.setup ?? ''} onChange={set('setup')}>
-        <option value="">Any</option>
-        {setups.map((setup) => <option key={setup}>{setup}</option>)}
-      </select>
-    </Field>
-    <Field label="Direction">
-      <select value={value.direction ?? ''} onChange={set('direction')}>
-        <option value="">Both</option>
-        <option value="long">Long</option>
-        <option value="short">Short</option>
-      </select>
-    </Field>
-    <Field label="Symbol"><input value={value.symbol ?? ''} onChange={set('symbol')} placeholder="Any"/></Field>
-    <Field label="Tag"><input value={value.tag ?? ''} onChange={set('tag')} placeholder="Any"/></Field>
-    <Field label="Mistake"><input value={value.mistake ?? ''} onChange={set('mistake')} placeholder="Any"/></Field>
-    <Field label="From"><input type="date" value={value.from ?? ''} onChange={set('from')}/></Field>
-    <Field label="To"><input type="date" value={value.to ?? ''} onChange={set('to')}/></Field>
-  </fieldset>
 }
 
 const gauge = (share, options = {}) => ({ type: 'gauge', share: Math.max(0, Math.min(1, share || 0)), ...options })
@@ -205,17 +167,35 @@ function DrillLayer({ drill, step, close, privacy }) {
 
 /* ============================================================ insights */
 
-function GroupRow({ row, privacy, peak, onOpen, current, bare = false }) {
+const DIM_ICONS = {
+  mistake: Warning, playbook: Crosshair, hour: Clock, holding: Hourglass, account: Wallet, tag: Tag, weekday: CalendarBlank,
+  month: CalendarBlank, week: CalendarBlank, rating: Star, exits: SignOut, rule: ShieldWarning,
+}
+const sentence = (text) => (text ? text.charAt(0).toUpperCase() + text.slice(1) : text)
+/** A group's label as a person would write it: sentence case, hours as a window, holds with units. */
+function niceLabel(row) {
+  const label = String(row.label ?? row.key)
+  if (row.dimension === 'hour') { const h = Number(row.key); return Number.isFinite(h) ? `${String(h).padStart(2, '0')}:00–${String(h + 1).padStart(2, '0')}:00` : label }
+  if (row.dimension === 'holding') return ({ 'Under 5m': 'Under 5 min holds', '5–15m': '5–15 min holds', '15–30m': '15–30 min holds', '30m+': '30+ min holds' })[label] ?? label
+  if (row.dimension === 'direction') return `${sentence(label)} trades`
+  if (row.dimension === 'tag') return `#${label}`
+  return sentence(label)
+}
+
+/** Ref 05 row: an identity tile, a sentence-case title over a quiet line, the figure over a fixed-width bar. */
+function InsightRow({ row, privacy, peak, onOpen, current, tone = 'neutral' }) {
+  const Icon = DIM_ICONS[row.dimension] ?? (row.dimension === 'direction' ? (row.key === 'short' ? ArrowDownRight : ArrowUpRight) : SquaresFour)
+  const kind = row.dimension === 'rule' ? 'Rule' : DIMENSIONS[row.dimension]
   return <li>
-    <button type="button" className={`rp-row${current ? ' is-current' : ''}`} onClick={onOpen} aria-label={`${DIMENSIONS[row.dimension]} ${row.label}: ${money(row.net_pnl, { privacy })} over ${plural(row.trades, 'trade')}, ${winPct(row.win_rate)} won. Open trades`}>
-      <span className="rp-row-top">
-        {!bare && <span className="rp-dim">{DIMENSIONS[row.dimension]}</span>}
-        <b title={row.label}>{row.label}</b>
-        <strong className={`tone-${toneOf(row.net_pnl)}`}>{money(row.net_pnl, { privacy, decimals: 0 })}</strong>
-      </span>
-      <span className="rp-row-sub">
-        <span className="rp-track" aria-hidden="true"><i className={toneOf(row.net_pnl)} style={{ width: `${Math.max(3, (Math.abs(row.net_pnl) / peak) * 100)}%` }}/></span>
+    <button type="button" className={`rp-irow${current ? ' is-current' : ''}`} onClick={onOpen} aria-label={`${kind} ${niceLabel(row)}: ${money(row.net_pnl, { privacy })} over ${plural(row.trades, 'trade')}, ${winPct(row.win_rate)} won. Open trades`}>
+      {row.dimension === 'symbol' ? <span className="rp-itile is-logo" title={kind}><SymbolToken symbol={row.key}/></span> : <span className={`rp-itile tone-${tone}`} title={kind}><Icon size={16} weight="duotone"/></span>}
+      <span className="rp-icopy">
+        <b title={niceLabel(row)}>{niceLabel(row)}</b>
         <small>{plural(row.trades, 'trade')} · {winPct(row.win_rate)} won</small>
+      </span>
+      <span className="rp-ifig">
+        <strong className={`tone-${toneOf(row.net_pnl)}`}>{money(row.net_pnl, { privacy, decimals: 0 })}</strong>
+        <span className="rp-itrack" aria-hidden="true"><i className={toneOf(row.net_pnl)} style={{ width: `${Math.max(4, (Math.abs(row.net_pnl) / peak) * 100)}%` }}/></span>
       </span>
     </button>
   </li>
@@ -241,40 +221,51 @@ function InsightsTab({ trades, privacy, drill }) {
     <Lede>What your own trades say. Only groups with at least {view.min_sample ?? 5} trades count. Click any row to see its trades.</Lede>
     <MetricStrip items={headlineStrip(metrics, privacy)}/>
     <div className="ws-grid three rp-insights">
-      <Card shell title="Biggest leaks" aside={<span className="ws-hint">Losing groups</span>}>
+      <Card shell title="Biggest leaks" aside={<span className="ws-hint">Costing you most</span>}>
         {view.leaks.length
-          ? <ol className="rp-rows">{view.leaks.map((row, index) => <GroupRow key={`${row.dimension}-${row.key}`} row={row} privacy={privacy} peak={peak} current={openId === `${row.dimension}-${row.key}`} onOpen={() => openRow(view.leaks, index)}/>)}</ol>
+          ? <><ol className="rp-irows">{view.leaks.map((row, index) => <InsightRow key={`${row.dimension}-${row.key}`} tone="neg" row={row} privacy={privacy} peak={peak} current={openId === `${row.dimension}-${row.key}`} onOpen={() => openRow(view.leaks, index)}/>)}</ol>
+            <div className="rp-isum"><span>Together</span><small>{plural(view.leaks.length, 'group')} · {plural(view.leaks.reduce((sum, row) => sum + row.trades, 0), 'trade')}</small><b className={`tone-${toneOf(view.leaks.reduce((sum, row) => sum + row.net_pnl, 0))}`}>{money(view.leaks.reduce((sum, row) => sum + row.net_pnl, 0), { privacy, decimals: 0 })}</b></div></>
           : <Empty title="No losing group" detail="Nothing with 5+ trades is net negative."/>}
       </Card>
-      <Card shell title="What works" aside={<span className="ws-hint">Best per breakdown</span>}>
+      <Card shell title="What works" aside={<span className="ws-hint">Paying you most</span>}>
         {view.best.length
-          ? <ol className="rp-rows">{view.best.map((row, index) => <GroupRow key={`${row.dimension}-${row.key}`} row={row} privacy={privacy} peak={peak} current={openId === `${row.dimension}-${row.key}`} onOpen={() => openRow(view.best, index)}/>)}</ol>
+          ? <><ol className="rp-irows">{view.best.map((row, index) => <InsightRow key={`${row.dimension}-${row.key}`} tone="pos" row={row} privacy={privacy} peak={peak} current={openId === `${row.dimension}-${row.key}`} onOpen={() => openRow(view.best, index)}/>)}</ol>
+            <div className="rp-isum"><span>Together</span><small>{plural(view.best.length, 'group')} · {plural(view.best.reduce((sum, row) => sum + row.trades, 0), 'trade')}</small><b className={`tone-${toneOf(view.best.reduce((sum, row) => sum + row.net_pnl, 0))}`}>{money(view.best.reduce((sum, row) => sum + row.net_pnl, 0), { privacy, decimals: 0 })}</b></div></>
           : <Empty title="Not enough trades" detail="Each group needs 5+ trades."/>}
       </Card>
       <Card shell title="Your rules" aside={<span className="ws-hint">Per trade</span>}>
-        {rules ? <div className="rp-rules">
-          {[['followed', 'Followed', rules.followed_net_pnl, rules.followed_trades], ['broken', 'Broke a rule', rules.broken_net_pnl, rules.broken_trades]].map(([id, name, net, count], index) => <button
-            key={id} type="button" className={`rp-plate${openId === id ? ' is-current' : ''}`} onClick={() => drill.open(ruleGroups(), index)}
-            aria-label={`${name}: ${money(count ? net / count : 0, { privacy })} per trade over ${plural(count, 'trade')}. Open trades`}
-          >
-            <span>{name}</span>
-            <strong className={`tone-${toneOf(net)}`}>{money(count ? net / count : 0, { privacy, decimals: 0 })}</strong>
-            <small>per trade · {plural(count, 'trade')}</small>
-            <ChevronRight size={14} className="rp-plate-go" aria-hidden="true"/>
-          </button>)}
-          <div className="rp-rules-share">
+        {rules ? <div className="rp-rules2">
+          <div className="rp-rsplit">
+            {[['followed', 'Followed every rule', rules.followed_net_pnl, rules.followed_trades], ['broken', 'Broke a rule', rules.broken_net_pnl, rules.broken_trades]].map(([id, name, net, count], index) => <button
+              key={id} type="button" className={`rp-rstat${openId === id ? ' is-current' : ''}`} onClick={() => drill.open(ruleGroups(), index)}
+              aria-label={`${name}: ${money(count ? net / count : 0, { privacy })} per trade over ${plural(count, 'trade')}. Open trades`}
+            >
+              <small>{name}</small>
+              <strong className={`tone-${toneOf(net)}`}>{money(count ? net / count : 0, { privacy, decimals: 0 })}<em>/trade</em></strong>
+              <span>{plural(count, 'trade')}</span>
+            </button>)}
+          </div>
+          <div className="rp-rshare">
             <div className="rp-rules-bar" aria-hidden="true">
               <i className="pos" style={{ flex: rules.followed_trades || 0.0001 }}/>
               <i className="neg" style={{ flex: rules.broken_trades || 0.0001 }}/>
             </div>
-            <small><b>{Math.round((rules.followed_trades / Math.max(1, rules.followed_trades + rules.broken_trades)) * 100)}%</b> of trades followed every rule</small>
+            <div className="rp-rshare-legend">
+              <span><i className="pos"/>{Math.round((rules.followed_trades / Math.max(1, rules.followed_trades + rules.broken_trades)) * 100)}% clean</span>
+              <span><i className="neg"/>{Math.round((rules.broken_trades / Math.max(1, rules.followed_trades + rules.broken_trades)) * 100)}% broke one</span>
+            </div>
           </div>
-          {broken.length > 0 && <div className="rp-rules-list">
+          {broken.length > 0 && <div className="rp-rbroken">
             <span className="rp-sublabel">Broken most</span>
-            <ol className="rp-rows">{broken.map((row, index) => <GroupRow key={row.key} bare row={row} privacy={privacy} peak={brokenPeak} current={openId === `rule-${row.key}`} onOpen={() => drill.open(broken.map((item) => group(`rule-${item.key}`, item.label, 'Rule broken', inGroup(list, 'rule', item.key))), index)}/>)}</ol>
+            <ol className="rp-irows">{broken.map((row, index) => <InsightRow key={row.key} tone="neg" row={row} privacy={privacy} peak={brokenPeak} current={openId === `rule-${row.key}`} onOpen={() => drill.open(broken.map((item) => group(`rule-${item.key}`, item.label, 'Rule broken', inGroup(list, 'rule', item.key))), index)}/>)}</ol>
           </div>}
         </div> : <Empty title="No rules yet" detail="Set trading rules in Settings to see what breaking them costs."/>}
       </Card>
+    </div>
+    <div className="ws-grid three rp-insight-charts">
+      <Card shell title="Equity & drawdown" aside={<span className="ws-hint">By session</span>}><EquityDrawdown trades={list} privacy={privacy}/></Card>
+      <Card shell title="P&L by hour" aside={<span className="ws-hint">Entry hour</span>}><HourBars trades={list} privacy={privacy}/></Card>
+      <Card shell title="Trade outcomes" aside={<span className="ws-hint">Trades per $100</span>}><OutcomeHistogram trades={list} privacy={privacy}/></Card>
     </div>
   </>
 }
@@ -303,6 +294,27 @@ const summary = (filter) => {
   return parts.length ? parts.join(' · ') : 'All trades'
 }
 
+const COMPARE_FIELDS = {
+  'Net P&L': 'net_pnl', Trades: 'trades', 'Win rate': 'win_rate', 'Profit factor': 'profit_factor', Expectancy: 'expectancy',
+  'Average win': 'average_win', 'Average loss': 'average_loss', 'Payoff ratio': 'payoff_ratio', 'Average R': 'average_r',
+  'Max drawdown': 'max_drawdown', 'Edge score': 'edge_score', 'Average hold': 'average_hold_seconds', Fees: 'fees',
+}
+
+/** One side's identity in the head-to-head card: badge, result, and the filters that define it. */
+function SetSide({ id, value, setValue, m, privacy, trades, setups, current, onOpen }) {
+  return <div className={`rp-side side-${id.toLowerCase()}${current ? ' is-current' : ''}`}>
+    <button type="button" className="rp-side-head" disabled={!m} onClick={onOpen} aria-label={`Set ${id}: open its trades`}>
+      <span className={`rp-set-chip set-${id.toLowerCase()}`}>{id}</span>
+      <span className="rp-side-copy">
+        <strong className={`tone-${toneOf(m?.net_pnl ?? 0)}`}>{m ? money(m.net_pnl, { privacy }) : '—'}</strong>
+        <small>{m ? `${plural(m.trades, 'trade')} · ${winPct(m.win_rate)} won` : 'No trades match'}</small>
+      </span>
+      {m && <ChevronRight size={14} className="rp-side-go" aria-hidden="true"/>}
+    </button>
+    <TradeFilter trades={trades} value={value} onChange={setValue} setups={setups} label="Filters"/>
+  </div>
+}
+
 function CompareTab({ trades, privacy, setups, drill }) {
   const [a, setA] = useState(() => readStore('rp-compare-a', { direction: 'long' }))
   const [b, setB] = useState(() => readStore('rp-compare-b', { direction: 'short' }))
@@ -316,57 +328,40 @@ function CompareTab({ trades, privacy, setups, drill }) {
   const groups = () => [group('set-a', summary(a), 'Set A', listA), group('set-b', summary(b), 'Set B', listB)]
   const net = difference('Net P&L', rowsA[0], rowsB[0], privacy)
   const openId = drill.drill?.groups[drill.drill.index]?.id
+  const shared = { privacy, trades, setups }
+  const tornado = COMPARE_ROWS.map((label, index) => {
+    const delta = difference(label, rowsA[index], rowsB[index], privacy)
+    const field = COMPARE_FIELDS[label]
+    const raw = (m) => (m?.[field] == null ? null : label === 'Fees' ? -m[field] : m[field])
+    return {
+      label, a: raw(ma), b: raw(mb), textA: rowsA[index]?.value ?? '—', textB: rowsB[index]?.value ?? '—',
+      basisA: rowsA[index]?.basis, basisB: rowsB[index]?.basis, delta,
+      ahead: delta?.tone === 'pos' ? 'b' : delta?.tone === 'neg' ? 'a' : null,
+    }
+  })
   return <>
-    <Lede aside={<button type="button" className="ws-outline rp-small" onClick={() => { setA(b); setB(a) }}><ArrowLeftRight size={13}/> Swap A and B</button>}>
-      Put two sets of trades side by side: one setup against another, longs against shorts, or a mistake against the rest.
-    </Lede>
-    <div className="ws-grid one-one rp-sets">
-      {[['A', a, setA, ma], ['B', b, setB, mb]].map(([key, value, setValue, m]) => <Card
-        key={key} shell className="rp-set"
-        title={<><span className={`rp-set-chip set-${key.toLowerCase()}`}>{key}</span>Set {key}</>}
-        aside={<span className="rp-set-aside">
-          <span className="ws-hint">{plural(m?.trades ?? 0, 'trade')}</span>
-          {filterCount(value) > 0 && <button type="button" className="rp-clear" onClick={() => setValue({})}>Clear</button>}
-        </span>}
-      >
-        <FilterForm name={`set ${key}`} value={value} onChange={(next) => setValue(cleanFilter(next))} setups={setups}/>
-      </Card>)}
-    </div>
-
-    <div className="rp-vs">
-      {[['A', ma, 0], ['B', mb, 1]].map(([key, m, index]) => <button
-        key={key} type="button" className={`rp-vs-side${openId === `set-${key.toLowerCase()}` ? ' is-current' : ''}`} disabled={!m}
-        onClick={() => drill.open(groups(), index)} aria-label={`Set ${key}: ${m ? money(m.net_pnl, { privacy }) : 'no trades'}. Open trades`}
-      >
-        <span className={`rp-set-chip set-${key.toLowerCase()}`}>{key}</span>
-        <span className="rp-vs-copy">
-          <strong className={`tone-${toneOf(m?.net_pnl ?? 0)}`}>{m ? money(m.net_pnl, { privacy }) : '—'}</strong>
-          <small>{m ? `${plural(m.trades, 'trade')} · ${winPct(m.win_rate)} won` : 'No trades match'}</small>
-        </span>
-        {m && <ChevronRight size={15} className="rp-plate-go" aria-hidden="true"/>}
-      </button>)}
-      <div className="rp-vs-delta">
-        <span>B − A</span>
-        <strong className={net ? `tone-${net.tone}` : ''}>{net?.text ?? '—'}</strong>
+    <Lede>Put two sets of trades side by side: one setup against another, longs against shorts, or a mistake against the rest.</Lede>
+    <section className="home-card ws-card duo rp-h2h" aria-label="Head to head">
+      <header className="shell-head rp-setcard-head">
+        <h2>Head to Head</h2>
+        <span className="rp-net-delta"><span>B − A</span><b className={net ? `tone-${net.tone}` : ''}>{net?.text ?? '—'}</b></span>
+        <button type="button" className="rp-setcard-open rp-swap" onClick={() => { setA(b); setB(a) }}><ArrowLeftRight size={13}/> Swap</button>
+      </header>
+      <div className="shell-body rp-h2h-body">
+        <div className="rp-sides">
+          <SetSide id="A" value={a} setValue={setA} m={ma} current={openId === 'set-a'} onOpen={() => drill.open(groups(), 0)} {...shared}/>
+          <span className="rp-vs-mark" aria-hidden="true">vs</span>
+          <SetSide id="B" value={b} setValue={setB} m={mb} current={openId === 'set-b'} onOpen={() => drill.open(groups(), 1)} {...shared}/>
+        </div>
+        <DuelChart listA={listA} listB={listB} ma={ma} mb={mb} privacy={privacy}/>
       </div>
-    </div>
+    </section>
 
-    <Card shell title="Side by side" aside={<span className="ws-hint">Green means B is ahead</span>} className="rp-compare">
-      {!ma && !mb ? <Empty title="Neither set has trades" detail="Loosen a filter on either side."/> : <div className="ws-table-wrap">
-        <table className="rp-table rp-compare-table">
-          <thead><tr><th>Metric</th><th><span className="rp-set-chip set-a">A</span></th><th><span className="rp-set-chip set-b">B</span></th><th>B − A</th></tr></thead>
-          <tbody>{COMPARE_ROWS.map((label, index) => {
-            const left = rowsA[index]; const right = rowsB[index]
-            const diff = difference(label, left, right, privacy)
-            return <tr key={label}>
-              <th scope="row">{label}</th>
-              <td title={left?.basis}>{left?.value ?? '—'}</td>
-              <td title={right?.basis}>{right?.value ?? '—'}</td>
-              <td>{diff ? <span className={`rp-delta tone-${diff.tone}`}>{diff.text}</span> : <span className="rp-delta-none">—</span>}</td>
-            </tr>
-          })}</tbody>
-        </table>
-      </div>}
+    <Card shell title="Every metric" className="rp-compare" aside={<span className="ws-hint">Solid side is ahead</span>}>
+      {!ma && !mb ? <Empty title="Neither set has trades" detail="Loosen a filter on either side."/> : <>
+        <div className="rv-t-head" aria-hidden="true"><span className="rp-set-chip set-a">A</span><span/><span>Metric</span><span/><span className="rp-set-chip set-b">B</span><span>B − A</span></div>
+        <Tornado rows={tornado}/>
+      </>}
     </Card>
   </>
 }
@@ -375,34 +370,62 @@ function CompareTab({ trades, privacy, setups, drill }) {
 
 const shortLabel = (dimension, label) => (dimension === 'weekday' || dimension === 'month' ? label.slice(0, 3) : label)
 
-/** Ranked horizontal bars, zero-anchored when the metric has a sign; every row opens its trades. */
-function RankBars({ rows, format, signed, onOpen, currentId }) {
-  const peak = Math.max(1e-9, ...rows.map((row) => Math.abs(row.value)))
-  const hasNeg = signed && rows.some((row) => row.value < 0)
-  return <ol className={`rp-bars${hasNeg ? ' has-neg' : ''}`}>
-    {rows.map((row, index) => {
-      const share = Math.max(1.5, (Math.abs(row.value) / peak) * 100)
-      const tone = signed ? toneOf(row.value) : 'ink'
-      return <li key={row.id}>
-        <button type="button" className={`rp-bar${currentId === row.id ? ' is-current' : ''}`} onClick={() => onOpen(index)} aria-label={`${row.label}: ${format(row.value)} over ${plural(row.trades, 'trade')}. Open trades`}>
-          <span className="rp-bar-label"><b>{row.label}</b><small>{plural(row.trades, 'trade')} · {winPct(row.winRate)} won</small></span>
-          <span className="rp-bar-track" aria-hidden="true">
-            {hasNeg && <i className="rp-bar-zero"/>}
-            <i className={`rp-bar-fill ${tone}${row.value < 0 ? ' is-neg' : ''}`} style={{ '--share': `${hasNeg ? share / 2 : share}%` }}/>
-          </span>
-          <strong className={signed ? `tone-${tone}` : ''}>{format(row.value)}</strong>
-        </button>
-      </li>
-    })}
-  </ol>
+/** A toolbar control: a muted label and the chosen value in one button-like select that sizes to its text. */
+function Pick({ label, value, onChange, options, none, disabled = false }) {
+  return <label className={`rp-ctl${disabled ? ' is-off' : ''}`}>
+    <span>{label}</span>
+    <Select value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
+      {none !== undefined && <option value="">{none}</option>}
+      {options.map(([key, name]) => <option key={key} value={key}>{name}</option>)}
+    </Select>
+    <CaretDown size={10} weight="bold" aria-hidden="true"/>
+  </label>
 }
 
-function BuilderTab({ trades, privacy, setups, drill }) {
+/** Ranked groups as a table: a takeaway line, then each group's rank, share bar, sample, value and P&L trend. */
+function RankTable({ rows, format, signed, onOpen, currentId, symbols = false, dimLabel, metricLabel, privacy, money: isMoney }) {
+  const top = rows[0], bottom = rows.at(-1)
+  const winners = rows.filter((row) => row.value > 0).length
+  const total = rows.reduce((sum, row) => sum + row.value, 0)
+  const noun = dimLabel.includes(' ') ? 'group' : dimLabel.toLowerCase()
+  const nouns = noun.endsWith('s') ? `${noun}es` : `${noun}s`
+  const share = isMoney && total > 0 && top?.value > 0 ? ` (${Math.round((top.value / total) * 100)}% of the total)` : ''
+  return <div className="rp-rank" role="table" aria-label={`${metricLabel} by ${dimLabel}`}>
+    {top && <p className="rp-rank-lede">
+      {signed && <><b>{winners} of {rows.length}</b> {nouns} are positive. </>}
+      <b>{top.label}</b> leads with <b className={signed ? `tone-${toneOf(top.value)}` : ''}>{format(top.value)}</b>{share}
+      {bottom && bottom !== top && <>; <b>{bottom.label}</b> {signed && bottom.value < 0 ? 'costs the most at' : 'trails at'} <b className={signed ? `tone-${toneOf(bottom.value)}` : ''}>{format(bottom.value)}</b></>}.
+    </p>}
+    <div className="rp-rank-head" role="row">
+      <span role="columnheader" aria-hidden="true">#</span><span role="columnheader">{dimLabel}</span><span role="columnheader" className="rp-c-trades">Trades</span><span role="columnheader" className="rp-c-win">Win rate</span><span role="columnheader" className="rp-c-avg">Avg / trade</span>
+      <span role="columnheader">{metricLabel}</span><span role="columnheader"><span className="rp-wide">P&L over time</span><span className="rp-narrow">Trend</span></span>
+    </div>
+    <div className="rp-rank-body" tabIndex={0} aria-label={`${rows.length} ${dimLabel.toLowerCase()} groups, scroll for more`}>
+    {rows.map((row, index) => <button key={row.id} type="button" role="row" className={`rp-rank-row${currentId === row.id ? ' is-current' : ''}`} onClick={() => onOpen(index)}
+      aria-label={`${row.label}: ${format(row.value)} over ${plural(row.trades, 'trade')}. Open trades`}>
+      <span className="rp-rank-pos" role="cell">{index + 1}</span>
+      <span className={`rp-rank-name${symbols ? ' has-token' : ''}`} role="cell">
+        <span className="rp-rank-title">{symbols && <SymbolToken symbol={row.key}/>}<b>{row.label}</b></span>
+      </span>
+      <span className="rp-rank-num rp-c-trades" role="cell">{row.trades}</span>
+      <span className="rp-rank-num rp-c-win" role="cell">{winPct(row.winRate)}</span>
+      <span className={`rp-rank-num rp-c-avg tone-${toneOf(row.net ?? 0)}`} role="cell">{row.net == null ? '—' : money(row.net / Math.max(1, row.trades), { privacy, decimals: 0 })}</span>
+      <strong className={`rp-rank-val${signed ? ` tone-${toneOf(row.value)}` : ''}`} role="cell">{format(row.value)}</strong>
+      <span className="rp-rank-trend" role="cell" aria-hidden="true">{row.curve.length > 2 && !privacy ? <AreaLine values={row.curve} tone={row.curve.at(-1) >= 0 ? 'pos' : 'neg'} density={6}/> : null}</span>
+    </button>)}
+    </div>
+    <div className="rp-rank-foot">
+      <span>{rows.length} {nouns}{rows.length > 5 ? ` · scroll for ${rows.length - 5} more` : ''}</span>
+      <span className="rp-rank-total">{isMoney ? 'Total' : 'Average'}<b className={signed ? `tone-${toneOf(isMoney ? total : total / rows.length)}` : ''}>{format(isMoney ? total : total / rows.length)}</b></span>
+    </div>
+  </div>
+}
+
+function BuilderTab({ trades, privacy, setups, drill, filter, setFilter }) {
   const [metric, setMetric] = useState('net_pnl')
   const [rows, setRows] = useState('playbook')
   const [columns, setColumns] = useState('')
   const [scatter, setScatter] = useState(['hold_seconds', 'pnl'])
-  const [filter, setFilter] = useState({})
   const [saved, setSaved] = useState(loadSavedReports)
   const [name, setName] = useState('')
   const [active, setActive] = useState(null)
@@ -411,8 +434,33 @@ function BuilderTab({ trades, privacy, setups, drill }) {
   const list = useMemo(() => applyFilter(trades, filter), [trades, filter])
   const cross = columns && columns !== rows
   const bars = useMemo(() => breakdown(list, rows)
-    .map((row) => ({ id: `${rows}-${row.key}`, key: row.key, label: row.label, value: metricValue(row, metric), trades: row.trades, winRate: row.win_rate }))
-    .filter((row) => row.value != null), [list, rows, metric])
+    .map((row) => {
+      let run = 0
+      const curve = [0, ...inGroup(list, rows, row.key).sort(byTime).map((trade) => (run += trade.pnl))]
+      return { id: `${rows}-${row.key}`, key: row.key, label: row.label, value: metricValue(row, metric), trades: row.trades, winRate: row.win_rate, net: row.net_pnl, curve }
+    })
+    .filter((row) => row.value != null)
+    .sort((x, y) => y.value - x.value), [list, rows, metric])
+  const mixGroups = useMemo(() => breakdown(list, rows).map((row) => ({ id: `${rows}-${row.key}`, label: row.label, net: row.net_pnl, trades: row.trades, winRate: row.win_rate })), [list, rows])
+  const groupStats = useMemo(() => {
+    if (mixGroups.length < 2) return []
+    const noun = DIMENSIONS[rows].toLowerCase()
+    const sorted = [...mixGroups].sort((x, y) => y.net - x.net)
+    const best = sorted[0], worst = sorted.at(-1)
+    const positive = mixGroups.filter((row) => row.net > 0).length
+    const totalTrades = mixGroups.reduce((sum, row) => sum + row.trades, 0) || 1
+    const busiest = [...mixGroups].sort((x, y) => y.trades - x.trades)[0]
+    const sharpest = [...mixGroups].filter((row) => row.winRate != null).sort((x, y) => y.winRate - x.winRate)[0]
+    const average = mixGroups.reduce((sum, row) => sum + row.net, 0) / mixGroups.length
+    const reach = Math.max(...mixGroups.map((row) => Math.abs(row.net)), 1)
+    return [
+      { label: `Profitable ${noun}s`, value: `${positive}/${mixGroups.length}`, sub: `${mixGroups.length - positive} losing`, line: { type: 'dashes', share: positive / mixGroups.length, total: Math.min(14, mixGroups.length) } },
+      sharpest && { label: 'Best win rate', value: percent(sharpest.winRate * 100), sub: sharpest.label, line: gauge(sharpest.winRate, { mark: 0.5 }) },
+      { label: 'Most traded', value: `${busiest.trades}`, sub: `${busiest.label} · ${Math.round((busiest.trades / totalTrades) * 100)}% of trades`, line: gauge(busiest.trades / totalTrades) },
+      { label: `Average per ${noun}`, value: money(average, { privacy, decimals: 0 }), tone: toneOf(average), sub: `${mixGroups.length} ${noun}s`, line: centre(average, reach) },
+      { label: 'Best to worst', value: money(best.net - worst.net, { privacy, decimals: 0, sign: false }), sub: `${best.label} vs ${worst.label}`, line: split(Math.max(0, best.net), Math.min(0, worst.net)) },
+    ].filter(Boolean)
+  }, [mixGroups, rows, privacy])
   const heat = useMemo(() => (cross ? crossBreakdown(list, rows, columns) : null), [list, rows, columns, cross])
   const points = useMemo(() => (scatter ? scatterPoints(list, scatter[0], scatter[1]) : []), [list, scatter])
   const pointTrades = useMemo(() => [...points.map((point) => point.trade)].sort(byTime), [points])
@@ -448,56 +496,41 @@ function BuilderTab({ trades, privacy, setups, drill }) {
   const openId = drill.drill?.groups[drill.drill.index]?.id
 
   return <>
-    <Lede>Any metric by any breakdown, two breakdowns as a heatmap, and any two trade fields as a scatter. Click a bar, cell or dot to see its trades.</Lede>
-    <Card shell title="Build" aside={<span className="ws-hint">{plural(list.length, 'trade')} in view</span>} className="rp-builder">
-      <div className="rp-controls">
-        <Field label="Metric">
-          <select aria-label="Report metric" value={metric} onChange={(event) => setMetric(event.target.value)}>
-            {Object.entries(REPORT_METRICS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </Field>
-        <Field label="By">
-          <select aria-label="Report rows" value={rows} onChange={(event) => setRows(event.target.value)}>
-            {Object.entries(DIMENSIONS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </Field>
-        <Field label="And by">
-          <select aria-label="Report columns" value={columns} onChange={(event) => setColumns(event.target.value)}>
-            <option value="">Nothing (bars)</option>
-            {Object.entries(DIMENSIONS).filter(([key]) => key !== rows).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </Field>
-        <Field label="Scatter across">
-          <select aria-label="Scatter x" value={scatter?.[0] ?? ''} onChange={(event) => changeX(event.target.value)}>
-            <option value="">No scatter</option>
-            {Object.entries(POINT_FIELDS).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </Field>
-        <Field label="Scatter up">
-          <select aria-label="Scatter y" value={scatter?.[1] ?? ''} disabled={!scatter} onChange={(event) => setScatter([scatter[0], event.target.value])}>
-            {!scatter && <option value="">—</option>}
-            {scatter && Object.entries(POINT_FIELDS).filter(([key]) => key !== scatter[0]).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-        </Field>
-      </div>
-
-      <Disclosure label="Filter the trades" count={filterCount(filter)}>
-        <FilterForm name="report" value={filter} onChange={(next) => setFilter(cleanFilter(next))} setups={setups}/>
-      </Disclosure>
-
-      <div className="rp-saved" aria-label="Saved reports">
-        <span className="rp-saved-label">Saved</span>
-        {saved.map((entry) => <span key={entry.name} className={`rp-saved-chip${active === entry.name ? ' on' : ''}`}>
-          <button type="button" onClick={() => loadReport(entry)}>{entry.name}</button>
-          <button type="button" aria-label={`Delete report ${entry.name}`} onClick={() => { persist(saved.filter((item) => item !== entry)); if (active === entry.name) setActive(null) }}><X size={11} strokeWidth={2.4}/></button>
-        </span>)}
-        {!saved.length && <span className="rp-muted">None yet</span>}
-        <div className="rp-saved-new">
-          <input aria-label="Report name" placeholder="Name this view" maxLength={60} value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') saveReport() }}/>
-          <button type="button" className="ws-outline rp-small" disabled={!name.trim() || saved.length >= SAVED_LIMIT} onClick={saveReport}><Save size={13}/> Save</button>
+    <section className="home-card ws-card duo rp-compose rp-builder" aria-label="Build a report">
+      <header className="shell-head rp-setcard-head">
+        <h2>Build</h2>
+        <span className="ws-hint rp-compose-count">{plural(list.length, 'trade')} in view</span>
+      </header>
+      <div className="shell-body rp-compose-body">
+        <div className="rp-ctlbar">
+          <div className="rp-ctlgroup" role="group" aria-label="Ranking">
+            <Pick label="Metric" value={metric} onChange={setMetric} options={Object.entries(REPORT_METRICS)}/>
+            <Pick label="Group by" value={rows} onChange={setRows} options={Object.entries(DIMENSIONS)}/>
+            <Pick label="Split by" value={columns} onChange={setColumns} none="None" options={Object.entries(DIMENSIONS).filter(([key]) => key !== rows)}/>
+          </div>
+          <span className="rp-ctlsep" aria-hidden="true"/>
+          <div className="rp-ctlgroup" role="group" aria-label="Scatter">
+            <Pick label="Plot" value={scatter?.[1] ?? ''} disabled={!scatter} onChange={(y) => setScatter([scatter[0], y])} none={scatter ? undefined : '—'}
+              options={scatter ? Object.entries(POINT_FIELDS).filter(([key]) => key !== scatter[0]) : []}/>
+            <Pick label="Against" value={scatter?.[0] ?? ''} onChange={changeX} none="No scatter" options={Object.entries(POINT_FIELDS)}/>
+          </div>
+          <span className="rp-ctlsep" aria-hidden="true"/>
+          <TradeFilter trades={trades} value={filter} onChange={setFilter} setups={setups} label="Filters"/>
         </div>
       </div>
-    </Card>
+      <footer className="rp-setcard-foot rp-saved" aria-label="Saved views">
+        <span className="rp-saved-label">Saved</span>
+        {saved.map((entry) => <span key={entry.name} className={`rf-chip rp-saved-chip${active === entry.name ? ' on' : ''}`}>
+          <button type="button" className="rp-saved-load" onClick={() => loadReport(entry)}>{entry.name}</button>
+          <button type="button" aria-label={`Delete view ${entry.name}`} onClick={() => { persist(saved.filter((item) => item !== entry)); if (active === entry.name) setActive(null) }}><X size={10} strokeWidth={2.6}/></button>
+        </span>)}
+        {!saved.length && <span className="rp-muted">None yet</span>}
+        <span className="rp-saved-new">
+          <input aria-label="View name" placeholder="Name this view" maxLength={60} value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') saveReport() }}/>
+          <button type="button" className="rp-setcard-open" disabled={!name.trim() || saved.length >= SAVED_LIMIT} onClick={saveReport}><Save size={13}/> Save</button>
+        </span>
+      </footer>
+    </section>
 
     {!list.length ? <Card shell title="Results"><Empty title="No trades match" detail="Loosen the filter to build a report."/></Card> : <>
       {cross
@@ -512,11 +545,20 @@ function BuilderTab({ trades, privacy, setups, drill }) {
                 />
               : <Empty title="No trades match" detail="Try another pair of breakdowns."/>}
           </Card>
-        : <Card shell title={`${metricLabel} by ${DIMENSIONS[rows]}`} aside={<span className="ws-hint">{plural(bars.length, 'group')}</span>}>
+        : <div className="rp-rank-grid">
+            {groupStats.length > 0 && <MetricStrip items={groupStats}/>}
+            <Card shell title={`${metricLabel} by ${DIMENSIONS[rows]}`} aside={<span className="ws-hint">Ranked best to worst · click a row for its trades</span>}>
             {bars.length
-              ? <RankBars rows={bars} format={format} signed={SIGNED.has(metric)} onOpen={openBar} currentId={openId}/>
+              ? <RankTable rows={bars} format={format} signed={SIGNED.has(metric)} onOpen={openBar} currentId={openId} symbols={rows === 'symbol' || rows === 'underlying'} dimLabel={DIMENSIONS[rows]} metricLabel={metricLabel} privacy={privacy} money={metric === 'net_pnl'}/>
               : <Empty title="Nothing to rank" detail="No group has a value for this metric."/>}
-          </Card>}
+          </Card>
+            <Card shell title="Win rate vs avg P&L" className="rp-edge-card" aside={<span className="ws-hint">Dot size = trades</span>}>
+              <EdgeMap groups={mixGroups} privacy={privacy} onOpen={(id) => { const index = bars.findIndex((bar) => bar.id === id); if (index >= 0) openBar(index) }}/>
+            </Card>
+            <Card shell title={`Profit by ${DIMENSIONS[rows].toLowerCase()}`} className="rp-mix-card" aside={<span className="ws-hint">Share of gross</span>}>
+              <ProfitMix groups={mixGroups} privacy={privacy} onOpen={(id) => { const index = bars.findIndex((bar) => bar.id === id); if (index >= 0) openBar(index) }}/>
+            </Card>
+          </div>}
       {scatter && <Card shell title={`${POINT_FIELDS[scatter[1]]} against ${POINT_FIELDS[scatter[0]]}`} aside={<div className="ws-legend"><span><i className="rp-key pos"/>Win</span><span><i className="rp-key neg"/>Loss</span></div>}>
         {points.length
           ? <ScatterChart
@@ -531,12 +573,15 @@ function BuilderTab({ trades, privacy, setups, drill }) {
               ]}/></>}
             />
           : <Empty title="No trade has both fields" detail="Pick two fields your trades record."/>}
-        <p className="rp-caption">{points.length} of {list.length} trades have both {POINT_FIELDS[scatter[0]].toLowerCase()} and {POINT_FIELDS[scatter[1]].toLowerCase()}. Click a dot to open the trade.</p>
+        <p className="rp-caption">{points.length} of {list.length} trades have both {inSentence(POINT_FIELDS[scatter[0]])} and {inSentence(POINT_FIELDS[scatter[1]])}. Click a dot to open the trade.</p>
       </Card>}
     </>}
     {tradeId && <TradeDrawer trades={pointTrades} selectedId={tradeId} privacy={privacy} reviews={readStore('trade-reviews', {})} onSelect={setTradeId} onClose={() => setTradeId(null)}/>}
   </>
 }
+
+// Field names mid-sentence: lower the first letter, but leave acronyms like P&L and the R in Realized R alone.
+const inSentence = (label) => label.split(' ').map((word) => (/[A-Z&]/.test(word.slice(1)) || word.length === 1 ? word : word.toLowerCase())).join(' ')
 
 const pointFormat = (field, privacy) => (value) => {
   if (field === 'pnl') return compactMoney(value, { privacy })
@@ -554,123 +599,47 @@ const pointValue = (field, value, privacy) => {
   return `${value}`
 }
 
-/* ============================================================ what if */
-
-const WHATIF_ROWS = ['Net P&L', 'Trades', 'Win rate', 'Profit factor', 'Expectancy', 'Average R', 'Max drawdown', 'Edge score']
-const BLANK_FORM = { mistake: '', tag: '', maxPerDay: '', fixedRisk: '', dailyLoss: '', withoutRuleBreaks: false }
-
-function WhatIfTab({ trades, privacy, setups, drill }) {
-  const [form, setForm] = useState(BLANK_FORM)
-  const [filter, setFilter] = useState({})
-  const set = (key) => (event) => setForm({ ...form, [key]: event.target.type === 'checkbox' ? event.target.checked : event.target.value })
-  const scenario = toScenario(form)
-  const result = useMemo(() => {
-    if (!scenario) return null
-    const base = applyFilter(trades, filter)
-    const sim = simulate(base, scenario)
-    const kept = new Set(sim.trades.map((trade) => trade.id))
-    return { base, kept: sim.trades, removed: base.filter((trade) => !kept.has(trade.id)), actual: computeMetrics(base), whatIf: computeMetrics(sim.trades), counts: sim.counts, basis: sim.pnl_basis }
-  }, [trades, filter, JSON.stringify(scenario)])
-  const change = result ? (result.whatIf?.net_pnl ?? 0) - (result.actual?.net_pnl ?? 0) : 0
-  const actualRows = metricRows(result?.actual, { privacy, only: WHATIF_ROWS })
-  const whatRows = metricRows(result?.whatIf, { privacy, only: WHATIF_ROWS })
-  const groups = () => [
-    group('removed', 'Trades the scenario drops', 'What if', result.removed),
-    group('kept', 'Trades the scenario keeps', 'What if', result.base.filter((trade) => !result.removed.includes(trade))),
-  ]
-  const counts = result ? [
-    ['excluded', 'excluded'], ['rule_breaks', 'broke a rule'], ['over_daily_max', 'past the daily count'],
-    ['after_stop', 'after the daily stop'], ['without_r', 'without R'], ['resized', 'resized'],
-  ].filter(([key]) => result.counts[key] > 0) : []
-  const openId = drill.drill?.groups[drill.drill.index]?.id
-  const presets = useMemo(() => {
-    const base = applyFilter(trades, filter)
-    const actual = computeMetrics(base)?.net_pnl ?? 0
-    const costly = breakdown(base, 'mistake').filter((row) => row.key !== 'none').sort((x, y) => x.net_pnl - y.net_pnl)[0]
-    return [
-      costly && { id: 'mistake', title: `Skip “${costly.label}”`, detail: `${plural(costly.trades, 'trade')} carry this mistake`, form: { ...BLANK_FORM, mistake: costly.key } },
-      { id: 'first', title: 'First 2 trades a day', detail: 'Stop trading after your second trade', form: { ...BLANK_FORM, maxPerDay: '2' } },
-      { id: 'stop', title: 'Stop the day at −$300', detail: 'No new trades once the day is down $300', form: { ...BLANK_FORM, dailyLoss: '300' } },
-      { id: 'rules', title: 'Only rule-following trades', detail: 'Drop every trade that broke a rule', form: { ...BLANK_FORM, withoutRuleBreaks: true } },
-    ].filter(Boolean).map((preset) => {
-      const sim = simulate(base, toScenario(preset.form))
-      return { ...preset, change: (computeMetrics(sim.trades)?.net_pnl ?? 0) - actual }
-    })
-  }, [trades, filter])
-  return <>
-    <Lede>Re-run your statistics with one change: skip a mistake or tag, take only your first trades each day, risk the same on every trade, or stop the day at a loss. Your real statistics never change.</Lede>
-    <Card shell title="Scenario" className="rp-scenario" aside={scenario ? <button type="button" className="rp-clear" onClick={() => setForm(BLANK_FORM)}><RotateCcw size={11} strokeWidth={2.4}/> Reset</button> : <span className="ws-hint">Fill in any field</span>}>
-      <div className="rp-controls">
-        <Field label="Without mistake"><input value={form.mistake} onChange={set('mistake')} placeholder="moved stop"/></Field>
-        <Field label="Without tag"><input value={form.tag} onChange={set('tag')} placeholder="chased"/></Field>
-        <Field label="First N trades a day"><input type="number" min="1" value={form.maxPerDay} onChange={set('maxPerDay')} placeholder="2"/></Field>
-        <Field label="Same risk per trade"><input inputMode="decimal" value={form.fixedRisk} onChange={set('fixedRisk')} placeholder="$ at 1R"/></Field>
-        <Field label="Stop the day at a loss of"><input inputMode="decimal" value={form.dailyLoss} onChange={set('dailyLoss')} placeholder="$500"/></Field>
-      </div>
-      <label className="rp-check">
-        <input type="checkbox" checked={form.withoutRuleBreaks} onChange={set('withoutRuleBreaks')}/>
-        <span>Only trades that followed my rules</span>
-      </label>
-      <Disclosure label="Only some trades" count={filterCount(filter)}>
-        <FilterForm name="what if" value={filter} onChange={(next) => setFilter(cleanFilter(next))} setups={setups}/>
-      </Disclosure>
-    </Card>
-
-    {!scenario ? <Card shell title="Try one" aside={<span className="ws-hint">Net P&L change if you had</span>}>
-      <div className="rp-presets">
-        {presets.map((preset) => <button key={preset.id} type="button" className="rp-plate rp-preset" onClick={() => setForm(preset.form)}>
-          <span>{preset.title}</span>
-          <strong className={`tone-${toneOf(preset.change)}`}>{signedMoney(preset.change, privacy)}</strong>
-          <small>{preset.detail}</small>
-          <ChevronRight size={14} className="rp-plate-go" aria-hidden="true"/>
-        </button>)}
-      </div>
-    </Card> : <>
-      <div className="rp-sim">
-        <button type="button" className={`rp-vs-side rp-sim-card${openId === 'removed' ? ' is-current' : ''}`} disabled={!result.removed.length} onClick={() => drill.open(groups(), 0)}>
-          <span className="rp-vs-copy">
-            <small>Dropped</small>
-            <strong>{plural(result.removed.length, 'trade')}</strong>
-            <small>{counts.length ? counts.map(([key, text]) => `${result.counts[key]} ${text}`).join(' · ') : 'Nothing dropped; trades resized only'}</small>
-          </span>
-          {result.removed.length > 0 && <ChevronRight size={15} className="rp-plate-go" aria-hidden="true"/>}
-        </button>
-        <div className="rp-vs-delta">
-          <span>Net P&L change{result.basis && result.basis !== 'net' ? ` · ${result.basis} P&L` : ''}</span>
-          <strong className={`tone-${toneOf(change)}`}>{signedMoney(change, privacy)}</strong>
-          <small>{money(result.actual?.net_pnl ?? 0, { privacy, decimals: 0 })} → {money(result.whatIf?.net_pnl ?? 0, { privacy, decimals: 0 })}</small>
-        </div>
-      </div>
-      <MetricStrip items={[
-        { label: 'Trades kept', value: `${result.whatIf?.trades ?? 0}`, sub: `of ${result.actual?.trades ?? 0} actual`, line: { type: 'dashes', share: (result.whatIf?.trades ?? 0) / Math.max(1, result.actual?.trades ?? 0), total: 14 } },
-        { label: 'Win rate', value: result.whatIf?.win_rate == null ? '—' : percent(result.whatIf.win_rate * 100), sub: `Actual ${result.actual?.win_rate == null ? '—' : percent(result.actual.win_rate * 100)}`, line: gauge(result.whatIf?.win_rate ?? 0, { mark: result.actual?.win_rate ?? 0.5 }) },
-        { label: 'Profit factor', value: result.whatIf?.profit_factor == null ? '—' : result.whatIf.profit_factor.toFixed(2), sub: `Actual ${result.actual?.profit_factor == null ? '—' : result.actual.profit_factor.toFixed(2)}`, line: gauge((result.whatIf?.profit_factor ?? 0) / 3, { mark: (result.actual?.profit_factor ?? 1) / 3 }) },
-        { label: 'Max drawdown', value: money(result.whatIf?.max_drawdown ?? 0, { privacy }), tone: 'neg', sub: `Actual ${money(result.actual?.max_drawdown ?? 0, { privacy, decimals: 0 })}`, line: gauge(Math.abs(result.whatIf?.max_drawdown ?? 0) / Math.max(1, Math.abs(result.actual?.max_drawdown ?? 0), Math.abs(result.whatIf?.max_drawdown ?? 0)), { tone: 'neg' }) },
-      ]}/>
-      <Card shell title="Actual against simulated" aside={<span className="ws-hint">Simulated, not real</span>}>
-        <div className="ws-table-wrap">
-          <table className="rp-table rp-whatif-table">
-            <thead><tr><th>Metric</th><th>Actual</th><th>What if</th></tr></thead>
-            <tbody>{WHATIF_ROWS.map((label, index) => {
-              const diff = difference(label, actualRows[index], whatRows[index], privacy)
-              return <tr key={label}>
-                <th scope="row">{label}</th>
-                <td>{actualRows[index]?.value ?? '—'}</td>
-                <td><span className="rp-sim-value">{whatRows[index]?.value ?? '—'}</span>{diff && <span className={`rp-delta tone-${diff.tone}`}>{diff.text}</span>}</td>
-              </tr>
-            })}</tbody>
-          </table>
-        </div>
-      </Card>
-    </>}
-  </>
-}
-
 /* ============================================================ publish */
 
 const periodOf = (filter = {}) => (filter.from && filter.to ? `${filter.from} to ${filter.to}` : filter.from ? `from ${filter.from}` : filter.to ? `until ${filter.to}` : 'all dates')
 
-function ReportRow({ report, privacy, onOpen, onChange, fresh }) {
+const DURATIONS = [['1', '1 day'], ['7', '7 days'], ['30', '30 days'], ['90', '90 days']]
+const topOf = (report, n = 2) => [...(report.content?.breakdowns?.symbol ?? [])].sort((x, y) => y.trades - x.trades).slice(0, n).map((row) => row.key)
+
+/** A published report as a notebook-style card: date + tickers strip, title and frozen result, its scope as chips. */
+function ReportCard({ report, privacy, onOpen, onShare, fresh, index }) {
+  const m = report.content?.metrics
+  const symbols = topOf(report)
+  const live = (report.shares ?? []).filter(shareActive).length
+  const f = report.definition?.filter ?? {}
+  const chips = [periodOf(f), f.setup, f.direction && (f.direction === 'long' ? 'Long' : 'Short'), f.symbol, report.definition?.include_trades && 'Trades', report.definition?.include_notes && 'Notes'].filter(Boolean)
+  return <article className={`home-card ws-card duo rp-rcard${fresh ? ' is-fresh' : ''}`} style={{ '--i': index }}>
+    <header className="shell-head rp-rcard-head">
+      <span className="card-title"><CalendarBlank size={13} weight="duotone"/>{dateOnly(report.created_at)}</span>
+      {symbols.length > 0 && <span className="rp-setcard-syms" aria-label={`Most traded: ${symbols.join(', ')}`}>
+        {symbols.map((symbol) => <span key={symbol} className="nb-note-sym"><SymbolToken symbol={symbol}/><b>{symbol}</b></span>)}
+      </span>}
+    </header>
+    <div className="shell-body rp-rcard-body">
+      <ReportCover report={report} privacy={privacy}/>
+      <div className="rp-rcard-title">
+        <h2><button type="button" className="rp-rcard-link" onClick={onOpen}>{report.title}</button></h2>
+        <strong className={m ? `tone-${toneOf(m.net_pnl)}` : ''}>{m ? money(m.net_pnl, { privacy }) : '—'}</strong>
+      </div>
+      <div className="rp-rcard-chips">{chips.map((chip) => <span key={chip} className="rp-tag">{chip}</span>)}</div>
+    </div>
+    <footer className="rp-setcard-foot rp-rcard-foot">
+      <span className={`rp-live${live ? ' is-on' : ''}`}><i/>{live ? `${plural(live, 'live link')}` : 'Private to you'}</span>
+      <span className="rp-rcard-acts">
+        <button type="button" className="rp-setcard-open" onClick={onShare}><Link2 size={13}/> Share</button>
+        <button type="button" className="rp-setcard-open" onClick={onOpen}>Open <ChevronRight size={13}/></button>
+      </span>
+    </footer>
+  </article>
+}
+
+/** Share links for one report: pick how long, create (the token is shown once), revoke live ones. */
+function SharePane({ report, onChange }) {
   const [days, setDays] = useState('7')
   const [created, setCreated] = useState(null)
   const [copied, setCopied] = useState(false)
@@ -688,27 +657,13 @@ function ReportRow({ report, privacy, onOpen, onChange, fresh }) {
   }
   const revoke = (shareId) => onChange({ ...report, shares: report.shares.map((item) => (item.share_id === shareId ? { ...item, revoked_at: new Date().toISOString() } : item)) })
   const link = created ? shareURL(created.token) : ''
-  const m = report.content?.metrics
-  return <li className={`rp-report${fresh ? ' is-fresh' : ''}`}>
-    <div className="rp-report-top">
-      <button type="button" className="rp-report-id" onClick={onOpen}>
-        <strong>{report.title}</strong>
-        <span>{dateTime(report.created_at)}</span>
-      </button>
-      {m && <span className="rp-report-fig"><b className={`tone-${toneOf(m.net_pnl)}`}>{money(m.net_pnl, { privacy })}</b><small>{plural(m.trades, 'trade')}</small></span>}
-    </div>
-    <div className="rp-report-meta">
-      <span className="rp-tag">{periodOf(report.definition?.filter)}</span>
-      {report.definition?.filter?.setup && <span className="rp-tag">{report.definition.filter.setup}</span>}
-      {report.definition?.include_trades && <span className="rp-tag">Trades</span>}
-      {report.definition?.include_notes && <span className="rp-tag">Notes</span>}
-      <div className="rp-report-actions">
-        <button type="button" className="ws-outline rp-small" onClick={onOpen}><ExternalLink size={13}/> Open</button>
-        <select className="rp-days" aria-label={`Share ${report.title} for`} value={days} onChange={(event) => setDays(event.target.value)}>
-          <option value="1">1 day</option><option value="7">7 days</option><option value="30">30 days</option><option value="90">90 days</option>
-        </select>
-        <button type="button" className="ws-outline rp-small" disabled={pending} onClick={share}><Link2 size={13}/> {pending ? 'Creating…' : 'Share link'}</button>
+  return <div className="rp-share">
+    <p className="rp-share-lede">Anyone with a link can read this report, frozen as published, until the link expires or you revoke it.</p>
+    <div className="rp-share-make">
+      <div className="rp-share-days" role="radiogroup" aria-label="Link lasts">
+        {DURATIONS.map(([value, name]) => <button key={value} type="button" role="radio" aria-checked={days === value} className={days === value ? 'on' : ''} onClick={() => setDays(value)}>{name}</button>)}
       </div>
+      <button type="button" className="start-day rp-share-go" disabled={pending} onClick={share}><Link2 size={14}/> {pending ? 'Creating…' : 'Create link'}</button>
     </div>
     {created?.token && <div className="rp-newlink" aria-label="New share link">
       <code>{link}</code>
@@ -717,25 +672,27 @@ function ReportRow({ report, privacy, onOpen, onChange, fresh }) {
       </button>
       <small>Shown once. Anyone with it can read this report until {dateOnly(created.expires_at)}.</small>
     </div>}
-    {report.shares?.length > 0 && <ul className="rp-shares" aria-label={`Links for ${report.title}`}>
-      {report.shares.map((item) => {
-        const active = shareActive(item)
-        const state = item.revoked_at ? 'revoked' : active ? `expires ${dateOnly(item.expires_at)}` : 'expired'
-        return <li key={item.share_id}>
-          <i className={item.revoked_at ? 'revoked' : active ? 'active' : 'expired'}/>
-          <span>Link from {dateOnly(item.created_at)} · {state}</span>
-          {active && <button type="button" className="rp-revoke" onClick={() => revoke(item.share_id)}>Revoke</button>}
-        </li>
-      })}
-    </ul>}
-  </li>
+    <div className="rp-share-list">
+      <span className="rp-sublabel">Links</span>
+      {report.shares?.length > 0 ? <ul className="rp-shares" aria-label={`Links for ${report.title}`}>
+        {report.shares.map((item) => {
+          const active = shareActive(item)
+          const state = item.revoked_at ? 'revoked' : active ? `expires ${dateOnly(item.expires_at)}` : 'expired'
+          return <li key={item.share_id}>
+            <i className={item.revoked_at ? 'revoked' : active ? 'active' : 'expired'}/>
+            <span>Link from {dateOnly(item.created_at)} · {state}</span>
+            {active && <button type="button" className="rp-revoke" onClick={() => revoke(item.share_id)}>Revoke</button>}
+          </li>
+        })}
+      </ul> : <p className="rp-muted">No links yet.</p>}
+    </div>
+  </div>
 }
 
-function PublishTab({ trades, privacy, setups, published, setPublished, openReport }) {
+function PublishTab({ trades, privacy, published, setPublished, openReport, filter }) {
   const [title, setTitle] = useState('')
   const [includeTrades, setIncludeTrades] = useState(true)
   const [notes, setNotes] = useState(false)
-  const [filter, setFilter] = useState({})
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(null)
   const [fresh, setFresh] = useState(null)
@@ -758,43 +715,45 @@ function PublishTab({ trades, privacy, setups, published, setPublished, openRepo
   }
   const matched = useMemo(() => applyFilter(trades, filter).length, [trades, filter])
   return <>
-    <Lede>Freeze your statistics, days, trades and notes as they are now. Open a report to print it or save a PDF, or share a read-only link that expires.</Lede>
-    <Card shell title="New report" aside={<span className="ws-hint">{plural(matched, 'trade')} match</span>} className="rp-new">
-      <div className="rp-publish-row">
-        <Field label="Title"><input maxLength={120} placeholder="September review" value={title} onChange={(event) => setTitle(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') publish() }}/></Field>
-        <div className="rp-includes" role="group" aria-label="Include">
-          <label className="rp-check"><input type="checkbox" checked={includeTrades} onChange={(event) => setIncludeTrades(event.target.checked)}/><span>Trades</span></label>
-          <label className={`rp-check${hasPeriod ? '' : ' is-disabled'}`} title={hasPeriod ? undefined : 'Set a From and To date to include notes'}>
-            <input type="checkbox" disabled={!hasPeriod} checked={notes && hasPeriod} onChange={(event) => setNotes(event.target.checked)}/><span>Notes</span>
-          </label>
+    <section className="home-card ws-card duo rp-compose" aria-label="New report">
+      <header className="shell-head rp-setcard-head">
+        <Send size={13} className="rp-compose-icon"/>
+        <h2>New Report</h2>
+        <span className="ws-hint rp-compose-count">Print it or share a link that expires</span>
+      </header>
+      <div className="shell-body rp-compose-body">
+        <input className="rp-compose-title" aria-label="Report title" maxLength={120} placeholder="Name it, e.g. September review" value={title}
+          onChange={(event) => setTitle(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') publish() }}/>
+        <div className="rp-compose-row">
+          <span className="rp-compose-scope">{filterCount(filter) ? `Freezes the ${plural(matched, 'trade')} filtered above` : `Freezes all ${plural(matched, 'trade')}`}{hasPeriod ? '' : ' · set dates above to include notes'}</span>
+          <span className="rp-compose-gap"/>
+          <span className="rp-toggles" role="group" aria-label="Include">
+            <button type="button" aria-pressed={includeTrades} className={includeTrades ? 'on' : ''} onClick={() => setIncludeTrades(!includeTrades)}>{includeTrades && <Check size={11} strokeWidth={3}/>}Trades</button>
+            <button type="button" aria-pressed={notes && hasPeriod} disabled={!hasPeriod} title={hasPeriod ? undefined : 'Set a date range to include notes'} className={notes && hasPeriod ? 'on' : ''} onClick={() => setNotes(!notes)}>{notes && hasPeriod && <Check size={11} strokeWidth={3}/>}Notes</button>
+          </span>
+          <button type="button" className="start-day rp-compose-go" disabled={!title.trim() || pending} onClick={publish}>
+            <Send size={13}/> {pending ? 'Publishing…' : error === 'lost' ? 'Retry' : 'Publish'}
+          </button>
         </div>
-        <button type="button" className="start-day" disabled={!title.trim() || pending} onClick={publish}>
-          <Send size={14}/> {pending ? 'Publishing…' : error === 'lost' ? 'Retry' : 'Publish'}
-        </button>
+        {error && <div className="rp-feedback error" role="alert">Publishing could not be confirmed. Retry sends the same report.</div>}
       </div>
-      {error && <div className="rp-feedback error" role="alert">Publishing could not be confirmed. Retry sends the same report.</div>}
-      <Disclosure label="Limit to some trades" count={filterCount(filter)}>
-        <FilterForm name="report" value={filter} onChange={(next) => setFilter(cleanFilter(next))} setups={setups}/>
-      </Disclosure>
-    </Card>
-    <Card shell title="Published" aside={<span className="ws-hint">{plural(published.length, 'report')} · private to you</span>}>
-      {published.length
-        ? <ul className="rp-reports">
-            {published.map((report) => <ReportRow
-              key={report.report_id} report={report} privacy={privacy} fresh={fresh === report.report_id}
-              onOpen={() => openReport(report.report_id)}
-              onChange={(next) => setPublished(published.map((item) => (item.report_id === next.report_id ? next : item)))}
-            />)}
-          </ul>
-        : <Empty title="Nothing published yet" detail="Give a report a title and publish it above."/>}
-    </Card>
+    </section>
+    <div className="rp-section-head"><h3>Published</h3><span>{plural(published.length, 'report')} · private to you</span></div>
+    {published.length
+      ? <div className="rp-rcards">
+          {published.map((report, index) => <ReportCard
+            key={report.report_id} report={report} privacy={privacy} fresh={fresh === report.report_id} index={index}
+            onOpen={() => openReport(report.report_id, 'report')} onShare={() => openReport(report.report_id, 'share')}
+          />)}
+        </div>
+      : <Empty title="Nothing published yet" detail="Give a report a name and publish it above."/>}
   </>
 }
 
 /* ============================================================ report view */
 
 function ReportSection({ title, children }) {
-  return <section className="rp-rv-section"><h3>{title}</h3>{children}</section>
+  return <section className="rp-rv-section"><h3>{titleCase(title)}</h3>{children}</section>
 }
 
 export function ReportView({ report, privacy }) {
@@ -852,23 +811,31 @@ export function ReportView({ report, privacy }) {
   </article>
 }
 
-function ReportSheet({ report, privacy, onClose }) {
-  const [view, setView] = useState('Owner')
+/** A published report in the springy drawer: read it (and print it), or manage its share links. */
+function ReportDrawer({ report, privacy, view, setView, onClose, onChange }) {
   useEffect(() => { document.body.classList.add('rp-printable'); return () => document.body.classList.remove('rp-printable') }, [])
-  return <Sheet
-    title={view === 'Owner' ? 'Published report' : 'Shared link preview'}
-    subtitle={view === 'Owner' ? 'Private to you · figures frozen when published' : 'Read-only trading journal report shared with you'}
-    onClose={onClose} width={760} className="rp-sheet"
-    footer={<>
-      <Segmented options={['Owner', 'Shared view']} value={view} onChange={setView} label="Report view" className="rp-sheet-seg"/>
-      <div className="dlg-actions">
-        <button type="button" className="ws-outline" onClick={onClose}>Back to reports</button>
-        <button type="button" className={view === 'Owner' ? 'start-day' : 'ws-outline'} disabled={!report} onClick={() => window.print()}><Printer size={14}/> Print or save as PDF</button>
+  if (!report) return null
+  const m = report.content?.metrics
+  return <Drawer label={`Report ${report.title}`} viewKey={view} width={780} onClose={onClose}>
+    <div className="trade-panel dw-trade rp-drawer">
+      <div className="tp-head">
+        <div>
+          <div className="tp-title"><span className="rp-dw-icon"><FileText size={15}/></span><b title={report.title}>{report.title}</b></div>
+          <small>Published {dateTime(report.created_at)} · {m ? `${plural(m.trades, 'trade')} · ` : ''}figures frozen</small>
+        </div>
+        <Segmented options={['Report', 'Share']} value={view === 'share' ? 'Share' : 'Report'} onChange={(next) => setView(next === 'Share' ? 'share' : 'report')} label="Report drawer" className="compact rp-dw-seg"/>
       </div>
-    </>}
-  >
-    {report ? <ReportView report={report} privacy={privacy}/> : <div className="rp-feedback error" role="alert">This report could not be loaded.</div>}
-  </Sheet>
+      {view === 'share'
+        ? <SharePane report={report} onChange={onChange}/>
+        : <>
+          <div className="rp-dw-doc" data-no-drag><ReportView report={report} privacy={privacy}/></div>
+          <div className="dw-actions rp-dw-actions">
+            <button type="button" className="ws-outline" onClick={() => setView('share')}><Link2 size={14}/> Share</button>
+            <button type="button" className="start-day" onClick={() => window.print()}><Printer size={14}/> Print or save as PDF</button>
+          </div>
+        </>}
+    </div>
+  </Drawer>
 }
 
 /* ============================================================ page */
@@ -876,12 +843,15 @@ function ReportSheet({ report, privacy, onClose }) {
 export function ReportsPage({ privacy, range = 'All' }) {
   const trades = useMemo(() => scopeByRange(tradeLog, range), [range])
   const setups = useMemo(() => setupsOf(tradeLog), [])
-  const [tab, setTabState] = useState(() => { const saved = readStore('rp-tab', 'Insights'); return TABS.includes(saved) ? saved : 'Insights' })
+  const [tab, setTabState] = useState(() => { const saved = readStore('rp-tab', 'Insights'); return saved === 'Report builder' ? 'Publish' : TABS.includes(saved) ? saved : 'Insights' })
   const drill = useDrill()
   const setTab = (next) => { drill.close(); setTabState(next); writeStore('rp-tab', next) }
   const [published, setPublishedState] = useState(() => loadPublished(tradeLog))
   const setPublished = (next) => { setPublishedState(next); storePublished(next) }
   const [openId, setOpenId] = useState(null)
+  const [buildFilter, setBuildFilter] = useState({})
+  const [openView, setOpenView] = useState('report')
+  const openReport = (id, view = 'report') => { setOpenView(view); setOpenId(id) }
   const sessions = useMemo(() => new Set(trades.map((trade) => trade.date)).size, [trades])
   const props = { trades, privacy, setups, drill }
 
@@ -897,11 +867,14 @@ export function ReportsPage({ privacy, range = 'All' }) {
     <div className="rp-panel" key={tab}>
       {tab === 'Insights' && <InsightsTab {...props}/>}
       {tab === 'Compare' && <CompareTab {...props}/>}
-      {tab === 'Report builder' && <BuilderTab {...props}/>}
-      {tab === 'What if' && <WhatIfTab {...props}/>}
-      {tab === 'Publish' && <PublishTab {...props} published={published} setPublished={setPublished} openReport={setOpenId}/>}
+      {tab === 'Publish' && <>
+        <Lede>Build any view of your trades, then freeze it as a report: print it, save a PDF, or share a read-only link that expires.</Lede>
+        <BuilderTab {...props} filter={buildFilter} setFilter={setBuildFilter}/>
+        <PublishTab {...props} filter={buildFilter} published={published} setPublished={setPublished} openReport={openReport}/>
+      </>}
     </div>
     <DrillLayer drill={drill.drill} step={drill.step} close={drill.close} privacy={privacy}/>
-    {openId && <ReportSheet report={published.find((item) => item.report_id === openId)} privacy={privacy} onClose={() => setOpenId(null)}/>}
+    {openId && <ReportDrawer report={published.find((item) => item.report_id === openId)} privacy={privacy} view={openView} setView={setOpenView} onClose={() => setOpenId(null)}
+      onChange={(next) => setPublished(published.map((item) => (item.report_id === next.report_id ? next : item)))}/>}
   </div>
 }

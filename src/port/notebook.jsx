@@ -1,9 +1,15 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
-  Archive, ArchiveRestore, CalendarDays, ChevronDown, CircleAlert, Download, Info, NotebookPen, Pencil, Plus, Search, WifiOff,
+  Archive, ArchiveRestore, Bold, Circle, CalendarDays, Check, ChevronDown, CircleAlert, Code, Download, ChevronRight, Hash, Heading2, Info, Italic, List, ListOrdered,
+  NotebookPen, Pencil, Plus, Quote, Search, WifiOff, X,
 } from 'lucide-react'
-import { PageHead, Card, Segmented } from '../workspace'
-import { Sheet } from '../dialogs'
+import { PageHead, Card } from '../workspace'
+import { SymbolToken } from '../viz'
+import { RichBody } from './notebook-rich'
+import { FilterMenu } from './notebook-pickers'
+import { searchSymbols } from '../symbols'
+import { Drawer, Sheet, useDrawer } from '../dialogs'
 import {
   BODY_MAX, NOTEBOOK_EVENT, NO_FILTERS, TEMPLATES, TITLE_MAX, download, entryDate, exportEntries, isConflict, isRefusal,
   loadEntries, parseList, parseSymbols, queryEntries, reloadFromStorage, tagCounts, waitingCommands,
@@ -94,24 +100,22 @@ export function NotebookPage() {
     <PageHead
       title="Notebook"
       meta={`${plural(counts.active, 'note')} · ${counts.archived} archived · ${plural(counts.files, 'attachment')}`}
-      actions={<button type="button" className="start-day" disabled={composing} onClick={() => { create.reset(); setComposing(true) }}><Plus size={16} strokeWidth={2.2}/> New entry</button>}
+      actions={<div className="nb-head-actions">
+        <button type="button" className="start-day" disabled={composing} onClick={() => { create.reset(); setComposing(true) }}><Plus size={16} strokeWidth={2.2}/> New entry</button>
+        <ExportMenu pending={exporting} onExport={runExport}/>
+      </div>}
     />
 
     <OfflineBanner/>
 
-    <JournalSearch key={JSON.stringify([filters.q, filters.symbol, filters.from, filters.to])} filters={filters} onSearch={setFilter}/>
+    <JournalSearch filters={filters} onSearch={setFilter} extra={<FilterMenu filters={filters} tags={tags} onChange={setFilter}/>}/>
 
     <div className="nb-filters" role="group" aria-label="Filter notes">
       <div className="ws-seg nb-status">
         {[['active', 'Active'], ['archived', 'Archived'], ['all', 'All entries']].map(([value, label]) =>
           <button key={value} type="button" aria-pressed={status === value} className={status === value ? 'active' : ''} onClick={() => setFilter({ status: value })}>{label}</button>)}
       </div>
-      <div className="nb-tags">
-        {tags.map((item) => <button key={item.tag} type="button" aria-pressed={tag === item.tag} className={`nb-tag-chip${tag === item.tag ? ' on' : ''}`} onClick={() => setFilter({ tag: tag === item.tag ? '' : item.tag })}>
-          #{item.tag} <span>{item.count}</span>
-        </button>)}
-      </div>
-      <ExportMenu pending={exporting} onExport={runExport}/>
+
     </div>
 
     <div className="nb-stack">
@@ -145,7 +149,7 @@ export function NotebookPage() {
     </div>}
 
     {entries.hasNextPage && <div className="nb-more">
-      <button type="button" className="nb-btn" disabled={entries.isFetchingNextPage} onClick={entries.fetchNextPage}>{entries.isFetchingNextPage ? 'Loading…' : 'Load older entries'}</button>
+      <button type="button" className="nb-loadmore" disabled={entries.isFetchingNextPage} onClick={entries.fetchNextPage}>{entries.isFetchingNextPage ? 'Loading…' : 'Load more…'}</button>
     </div>}
 
     {composing && <Sheet title="New entry" subtitle="Record your thinking. Every saved version is retained." width={576} className="nb-sheet" onClose={() => setComposing(false)}>
@@ -187,34 +191,30 @@ function OfflineBanner() {
 /* ------------------------------------------------------------ search */
 
 // Text filters apply on submit; the form is remounted whenever the applied filters change.
-function JournalSearch({ filters, onSearch }) {
-  const [draft, setDraft] = useState({ q: filters.q, symbol: filters.symbol, from: filters.from, to: filters.to })
+function JournalSearch({ filters, onSearch, extra }) {
+  const [draft, setDraft] = useState({ q: filters.q })
   const field = (key) => ({ value: draft[key], onChange: (event) => setDraft((current) => ({ ...current, [key]: event.target.value })) })
-  const active = !!(filters.q || filters.symbol || filters.from || filters.to)
+  const active = !!filters.q
   const submit = (event) => {
     event.preventDefault()
-    onSearch({ q: draft.q.trim(), symbol: draft.symbol.trim(), from: draft.from, to: draft.to })
+    onSearch({ q: draft.q.trim() })
   }
+  // outside resets (e.g. "Clear filters") flow back into the box
+  useEffect(() => { setDraft((current) => (current.q.trim() === filters.q ? current : { q: filters.q })) }, [filters.q])
+  // search as you type, a beat after the last keystroke
+  useEffect(() => {
+    const q = draft.q.trim()
+    if (q === filters.q) return undefined
+    const timer = window.setTimeout(() => onSearch({ q }), 400)
+    return () => window.clearTimeout(timer)
+  }, [draft.q])
   return <form role="search" aria-label="Search notes" className="nb-search" onSubmit={submit}>
     <label className="nb-field grow">
-      <span>Phrase</span>
+      <span>Search</span>
       <span className="ws-search nb-input"><Search size={14}/><input aria-label="Search phrase" placeholder="Search title and body" maxLength={200} {...field('q')}/></span>
     </label>
-    <label className="nb-field symbol">
-      <span>Symbol</span>
-      <span className="ws-search nb-input"><input aria-label="Symbol" placeholder="SPY" maxLength={20} {...field('symbol')}/></span>
-    </label>
-    <label className="nb-field">
-      <span>From</span>
-      <span className="ws-search nb-input"><input type="date" aria-label="From date" max={draft.to || undefined} {...field('from')}/></span>
-    </label>
-    <label className="nb-field">
-      <span>To</span>
-      <span className="ws-search nb-input"><input type="date" aria-label="To date" min={draft.from || undefined} {...field('to')}/></span>
-    </label>
     <div className="nb-search-actions">
-      <button type="submit" className="nb-btn secondary"><Search size={14}/> Search</button>
-      {active && <button type="button" className="nb-btn ghost" onClick={() => onSearch({ q: '', symbol: '', from: '', to: '' })}>Clear</button>}
+      {extra}
     </div>
   </form>
 }
@@ -257,6 +257,71 @@ function ExportMenu({ pending, onExport }) {
 
 /* ------------------------------------------------------------ note card */
 
+const TAG_LIMIT = 4
+const TAG_GAP = 6
+const TAG_H = 22
+const MORE_W = 64
+
+// Tags rest as a small stack of cards fanned to the right; a click spreads them into a normal row,
+// wrapping onto more lines when they don't fit. More than four fold behind a "+N more".
+function TagStack({ tags }) {
+  const [open, setOpen] = useState(false)
+  const [all, setAll] = useState(false)
+  const [widths, setWidths] = useState([])
+  const [room, setRoom] = useState(0)
+  const row = useRef(null)
+  const mirror = useRef(null)
+  const shown = open && all ? tags : tags.slice(0, TAG_LIMIT)
+  const extra = tags.length - shown.length
+  useLayoutEffect(() => {
+    const measure = () => { if (mirror.current) setWidths([...mirror.current.children].map((el) => el.offsetWidth)) }
+    measure()
+    document.fonts?.ready.then(measure)
+  }, [shown.join('|')])
+  useLayoutEffect(() => {
+    const el = row.current
+    if (!el) return undefined
+    const observer = new ResizeObserver(() => setRoom(el.clientWidth))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+  useEffect(() => { if (!open) setAll(false) }, [open])
+  const ready = widths.length === shown.length
+  const limit = Math.max(0, room - (extra > 0 ? MORE_W + 8 : 0))
+  let x = 0
+  let y = 0
+  let widest = 0
+  const offsets = shown.map((_, i) => {
+    const w = widths[i] ?? 0
+    if (x > 0 && limit && x + w > limit) { x = 0; y += TAG_H + TAG_GAP }
+    const at = [x, y]
+    x += w + TAG_GAP
+    widest = Math.max(widest, x - TAG_GAP)
+    return at
+  })
+  const single = shown.length === 1
+  return <div className="nb-note-tags" ref={row}>
+    <span ref={mirror} className="nb-tag-mirror" aria-hidden="true">{shown.map((item) => <span key={item} className="nb-tag">#{item}</span>)}</span>
+    <button type="button" className={`nb-tagstack${open ? ' is-open' : ''}${ready ? '' : ' is-measuring'}`} disabled={single}
+      aria-expanded={single ? undefined : open} aria-label={`Tags: ${tags.join(', ')}`}
+      style={{ '--n': shown.length, '--w0': `${widths[0] ?? 0}px`, '--wopen': `${widest}px`, '--hopen': `${y + TAG_H}px` }}
+      onClick={() => setOpen((value) => !value)}>
+      {shown.map((item, i) => <span key={item} className="nb-tag" style={{ '--i': i, '--ox': `${offsets[i][0]}px`, '--oy': `${offsets[i][1]}px`, '--tw': `${widths[i] ?? 0}px`, zIndex: shown.length - i }}><span>#{item}</span></span>)}
+    </button>
+    {extra > 0 && <button type="button" className="nb-tagmore" onClick={() => { setOpen(true); setAll(true) }}>+{extra} more</button>}
+  </div>
+}
+
+// The note's tickers as oversized marks tucked into the card's bottom-right corner, cropped by its edge.
+export function NoteMarks({ symbols = [] }) {
+  if (!symbols.length) return null
+  // Lead ticker in the corner, the rest fan out leftward, each smaller; drawn back to front.
+  const marks = symbols.slice(0, 4).map((symbol, i) => ({ symbol, i })).reverse()
+  return <span className="nb-marks" role="img" aria-label={`Symbols: ${symbols.join(', ')}`}>
+    {marks.map(({ symbol, i }) => <span key={symbol} className={`nb-mark m${i}`} title={symbol}><SymbolToken symbol={symbol}/></span>)}
+  </span>
+}
+
 function JournalNote({ entry }) {
   const [editing, setEditing] = useState(false)
   const [baseRevision, setBaseRevision] = useState(entry.revision)
@@ -267,30 +332,33 @@ function JournalNote({ entry }) {
   // The note changed after this draft was opened: show the saved version, make overwriting explicit.
   const conflicted = editing && entry.revision !== baseRevision
   const openEditor = () => { setBaseRevision(entry.revision); command.reset(); setEditing(true) }
-  const revise = (content) => {
-    if (pendingRevision) { command.retry(() => setEditing(false)); return }
-    command.submit({ kind: 'revise', entry_id: entry.entry_id, expected_revision: entry.revision, content }, () => setEditing(false))
+  const revise = (content, close = () => setEditing(false)) => {
+    if (pendingRevision) { command.retry(close); return }
+    command.submit({ kind: 'revise', entry_id: entry.entry_id, expected_revision: entry.revision, content }, close)
   }
   const toggleArchive = () => command.submit({ kind: archived ? 'restore' : 'archive', entry_id: entry.entry_id, expected_revision: entry.revision })
   const date = entry.content.occurred_on ?? new Date(entry.created_at).toLocaleDateString()
 
-  return <Card className={`nb-note${archived ? ' is-archived' : ''}`}>
-    <div className="nb-note-meta">
+  return <Card className={`nb-note duo${archived ? ' is-archived' : ''}`}>
+    <div className="nb-note-meta shell-head">
       <span className="card-title"><CalendarDays size={13}/>{date}</span>
       {entry.author === 'assistant' && <span className="nb-badge soft">By assistant</span>}
       {archived && <span className="nb-badge">Archived</span>}
+      {entry.content.symbols?.length > 0 && <span className="nb-note-tickers" aria-label={`Symbols: ${entry.content.symbols.join(', ')}`}>
+        {entry.content.symbols.map((symbol) => <span key={symbol} className="nb-note-sym" title={symbol}><SymbolToken symbol={symbol}/><b>{symbol}</b></span>)}
+      </span>}
     </div>
+    <div className="shell-body nb-note-card">
+    <NoteMarks symbols={entry.content.symbols}/>
     <h2 className="nb-note-title">{entry.content.title}</h2>
     <Markdown text={entry.content.body} className="nb-note-body"/>
-    {(entry.content.tags.length > 0 || entry.content.symbols?.length > 0) && <div className="nb-note-tags">
-      {(entry.content.symbols || []).map((symbol) => <span key={`s-${symbol}`} className="nb-symbol">{symbol}</span>)}
-      {entry.content.tags.map((item) => <span key={item} className="nb-tag">#{item}</span>)}
-    </div>}
+    {entry.content.tags.length > 0 && <TagStack tags={entry.content.tags}/>}
     <EntryAttachments entry={entry}/>
     {!editing && command.error && <Feedback tone="error" icon={CircleAlert} action={command.pending && !command.isPending ? <>
       <button type="button" className="nb-btn" onClick={() => (pendingRevision ? setEditing(true) : command.retry())}>Retry</button>
       <button type="button" className="nb-btn ghost" onClick={command.discardRetry}>Discard retry</button>
     </> : undefined}>{command.error.message}</Feedback>}
+    </div>
     <footer className="nb-note-foot">
       <span>Revision {entry.revision}{command.isSuccess && ' · saved'}</span>
       <div>
@@ -301,26 +369,35 @@ function JournalNote({ entry }) {
       </div>
     </footer>
 
-    {editing && <Sheet title="Edit entry" subtitle="Save a new revision of your note." width={576} className="nb-sheet" onClose={() => setEditing(false)}>
-      {conflicted && <div role="alert" className="nb-conflict">
-        <p>This note changed to revision {entry.revision} while you were editing. Your draft is kept below.</p>
-        <details>
-          <summary>Show the saved version</summary>
-          <p className="nb-conflict-title">{entry.content.title}</p>
-          <p className="nb-conflict-body">{entry.content.body}</p>
-        </details>
-      </div>}
-      {command.error && !(conflicted && isConflict(command.error)) && <Feedback tone="error" icon={CircleAlert}>{command.pending ? 'Save not confirmed. Retry sends the same revision.' : command.error.message}</Feedback>}
-      {pendingRevision && !command.isPending && <button type="button" className="nb-btn nb-self-start" onClick={() => { command.discardRetry(); setDraftKey((key) => key + 1) }}>Discard retry (it may already be saved)</button>}
-      <EntryEditor
-        key={draftKey} initial={pendingRevision ?? entry.content}
-        locked={!!pendingRevision && !command.isPending} busy={command.isPending}
-        submitLabel={command.isPending ? 'Saving…' : pendingRevision ? 'Retry save' : conflicted ? `Save over revision ${entry.revision}` : 'Save revision'}
-        onSubmit={revise}
-        onCancel={() => setEditing(false)}
-      />
-    </Sheet>}
+    {editing && <Drawer label="Edit entry" width={600} onClose={() => setEditing(false)}>
+      <EditPane>{(close) => <>
+        {conflicted && <div role="alert" className="nb-conflict">
+          <p>This note changed to revision {entry.revision} while you were editing. Your draft is kept below.</p>
+          <details>
+            <summary>Show the saved version</summary>
+            <p className="nb-conflict-title">{entry.content.title}</p>
+            <p className="nb-conflict-body">{entry.content.body}</p>
+          </details>
+        </div>}
+        {command.error && !(conflicted && isConflict(command.error)) && <Feedback tone="error" icon={CircleAlert}>{command.pending ? 'Save not confirmed. Retry sends the same revision.' : command.error.message}</Feedback>}
+        {pendingRevision && !command.isPending && <button type="button" className="nb-btn nb-self-start" onClick={() => { command.discardRetry(); setDraftKey((key) => key + 1) }}>Discard retry (it may already be saved)</button>}
+        <EntryEditor
+          key={draftKey} initial={pendingRevision ?? entry.content}
+          locked={!!pendingRevision && !command.isPending} busy={command.isPending}
+          submitLabel={command.isPending ? 'Saving…' : pendingRevision ? 'Retry save' : conflicted ? `Save over revision ${entry.revision}` : 'Save revision'}
+          onSubmit={(content) => revise(content, close)}
+          onCancel={close}
+          crumb={<>Notebook<ChevronRight size={12}/><b>Edit note</b></>}
+        />
+      </>}</EditPane>
+    </Drawer>}
   </Card>
+}
+
+/** The edit form inside the pop-up drawer: its header, and a close that animates the drawer away. */
+function EditPane({ children }) {
+  const { close } = useDrawer()
+  return <div className="nb-sheet nb-edit-pane">{children(close)}</div>
 }
 
 /* ------------------------------------------------------------ editor */
@@ -328,43 +405,184 @@ function JournalNote({ entry }) {
 const EMPTY = { title: '', body: '', occurred_on: null, tags: [], symbols: [] }
 
 /** Draft-only editor; the parent decides which command the submitted content becomes. */
-function EntryEditor({ initial = EMPTY, busy, locked = false, templates = false, submitLabel, onSubmit, onCancel }) {
+const FORMATS = [
+  { key: 'heading', label: 'Heading', icon: Heading2 },
+  { key: 'bold', label: 'Bold (⌘B)', icon: Bold },
+  { key: 'italic', label: 'Italic (⌘I)', icon: Italic },
+  { gap: true },
+  { key: 'list', label: 'Bulleted list', icon: List },
+  { key: 'ordered', label: 'Numbered list', icon: ListOrdered },
+  { key: 'quote', label: 'Quote', icon: Quote },
+  { gap: true },
+  { key: 'code', label: 'Inline code', icon: Code },
+]
+const suggestSymbols = (text) => searchSymbols(text, 6).map(([symbol, name, kind]) => ({ value: symbol, label: symbol, sub: `${name}${kind ? ` · ${kind}` : ''}`, icon: <SymbolToken symbol={symbol}/> }))
+const suggestTags = (text) => {
+  const q = text.toLowerCase()
+  return tagCounts(loadEntries()).filter((item) => item.tag.toLowerCase().includes(q))
+    .sort((a, b) => (b.tag.toLowerCase().startsWith(q) - a.tag.toLowerCase().startsWith(q)) || b.count - a.count)
+    .slice(0, 6).map((item) => ({ value: item.tag, label: item.tag, sub: `${item.count} ${item.count === 1 ? 'note' : 'notes'}` }))
+}
+const prettyDate = (iso) => (iso ? new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : 'Add date')
+
+/** Chips with an inline input: Enter, comma or Tab adds; Backspace on an empty input removes the last chip.
+ *  With `suggest`, the top matches drop down under the field (or flip above it near the viewport's bottom). */
+function TokenField({ label, values, onChange, placeholder, prefix = '', upper = false, tone = '', disabled, icon, suggest }) {
+  const [draft, setDraft] = useState('')
+  const [focused, setFocused] = useState(false)
+  const [cursor, setCursor] = useState(0)
+  const [place, setPlace] = useState(null)
+  const inputRef = useRef(null)
+  const boxRef = useRef(null)
+  const norm = (item) => (upper ? item.toUpperCase() : item.toLowerCase())
+  const options = useMemo(() => (suggest && draft.trim() ? suggest(draft.trim().replace(/^#/, '')).filter((option) => !values.includes(norm(option.value))).slice(0, 3) : []), [draft, values, suggest])
+  const open = focused && options.length > 0
+  useEffect(() => setCursor(0), [draft])
+  // measure where the list fits: below by default, above when the viewport's bottom is too close
+  useLayoutEffect(() => {
+    if (!open) { setPlace(null); return undefined }
+    const measure = () => {
+      const r = boxRef.current?.getBoundingClientRect()
+      if (!r) return
+      const height = options.length * 44 + 10, gap = 6
+      const below = window.innerHeight - r.bottom, above = r.top
+      const up = below < height + gap + 12 && above > below
+      setPlace({ left: r.left, width: Math.max(240, Math.min(r.width, 320)), top: up ? r.top - gap - height : r.bottom + gap, up })
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    window.addEventListener('scroll', measure, true)
+    return () => { window.removeEventListener('resize', measure); window.removeEventListener('scroll', measure, true) }
+  }, [open, options.length, values.length])
+  const add = (raw) => {
+    const next = raw.split(',').map((item) => item.trim().replace(/^#/, '')).filter(Boolean).map(norm)
+    if (next.length) onChange([...new Set([...values, ...next])])
+    setDraft('')
+  }
+  const onKey = (event) => {
+    if (open && event.key === 'ArrowDown') { event.preventDefault(); setCursor((i) => (i + 1) % options.length); return }
+    if (open && event.key === 'ArrowUp') { event.preventDefault(); setCursor((i) => (i - 1 + options.length) % options.length); return }
+    if (open && event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); setFocused(false); return }
+    if (open && (event.key === 'Enter' || event.key === 'Tab') && !event.nativeEvent.isComposing) { event.preventDefault(); add(options[cursor].value); return }
+    if ((event.key === 'Enter' || event.key === ',' || (event.key === 'Tab' && draft.trim())) && !event.nativeEvent.isComposing) { event.preventDefault(); add(draft) }
+    if (event.key === 'Backspace' && !draft && values.length) onChange(values.slice(0, -1))
+  }
+  return <div ref={boxRef} className={`nb-ed-tokens ${tone}`} role="group" aria-label={label} onMouseDown={(event) => { if (event.target === event.currentTarget) { event.preventDefault(); inputRef.current?.focus() } }}>
+    {values.map((item) => <span key={item} className={`nb-ed-token${icon ? ' has-icon' : ''}`}>
+      {icon && icon(item)}{prefix}{item}
+      {!disabled && <button type="button" aria-label={`Remove ${prefix}${item}`} onClick={() => onChange(values.filter((value) => value !== item))}><X size={11} strokeWidth={2.6}/></button>}
+    </span>)}
+    {!disabled && <input
+      ref={inputRef} aria-label={`Add ${label.toLowerCase()}`} placeholder={values.length ? '' : placeholder} value={draft}
+      role="combobox" aria-expanded={open} aria-autocomplete="list" aria-controls={open ? `${label}-options` : undefined}
+      aria-activedescendant={open ? `${label}-option-${cursor}` : undefined}
+      onChange={(event) => { const v = event.target.value; if (v.includes(',')) add(v); else setDraft(v) }} onKeyDown={onKey}
+      onFocus={() => setFocused(true)} onBlur={() => { setFocused(false); if (draft.trim()) add(draft) }}
+      size={Math.max(6, draft.length + 1)}
+    />}
+    {open && place && createPortal(<div
+      id={`${label}-options`} role="listbox" aria-label={`${label} suggestions`}
+      className={`nb-ed-suggest${place.up ? ' is-up' : ''}`} style={{ left: place.left, top: place.top, width: place.width }}
+    >
+      {options.map((option, index) => <button
+        key={option.value} id={`${label}-option-${index}`} type="button" role="option" aria-selected={index === cursor}
+        className={index === cursor ? 'on' : ''} onMouseEnter={() => setCursor(index)}
+        onMouseDown={(event) => { event.preventDefault(); add(option.value) }}
+      >
+        {option.icon ?? <span className="nb-ed-suggest-glyph">{prefix || '#'}</span>}
+        <span className="nb-ed-suggest-copy"><b>{prefix}{option.label}</b>{option.sub && <small>{option.sub}</small>}</span>
+        {index === cursor && <kbd>↵</kbd>}
+      </button>)}
+    </div>, document.body)}
+  </div>
+}
+
+function EntryEditor({ initial = EMPTY, busy, locked = false, templates = false, submitLabel, onSubmit, onCancel, crumb, meta }) {
   const [title, setTitle] = useState(initial.title)
   const [body, setBody] = useState(initial.body)
   const [occurredOn, setOccurredOn] = useState(initial.occurred_on ?? '')
-  const [tags, setTags] = useState(initial.tags.join(', '))
-  const [symbols, setSymbols] = useState((initial.symbols || []).join(', '))
-  const [view, setView] = useState('Write')
+  const [tags, setTags] = useState(initial.tags)
+  const [symbols, setSymbols] = useState(initial.symbols || [])
+  const [formats, setFormats] = useState({})
+  const bodyRef = useRef(null)
+  const titleRef = useRef(null)
+  const dateRef = useRef(null)
   const valid = title.trim().length > 0 && title.length <= TITLE_MAX && body.length <= BODY_MAX
   const frozen = busy || locked
+  const dirty = title !== initial.title || body !== initial.body || (occurredOn || null) !== (initial.occurred_on ?? null)
+    || tags.join('|') !== initial.tags.join('|') || symbols.join('|') !== (initial.symbols || []).join('|')
+  const canSave = valid && !busy && (dirty || !initial.title)
   const submit = (event) => {
-    event.preventDefault()
-    if (!valid || busy) return
-    onSubmit({ title: title.trim(), body, occurred_on: occurredOn || null, tags: parseList(tags), symbols: parseSymbols(symbols) })
+    event?.preventDefault()
+    if (!canSave) return
+    onSubmit({ title: title.trim(), body, occurred_on: occurredOn || null, tags: parseList(tags.join(',')), symbols: parseSymbols(symbols.join(',')) })
   }
-  return <form className="nb-editor" onSubmit={submit}>
+  useLayoutEffect(() => {
+    const el = titleRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [title])
+  const format = (item) => { if (!frozen) bodyRef.current?.format(item.key) }
+  const onKeys = (event) => {
+    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); submit() }
+  }
+  const openDate = () => { const el = dateRef.current; if (!el || frozen) return; try { el.showPicker() } catch { el.focus(); el.click() } }
+  const over = body.length > BODY_MAX
+
+  return <form className="nb-editor nb-ed" onSubmit={submit} onKeyDown={onKeys}>
+    {(crumb || meta) && <div className="nb-ed-top">
+      {crumb && <span className="nb-ed-crumb">{crumb}</span>}
+      {meta && <span className="nb-ed-meta">{meta}</span>}
+    </div>}
     {templates && !frozen && !body.trim() && <div className="nb-templates" role="group" aria-label="Start from a template">
       <span>Start from</span>
-      {TEMPLATES.map((template) => <button key={template.name} type="button" className="nb-btn" onClick={() => { setBody(template.body); setView('Write') }}>{template.name}</button>)}
+      {TEMPLATES.map((template) => <button key={template.name} type="button" className="nb-btn" onClick={() => setBody(template.body)}>{template.name}</button>)}
     </div>}
-    <input className="nb-title-input" aria-label="Title" placeholder="Give this note a title" maxLength={TITLE_MAX} value={title} disabled={frozen} onChange={(event) => setTitle(event.target.value)}/>
-    <div className="nb-body-wrap">
-      <div className="nb-body-head">
-        <Segmented options={['Write', 'Preview']} value={view} onChange={setView} label="Body view" className="compact"/>
-        <span className={body.length > BODY_MAX ? 'is-over' : ''}>Markdown · {body.length.toLocaleString()} / 65,536</span>
+    <textarea
+      ref={titleRef} rows={1} className="nb-ed-title" aria-label="Title" placeholder="Untitled note" maxLength={TITLE_MAX} value={title} disabled={frozen}
+      onChange={(event) => setTitle(event.target.value.replace(/\n/g, ' '))}
+      onKeyDown={(event) => { if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey) { event.preventDefault(); bodyRef.current?.focus() } }}
+    />
+
+    <div className="nb-ed-toolbar" role="toolbar" aria-label="Formatting">
+      {FORMATS.map((item, index) => item.gap
+        ? <span key={`gap-${index}`} className="nb-ed-sep" aria-hidden="true"/>
+        : <button
+            key={item.key} type="button" className={`nb-ed-tool${formats[item.key] ? ' is-on' : ''}`} aria-label={item.label} aria-pressed={!!formats[item.key]} title={item.label}
+            disabled={frozen} onMouseDown={(event) => event.preventDefault()} onClick={() => format(item)}
+          ><item.icon size={15} strokeWidth={2}/></button>)}
+      <span className="nb-ed-tip">Type <kbd>-</kbd> <kbd>1.</kbd> <kbd>#</kbd> <kbd>&gt;</kbd> then space</span>
+    </div>
+
+    <div className="nb-ed-body">
+      <RichBody ref={bodyRef} value={body} onChange={setBody} onFormats={setFormats} disabled={frozen} ariaLabel="Body" placeholder="What happened, what you did, what you'd do differently…"/>
+    </div>
+
+    <div className="nb-ed-props" aria-label="Details">
+      <div className="nb-ed-prop">
+        <span className="nb-ed-prop-label"><CalendarDays size={14}/>Date</span>
+        <button type="button" className={`nb-ed-pill${occurredOn ? '' : ' is-empty'}`} disabled={frozen} onClick={openDate}>{prettyDate(occurredOn)}</button>
+        <input ref={dateRef} className="nb-ed-date" type="date" aria-label="Occurred on" tabIndex={-1} value={occurredOn} disabled={frozen} onChange={(event) => setOccurredOn(event.target.value)}/>
+        {occurredOn && !frozen && <button type="button" className="nb-ed-clear" aria-label="Clear date" onClick={() => setOccurredOn('')}><X size={11} strokeWidth={2.6}/></button>}
       </div>
-      {view === 'Write'
-        ? <textarea aria-label="Body" placeholder="Reasoning, setup, what you would do differently…" rows={12} value={body} disabled={frozen} onChange={(event) => setBody(event.target.value)}/>
-        : <div className="nb-preview">{body.trim() ? <Markdown text={body}/> : <p className="nb-muted">Nothing to preview yet.</p>}</div>}
+      <div className="nb-ed-prop">
+        <span className="nb-ed-prop-label"><Hash size={14}/>Tags</span>
+        <TokenField label="Tags" values={tags} onChange={setTags} placeholder="Add a tag" prefix="#" disabled={frozen} suggest={suggestTags}/>
+      </div>
+      <div className="nb-ed-prop">
+        <span className="nb-ed-prop-label"><Circle size={14} fill="currentColor" strokeWidth={0}/>Symbols</span>
+        <TokenField label="Symbols" values={symbols} onChange={setSymbols} placeholder="Add a symbol" upper tone="is-symbol" disabled={frozen} icon={(symbol) => <SymbolToken symbol={symbol}/>} suggest={suggestSymbols}/>
+      </div>
     </div>
-    <div className="nb-editor-row">
-      <label className="dlg-field"><span>Date</span><input type="date" aria-label="Occurred on" value={occurredOn} disabled={frozen} onChange={(event) => setOccurredOn(event.target.value)}/></label>
-      <label className="dlg-field grow"><span>Tags</span><input aria-label="Tags" placeholder="options, spy, mistake" value={tags} disabled={frozen} onChange={(event) => setTags(event.target.value)}/></label>
-    </div>
-    <label className="dlg-field"><span>Symbols</span><input aria-label="Symbols" placeholder="NQ, SPY" value={symbols} disabled={frozen} onChange={(event) => setSymbols(event.target.value)}/><small>Comma separated. The Symbol search also matches tags and whole words in the note.</small></label>
-    <div className="nb-editor-actions">
-      {onCancel && <button type="button" className="ws-outline" disabled={busy} onClick={onCancel}>Cancel</button>}
-      <button type="submit" className="start-day" disabled={busy || !valid}>{submitLabel}</button>
+
+    <div className="nb-ed-foot">
+      <span className={`nb-ed-count${over ? ' is-over' : ''}`}>{body.length.toLocaleString()} characters{over ? ` · over the ${BODY_MAX.toLocaleString()} limit` : ''}</span>
+      <span className="nb-ed-hint"><kbd>⌘</kbd><kbd>↵</kbd> to save</span>
+      <div className="nb-ed-actions">
+        {onCancel && <button type="button" className="nb-ed-cancel" disabled={busy} onClick={onCancel}>Cancel</button>}
+        <button type="submit" className="nb-ed-save" disabled={!canSave}>{submitLabel}</button>
+      </div>
     </div>
   </form>
 }

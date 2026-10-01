@@ -9,7 +9,7 @@ const W = 148, H = 16
 export const POS = '#22c47d', NEG = '#f5615a', IDLE = '#e4e7ec'
 const box = { className: 'sv', viewBox: `0 0 ${W} ${H}`, preserveAspectRatio: 'none' }
 
-export const LINE_POS = '#74e960', LINE_NEG = '#f5615a', LINE_REST = '#ebeaf1'
+export const LINE_POS = '#22c47d', LINE_NEG = '#f5615a', LINE_REST = '#ebeaf1'
 
 /** Smooth path through points (Catmull-Rom as cubic Béziers), clamped to the plot so small charts never clip. */
 export function curvePath(points, top, bottom) {

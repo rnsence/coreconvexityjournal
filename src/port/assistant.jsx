@@ -165,7 +165,7 @@ export function AssistantPage({ privacy }) {
 
       <Card className="as-chat">
         <div className="as-chat-head">
-          <span className="card-title"><Sparkles size={13}/>{conversation ? conversation.title : 'New chat'}</span>
+          <span className="card-title"><Sparkles size={13}/>{conversation ? conversation.title : 'New Chat'}</span>
           {conversationID && <button type="button" className="nb-btn ghost" disabled={deleting || turnPending} onClick={remove}><Trash2 size={13}/> Delete chat</button>}
         </div>
 

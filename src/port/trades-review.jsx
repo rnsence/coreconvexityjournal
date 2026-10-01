@@ -8,6 +8,7 @@ import { Sheet, Field } from '../dialogs'
 import { SETUP_CODES } from '../analytics'
 import { money } from '../viz'
 import { accountForTrade, atLabel, parseAt, samplePlan, sizePosition } from './trading-data'
+import { Select } from '../select'
 import './trades.css'
 
 const MISTAKES = ['chased entry', 'moved stop', 'no stop', 'oversized', 'early exit', 'late exit', 'against plan', 'overtraded']
@@ -74,10 +75,10 @@ export function PlanFields({ trade, plan, setPlan, stop, target, privacy }) {
     <div className="tr-sizer" role="group" aria-label="Position sizer">
       <p>Position sizer</p>
       <div className="tr-sizer-row">
-        <select aria-label="Risk as" value={mode} onChange={(event) => { setMode(event.target.value); setResult(null) }}>
+        <Select aria-label="Risk as" value={mode} onChange={(event) => { setMode(event.target.value); setResult(null) }}>
           <option value="money">Money</option>
           <option value="percent" disabled={!account}>% of account</option>
-        </select>
+        </Select>
         <input aria-label="Risk budget" inputMode="decimal" placeholder={mode === 'money' ? '500' : '1'} value={budget} onChange={(event) => setBudget(event.target.value)}/>
         <button type="button" className="tx-btn" disabled={!ready || pending} onClick={size}>{pending ? 'Sizing…' : 'Size'}</button>
       </div>
@@ -128,10 +129,10 @@ export function TradeReviewSheet({ trade, review, privacy, onSave, onClose }) {
     <form className="tr-form" onSubmit={save}>
       <div className="dlg-grid">
         <Field label="Setup" wide>
-          <select value={draft.playbook} onChange={set('playbook')}>
+          <Select value={draft.playbook} onChange={set('playbook')}>
             <option value="">No setup</option>
             {[...new Set([...Object.keys(SETUP_CODES), trade.setup].filter(Boolean))].map((setup) => <option key={setup}>{setup}</option>)}
-          </select>
+          </Select>
         </Field>
         <Field label="Stop" hint={draft.stop ? null : `Sample plan stop ${sample.stop}`}><input inputMode="decimal" placeholder="Needed for R" value={draft.stop} onChange={set('stop')}/></Field>
         <Field label="Target" hint={draft.target ? null : `Sample plan target ${sample.target}`}><input inputMode="decimal" value={draft.target} onChange={set('target')}/></Field>
@@ -154,10 +155,10 @@ export function TradeReviewSheet({ trade, review, privacy, onSave, onClose }) {
 
       <div className="dlg-grid">
         <Field label="Rating">
-          <select value={draft.rating} onChange={set('rating')}>
+          <Select value={draft.rating} onChange={set('rating')}>
             <option value="">Not rated</option>
             {[5, 4, 3, 2, 1].map((value) => <option key={value} value={value}>{'★'.repeat(value)} ({value})</option>)}
-          </select>
+          </Select>
         </Field>
         <Field label="Emotion">
           <input maxLength={30} list="trade-emotions" value={draft.emotion} onChange={set('emotion')}/>

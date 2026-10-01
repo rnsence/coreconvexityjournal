@@ -35,7 +35,7 @@ function Check({ id, checked, onToggle, label, revision, disabled }) {
 
 function WeekMetrics({ trades, rows, measuring }) {
   return <section className="pg-metrics" aria-label="Week metrics">
-    <header><h3>Week metrics</h3><p>Included records: the {trades.length} checked trades below. Same definitions as the Trades page.</p></header>
+    <header><h3>Week Metrics</h3><p>Included records: the {trades.length} checked trades below. Same definitions as the Trades page.</p></header>
     {trades.length === 0 ? <p className="pg-metrics-state">No trades included; there is nothing to measure this week.</p>
       : measuring ? <p className="pg-metrics-state is-loading">Measuring the checked trades…</p>
       : <dl className="pg-metrics-grid">{rows.map((row) => <div key={row.label} className={row.missing ? 'is-missing' : undefined}>

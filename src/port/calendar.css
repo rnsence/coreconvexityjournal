@@ -3,8 +3,8 @@
 
 /* ---------------------------------------------------------------- board additions */
 .calendar-page .cal-today-journal { height: 34px; gap: 7px; padding: 0 13px; border: 0 !important; border-radius: 9px; background: #fff !important; color: #2b2f35; font-size: 12.5px; font-weight: 600;
-  box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 2px 6px -2px rgba(16,24,40,.12) !important; transition: box-shadow .14s ease, transform .1s ease; }
-.calendar-page .cal-today-journal:hover { box-shadow: 0 1px 2px rgba(16,24,40,.1), 0 3px 8px -2px rgba(16,24,40,.16) !important; }
+  box-shadow: var(--shadow-tight) !important; transition: box-shadow .14s ease, transform .1s ease; }
+.calendar-page .cal-today-journal:hover { box-shadow: var(--shadow-tight-hover) !important; }
 .calendar-page .cal-today-journal:active, .cal-sheet .ws-outline:active, .cal-sheet .start-day:active, .calendar-page .cal-sm:active { transform: translateY(1px); }
 .calendar-page .cal-today-journal svg { color: #667085; }
 
@@ -15,7 +15,7 @@
 
 /* ---------------------------------------------------------------- month summary */
 .calendar-page .cal-summary { margin-top: 16px; }
-.calendar-page .cal-summary .metric-strip { border-color: transparent; box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 4px 14px -4px rgba(16,24,40,.08); }
+.calendar-page .cal-summary .metric-strip { border-color: transparent; box-shadow: var(--shadow-tight); }
 .calendar-page .cal-summary .metric-cell { padding: 10px 14px 11px; gap: 2px; }
 .calendar-page .cal-summary .metric-cell strong { font-size: 19px; }
 .calendar-page .cal-summary .metric-cell small { font-size: 11px; }
@@ -24,17 +24,17 @@
 @media (max-width: 720px) { .calendar-page .cal-summary .metric-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* ---------------------------------------------------------------- routine card */
-:is(.calendar-page, .progress-page) .cal-routine { margin-top: 16px; border-color: transparent; box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 4px 14px -4px rgba(16,24,40,.08); }
+:is(.calendar-page, .progress-page) .cal-routine { margin-top: 16px; border-color: transparent; box-shadow: var(--shadow-tight); }
 :is(.calendar-page, .progress-page) .cal-routine .ws-card-head { margin-bottom: 4px; }
 :is(.calendar-page, .progress-page) .cal-routine-sub { margin: 0 0 10px; color: var(--ink-faint, #98a2b3); font-size: 12px; }
 :is(.calendar-page, .progress-page) .cal-sm { height: 30px; gap: 6px; padding: 0 12px; border-radius: 8px; font-size: 12.5px; }
-:is(.calendar-page, .progress-page) .ws-outline.cal-sm { border: 0 !important; background: #fff !important; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 2px 6px -2px rgba(16,24,40,.12); }
-.calendar-page .start-day.cal-sm, .cal-sheet .start-day { background: linear-gradient(180deg, #3f7bf0, #2f62dd); color: #fff; box-shadow: 0 8px 20px -12px rgba(47,107,216,.9), inset 0 1px 0 rgba(255,255,255,.26); }
+:is(.calendar-page, .progress-page) .ws-outline.cal-sm { border: 0 !important; background: #fff !important; box-shadow: var(--shadow-tight); }
+.calendar-page .start-day.cal-sm, .cal-sheet .start-day { background: linear-gradient(180deg, #3f7bf0, #2f62dd); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.26), var(--shadow-tight); }
 .calendar-page .start-day.cal-sm:hover, .cal-sheet .start-day:hover { background: linear-gradient(180deg, #4b86f6, #3568e6); }
 .calendar-page .start-day:disabled, .cal-sheet .start-day:disabled { opacity: .6; cursor: default; }
 :is(.calendar-page, .progress-page) .cal-table-wrap { overflow-x: auto; }
 :is(.calendar-page, .progress-page) .cal-adherence { min-width: 560px; border-collapse: separate; border-spacing: 0; }
-:is(.calendar-page, .progress-page) .cal-adherence thead th { padding: 7px 10px; background: #fff; border-bottom: 1px solid rgb(243,244,246); box-shadow: 0 1px 0 rgb(243,244,246); color: rgb(152,162,179); font-size: 11px; font-weight: 600; }
+:is(.calendar-page, .progress-page) .cal-adherence thead th { padding: 7px 10px; background: #fff; border-bottom: 1px solid rgb(243,244,246); box-shadow: var(--shadow-tight); color: rgb(152,162,179); font-size: 11px; font-weight: 600; }
 :is(.calendar-page, .progress-page) .cal-adherence thead th:first-child { border-radius: 8px 0 0 8px; }
 :is(.calendar-page, .progress-page) .cal-adherence thead th:last-child { border-radius: 0 8px 8px 0; }
 :is(.calendar-page, .progress-page) .cal-adherence tbody tr:first-child td { padding-top: 12px; }
@@ -105,11 +105,11 @@
 .cal-sheet .cal-kept { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: #eceef2; }
 .cal-sheet .cal-kept button { height: 26px; min-width: 52px; padding: 0 9px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-soft); font-size: 12px; font-weight: 600; cursor: pointer; transition: background .12s ease, color .12s ease; }
 .cal-sheet .cal-kept button:not(.kept):not(.broke) { min-width: 32px; }
-.cal-sheet .cal-kept button.on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(16,24,40,.1); }
+.cal-sheet .cal-kept button.on { background: #fff; color: var(--ink); box-shadow: var(--shadow-tight); }
 .cal-sheet .cal-kept button.on.kept { background: rgba(18,183,106,.16); color: #067647; box-shadow: none; }
 .cal-sheet .cal-kept button.on.broke { background: rgba(240,68,56,.13); color: #b42318; box-shadow: none; }
 
-.cal-sheet .cal-missed { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 12px; border-radius: 12px; background: #fff; box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 3px 10px -4px rgba(16,24,40,.1); animation: cal-rise .2s ease both; }
+.cal-sheet .cal-missed { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 12px; border-radius: 12px; background: #fff; box-shadow: var(--shadow-tight); animation: cal-rise .2s ease both; }
 .cal-sheet .cal-mini { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .cal-sheet .cal-mini > span { color: var(--ink-faint); font-size: 11px; font-weight: 600; }
 .cal-sheet .cal-mini.span-2 { grid-column: span 2; }
@@ -118,10 +118,10 @@
 .cal-sheet .cal-missed-status { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; padding-bottom: 5px; color: var(--ink-faint); font-size: 11.5px; }
 .cal-sheet .cal-missed-status .has-r { color: #2f62dd; font-weight: 600; }
 .cal-sheet .cal-x { display: inline-grid; place-items: center; flex: none; padding: 0; cursor: pointer; }
-.cal-sheet .cal-add { align-self: flex-start; height: 32px; gap: 6px; padding: 0 12px; border: 0 !important; border-radius: 8px; background: #fff !important; font-size: 12.5px; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 2px 6px -2px rgba(16,24,40,.12); }
+.cal-sheet .cal-add { align-self: flex-start; height: 32px; gap: 6px; padding: 0 12px; border: 0 !important; border-radius: 8px; background: #fff !important; font-size: 12.5px; box-shadow: var(--shadow-tight); }
 .cal-sheet .cal-add:disabled { opacity: .5; }
 .cal-sheet .cal-sheet-rev { color: var(--ink-faint); font-size: 12px; font-variant-numeric: tabular-nums; }
-.cal-sheet .ws-outline { border: 0; background: #fff; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 2px 6px -2px rgba(16,24,40,.12); }
+.cal-sheet .ws-outline { border: 0; background: #fff; box-shadow: var(--shadow-tight); }
 .cal-sheet .ws-outline, .cal-sheet .start-day { height: 36px; border-radius: 10px; transition: transform .1s ease, background .14s ease; }
 @keyframes cal-rise { from { opacity: 0; transform: translateY(4px); } }
 @media (max-width: 560px) {
@@ -135,7 +135,7 @@
 .cal-sheet .cal-tiles dd.tone-neg { color: #f04438; }
 .cal-sheet .cal-two .dlg-choice button { white-space: nowrap; }
 .cal-sheet .cal-two .dlg-choice button:first-child { flex: 1.9; }
-:is(.calendar-page, .progress-page) .cal-routine .ws-outline.cal-sm { box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 2px 6px -2px rgba(16,24,40,.12) !important; }
+:is(.calendar-page, .progress-page) .cal-routine .ws-outline.cal-sm { box-shadow: var(--shadow-tight) !important; }
 
 /* month summary: label above the figure so nothing truncates */
 .calendar-page .cal-summary .metric-cell .metric-top { flex-direction: column-reverse; align-items: flex-start; gap: 1px; }
@@ -180,7 +180,7 @@
 .calendar-page .cal-stats .cal-stats-toggle:hover .cc-caret-box { box-shadow: none !important; color: var(--ink); }
 .calendar-page .cal-stats .cal-stats-toggle:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(46,124,246,.35); border-radius: 14px; }
 .calendar-page .cal-stats .card-fold-inner { padding: 0; }
-.calendar-page .cal-stats .card-fold .shell-body { margin: 0; padding: 10px; border-radius: 14px; background: #fff; box-shadow: 0 -1px 2px rgba(16,24,40,.04), 0 1px 2px rgba(16,24,40,.05); }
+.calendar-page .cal-stats .card-fold .shell-body { margin: 0; padding: 10px; border-radius: 14px; background: #fff; box-shadow: var(--shadow-tight); }
 .calendar-page .cal-stats .shell-body .metric-strip { margin: 0 !important; gap: 8px !important; }
 .calendar-page .cal-stats .shell-body .metric-cell { padding: 10px 12px 11px; }
 @media (prefers-reduced-motion: reduce) { .calendar-page .cal-stats .cc-caret-box svg { transition: none; } }

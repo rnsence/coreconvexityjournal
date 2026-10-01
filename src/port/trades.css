@@ -10,10 +10,10 @@
 .tx-btn, .tc-btn, .tx-chip-btn, .tx-icon {
   display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 28px; padding: 0 10px;
   border: 0; border-radius: 8px; background: #fff; color: var(--ink, #2b2f35); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer;
-  box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 2px 6px -2px rgba(16,24,40,.12);
+  box-shadow: var(--shadow-tight);
   transition: box-shadow .15s ease, color .15s ease, transform .1s ease;
 }
-.tx-btn:hover:not(:disabled), .tc-btn:hover, .tx-chip-btn:hover, .tx-icon:hover:not(:disabled) { box-shadow: 0 1px 2px rgba(16,24,40,.1), 0 3px 8px -2px rgba(16,24,40,.16); }
+.tx-btn:hover:not(:disabled), .tc-btn:hover, .tx-chip-btn:hover, .tx-icon:hover:not(:disabled) { box-shadow: var(--shadow-tight-hover); }
 .tx-btn:active:not(:disabled), .tc-btn:active, .tx-icon:active:not(:disabled) { transform: translateY(1px); }
 .tx-btn:disabled, .tx-icon:disabled { opacity: .45; cursor: default; }
 .tx-btn svg, .tc-btn svg { color: var(--ink-faint, #98a2b3); }
@@ -55,7 +55,7 @@
 .trades-page .tl-mistakes { display: block; max-width: 120px; overflow: hidden; color: var(--neg); font-size: 11px; text-overflow: ellipsis; }
 .trades-page .tl-stars + .tl-mistakes { margin-top: 1px; }
 .trades-page .tl-restore { margin-right: 10px; padding: 0; border: 0; background: none; color: #2f62dd; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
-.trades-page .tl-status { margin: 12px 0 0; padding: 10px 14px; border-radius: 12px; background: #fff; color: var(--ink-soft); font-size: 12.5px; box-shadow: 0 1px 2px rgba(16,24,40,.06); animation: dlg-rise .2s ease both; }
+.trades-page .tl-status { margin: 12px 0 0; padding: 10px 14px; border-radius: 12px; background: #fff; color: var(--ink-soft); font-size: 12.5px; box-shadow: var(--shadow-tight); animation: dlg-rise .2s ease both; }
 @media (max-width: 1679px) { .trades-page .tl-col-account { display: none; } }
 @media (max-width: 1599px) { .trades-page .tl-col-review { display: none; } }
 
@@ -73,7 +73,7 @@
   transition: background .15s ease, box-shadow .15s ease;
 }
 .tm-focus button:hover { background: var(--fill); }
-.tm-focus button.on { background: #fff; color: var(--ink); font-weight: 650; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 2px 6px -2px rgba(16,24,40,.12); }
+.tm-focus button.on { background: #fff; color: var(--ink); font-weight: 650; box-shadow: var(--shadow-tight); }
 .tm-empty { margin: 0; padding: 14px; border-radius: 12px; background: var(--fill); color: var(--ink-soft); font-size: 12.5px; }
 .tm-section { overflow: hidden; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px var(--line-soft); }
 .tm-section > header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
@@ -177,7 +177,7 @@
 .tx-seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 8px; background: var(--fill); }
 .tx-seg button { height: 22px; min-width: 26px; padding: 0 7px; border: 0; border-radius: 6px; background: none; color: var(--ink-soft); font: inherit; font-size: 11px; font-weight: 550; cursor: pointer; transition: background .13s ease, color .13s ease; }
 .tx-seg button:hover { color: var(--ink); }
-.tx-seg button.on { background: #fff; color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px rgba(16,24,40,.1); }
+.tx-seg button.on { background: #fff; color: var(--ink); font-weight: 600; box-shadow: var(--shadow-tight); }
 
 .tx-replay { display: flex; align-items: center; gap: 4px; padding-top: 8px; border-top: 1px solid var(--line-soft); }
 .tx-replay .tx-icon { width: 26px; height: 26px; }
@@ -186,7 +186,7 @@
 .tx-status { margin-left: auto; color: var(--ink-faint); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .tx-excursions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; cursor: default; }
-.tx-excursions > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 12px; border-radius: 12px; background: #fff; box-shadow: 0 1px 1px rgba(16,24,40,.05), 0 1.5px 3px -1.5px rgba(16,24,40,.1); }
+.tx-excursions > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 12px; border-radius: 12px; background: #fff; box-shadow: var(--shadow-tight); }
 .tx-excursions dt { color: var(--ink-faint); font-size: 11px; }
 .tx-excursions dd { margin: 1px 0 0; color: var(--ink); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
 .tx-excursions small { color: var(--ink-faint); font-size: 10.5px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -222,7 +222,7 @@
 .tx-pick input:focus-visible + .tx-box { outline: 2px solid rgba(46,124,246,.45); outline-offset: 2px; }
 .tx-pick li:not(.on) label > :not(.tx-box) { opacity: .45; }
 .tx-pick label > * { transition: opacity .15s ease; }
-.tx-save { height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: #0c111d; color: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(16,24,40,.18); transition: background .13s ease, transform .1s ease; }
+.tx-save { height: 28px; padding: 0 12px; border: 0; border-radius: 8px; background: #0c111d; color: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow-tight); transition: background .13s ease, transform .1s ease; }
 .tx-save:hover:not(:disabled) { background: #1d2433; }
 .tx-save:active:not(:disabled) { transform: translateY(1px); }
 .tx-save:disabled { opacity: .4; cursor: default; }
@@ -287,6 +287,6 @@
 .trades-page .tm-card.duo.is-open .cc-caret-box svg { transform: none; }
 .trades-page .tm-card.duo .tm-toggle:hover .cc-caret-box { box-shadow: none !important; color: var(--ink); }
 .trades-page .tm-card.duo .tm-toggle:focus-visible { outline: none; box-shadow: inset 0 0 0 2px rgba(46,124,246,.35); border-radius: 14px; }
-.trades-page .tm-card.duo .card-fold .shell-body { margin: 0; padding: 14px; border-radius: 14px; background: #fff; box-shadow: 0 -1px 2px rgba(16,24,40,.04), 0 1px 2px rgba(16,24,40,.05); }
+.trades-page .tm-card.duo .card-fold .shell-body { margin: 0; padding: 14px; border-radius: 14px; background: #fff; box-shadow: var(--shadow-tight); }
 .trades-page .tm-card.duo .tm-body { margin-top: 0; animation: none; }
 @media (prefers-reduced-motion: reduce) { .trades-page .tm-card.duo .cc-caret-box svg { transition: none; } }

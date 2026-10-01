@@ -8,9 +8,7 @@ import { Card, Metric, PageHeading, Pill } from './components'
 import { BarsStaggeredIcon, ChartPieSliceIcon, PercentIcon, TargetArrowIcon } from './icons'
 import { LineChart, BarChart } from './charts'
 import {
-  BulletBars, ChartState, ColumnPlot, SymbolToken, CumulativeChart, DailyColumns, EquityPlot, HeatCalendar, Module,
-  IntradayChart, RollingPlot, RowPlot, ScoreMeter, ScoreRings, DailyPulse, MiniBars, MiniLine, MiniRing, easternLabel, scoreBand, useEasternToday, useMarketSession, SessionLine, WinDonut, WinLines, WinPairBars,
-  compactMoney, money, percent, ratio, shortDate, toneOf,
+  BulletBars, ChartState, ColumnPlot, SymbolToken, CumulativeChart, DailyColumns, EquityPlot, HeatCalendar, Module, IntradayChart, RollingPlot, RowPlot, ScoreMeter, ScoreRings, DailyPulse, MiniBars, MiniLine, MiniRing, easternLabel, scoreBand, useEasternToday, useMarketSession, SessionLine, WinDonut, WinLines, WinPairBars, compactMoney, money, percent, ratio, shortDate, toneOf, titleCase,
 } from './viz'
 import {
   bySetup, byGrade, byHour, byWeekday, calendarGrid, consistencyScore, edgeScore,
@@ -24,9 +22,10 @@ import { Drawer, DrawerHeader } from './dialogs'
 import { accountForTrade } from './port/trading-data'
 import { DaySheet, TodayJournalButton } from './port/calendar-day'
 import { MonthSummary } from './port/calendar-routine'
+import { Select } from './select'
 
 function SectionTitle({ title, subtitle, action }) {
-  return <div className="section-title"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>
+  return <div className="section-title"><div><h2>{titleCase(title)}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>
 }
 
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`
@@ -66,7 +65,7 @@ function WinRatioCard({ trades, variant }) {
 
   return <section className="win-card shell chart-shell">
     <div className="shell-head compare-head">
-      <span className="compare-label">{WIN_TITLES[variant] ?? 'Win rate'}</span>
+      <span className="compare-label">{titleCase(WIN_TITLES[variant] ?? 'Win rate')}</span>
       <div className="ws-seg compact" role="tablist" aria-label="Win ratio period">
         {WIN_PERIODS.map((item) => <button
           key={item} type="button" role="tab" aria-selected={period === item}
@@ -115,7 +114,7 @@ function OverallScoreCard({ edge, priorEdge, axes, enough }) {
   return <section className="home-card radar-card">
     <div className="radar-main">
     <div className="score-card-head">
-      <div className="card-title">Overall score</div>
+      <div className="card-title">Overall Score</div>
       {enough && <div className="ws-seg compact" role="tablist" aria-label="Score view">
         {['Rings', 'Breakdown'].map((option) => <button
           key={option} type="button" role="tab" aria-selected={view === option}
@@ -332,7 +331,7 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
       <OverallScoreCard edge={edge} priorEdge={priorEdge} axes={radarAxes} enough={scoped.length >= 5}/>
       <div className="compare-row">
         <section className="compare-card shell te-shell">
-          <div className="shell-head">Top earners<em>{range === 'All' ? 'All time' : range}</em></div>
+          <div className="shell-head">Top Earners<em>{range === 'All' ? 'All time' : range}</em></div>
           <div className="te-list" onScroll={(event) => { const el = event.currentTarget; el.classList.toggle('at-end', el.scrollTop + el.clientHeight >= el.scrollHeight - 2) }}>
             {earners.map((item) => <button
               key={item.symbol} type="button" className="te-card" onClick={() => openTrades?.(item.symbol)}
@@ -717,10 +716,10 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
             <button aria-label={view === 'Week' ? 'Next week' : 'Next month'} onClick={() => step(1)}><ChevronRight size={16} strokeWidth={2}/></button>
           </div>
           <label className="board-select">
-            <select value={view} aria-label="Calendar view" onChange={(event) => { setView(event.target.value); setWeekIndex(null) }}>
+            <Select value={view} aria-label="Calendar view" onChange={(event) => { setView(event.target.value); setWeekIndex(null) }}>
               <option value="Month">Month view</option>
               <option value="Week">Week view</option>
-            </select>
+            </Select>
             <ChevronDown size={14}/>
           </label>
           <TodayJournalButton onClick={() => setOpenDay(todayIso)}/>
@@ -891,11 +890,11 @@ export function PerformanceInsights({ month, stats, privacy, openJournal, openTr
 }
 
 const DEFAULT_NOTE_HTML = [
-  '<h2>Session review</h2>',
+  '<h2>Session Review</h2>',
   '<p>Stayed patient through the opening range and only took confirmed setups. The SPY short had the cleanest alignment with the broader market.</p>',
-  '<h3>What worked</h3>',
+  '<h3>What Worked</h3>',
   '<ul><li>Waited for confirmation before entry.</li><li>Kept risk consistent across positions.</li><li>Stopped after the planned session window.</li></ul>',
-  '<h3>Next session</h3>',
+  '<h3>Next Session</h3>',
   '<p>Write the setup and invalidation level before entering. Review execution quality separately from profit.</p>',
 ].join('')
 
@@ -967,7 +966,7 @@ const SAMPLE_CHECKS = {
 const readChecks = (date) => {
   try { return JSON.parse(localStorage.getItem(`journal-checklist-${date}`)) || SAMPLE_CHECKS[date] || null } catch { return SAMPLE_CHECKS[date] || null }
 }
-const blankNote = (date) => `<h2>Session review</h2><p>${new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' })} — what did the market give you, and how did you trade it?</p><h3>What worked</h3><ul><li>…</li></ul><h3>Next session</h3><p>…</p>`
+const blankNote = (date) => `<h2>Session Review</h2><p>${new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' })} — what did the market give you, and how did you trade it?</p><h3>What Worked</h3><ul><li>…</li></ul><h3>Next Session</h3><p>…</p>`
 
 /** Downscales an image file to a JPEG data URL so attachments stay small enough to keep. */
 function shrinkImage(file, max = 1400) {
@@ -1000,7 +999,7 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
   const days = tradingDays()
   if (!sessionFills.length) {
     return <div className="page home journal">
-      <header className="home-header"><div><h1>Daily journal</h1></div></header>
+      <header className="home-header"><div><h1>Daily Journal</h1></div></header>
       <ChartState state="empty" detail="No trades on this day yet — log one to start the journal."/>
       {days.length > 0 && <button type="button" className="start-day jr-empty-cta" onClick={() => setDate?.(days[days.length - 1])}>Go to the latest session</button>}
     </div>
@@ -1243,7 +1242,7 @@ const LABEL_MINUTES = 36
     <header className="home-header">
       <div className="home-greeting">
         <div className="greeting-plate">
-        <h1>Daily journal</h1>
+        <h1>Daily Journal</h1>
         <p className="journal-lede">{date === REVIEWED_DAY
           ? 'A strong session built on selectivity, not activity.'
           : `${day.net >= 0 ? 'Green' : 'Red'} session · ${plural(sessionFills.length, 'trade')} · ${breakdown.largestWin ? `best ${breakdown.largestWin.symbol} ${money(breakdown.largestWin.pnl, { privacy, decimals: 0 })}` : 'no winners'}`}</p>
@@ -1294,7 +1293,7 @@ const LABEL_MINUTES = 36
         <section className="home-card">
           <div className="session-timeline">
             <div className="st-head">
-              <span className="card-title">Session timeline</span>
+              <span className="card-title">Session Timeline</span>
               <div className="st-tools">
                 <div className="ws-seg compact" role="tablist" aria-label="Timeline view">
                   {['Packed', 'By trade'].map((option) => <button
@@ -1381,7 +1380,7 @@ const LABEL_MINUTES = 36
           {extras.map((item) => <section className="compare-card" key={item.label}>
             <div className="compare-value">
               <strong className={item.tone ? `tone-${item.tone}` : undefined}>{item.value}</strong>
-              <span className="compare-label">{item.label}</span>
+              <span className="compare-label">{titleCase(item.label)}</span>
             </div>
             <div className="compare-foot">
               <small className="compare-caption">{item.caption}</small>
@@ -1476,7 +1475,7 @@ const LABEL_MINUTES = 36
         onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openNote() } }}
       >
         <div className="np-head">
-          <span className="card-title">Session note</span>
+          <span className="card-title">Session Note</span>
           <span className="np-meta">{savedAt ? `Saved ${savedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : 'Saved'}<ChevronRight size={14}/></span>
         </div>
         <div className="np-body">
@@ -1542,7 +1541,7 @@ const LABEL_MINUTES = 36
       </div>}
 
       <section className="home-card day-breakdown">
-        <div className="card-title">Day breakdown</div>
+        <div className="card-title">Day Breakdown</div>
         <div className="db-rows">
           {[
             { label: 'Largest trade', left: breakdown.largestWin?.pnl, leftMeta: breakdown.largestWin?.symbol, right: breakdown.largestLoss?.pnl, rightMeta: breakdown.largestLoss?.symbol },
@@ -1568,7 +1567,7 @@ const LABEL_MINUTES = 36
       <section className="home-card checklist-card">
         <button type="button" className="checklist-head as-toggle" aria-haspopup="dialog" onClick={() => setChecklistOpen(true)}>
           <div>
-            <div className="card-title">Execution checklist <ChevronRight size={14} strokeWidth={2.2} className="cc-caret"/></div>
+            <div className="card-title">Execution Checklist <ChevronRight size={14} strokeWidth={2.2} className="cc-caret"/></div>
             <span className="checklist-sub">{checked.filter(Boolean).length} of {checklistRules.length} rules kept</span>
           </div>
           <span className={`discipline-ring ${disciplineTone(discipline)}`} style={{ '--share': discipline }} role="img" aria-label={`${discipline}% discipline`}/>

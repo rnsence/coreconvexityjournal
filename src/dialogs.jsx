@@ -4,7 +4,8 @@ import { ArrowRight, CalendarDays, ChevronLeft, Clock3, CornerDownLeft, FileText
 import { SETUP_CODES } from './analytics'
 import { addCustomSymbol, allSymbols, searchSymbols } from './symbols'
 import { addPropAccount, logTrade, propAccounts, recordPropTransaction, tradeLog, tradingDays } from './data'
-import { SymbolToken, money, toneOf } from './viz'
+import { SymbolToken, money, toneOf, titleCase } from './viz'
+import { Select } from './select'
 
 const easternIso = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
 const dayLabel = (iso) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' })
@@ -25,7 +26,7 @@ export function Dialog({ title, subtitle, onClose, children, footer, width = 520
   return createPortal(<div className="dlg-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
     <div className={`dlg ${className}`} role="dialog" aria-modal="true" aria-label={title} style={{ '--dlg-width': `${width}px` }} ref={panelRef}>
       {title && <header className="dlg-head">
-        <div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>
+        <div><h2>{titleCase(title)}</h2>{subtitle && <p>{subtitle}</p>}</div>
         <button type="button" className="dlg-close" aria-label="Close" onClick={onClose}><X size={16}/></button>
       </header>}
       {children}
@@ -95,7 +96,7 @@ export function Sheet({ title, subtitle, onClose, children, footer, width = 480,
     >
       <span className="sheet-grip" aria-hidden="true"/>
       <header className="dlg-head">
-        <div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>
+        <div><h2>{titleCase(title)}</h2>{subtitle && <p>{subtitle}</p>}</div>
       </header>
       <div className="sheet-body">{children}</div>
       {footer && <footer className="dlg-foot sheet-foot">{footer}</footer>}
@@ -240,7 +241,7 @@ export function DrawerHeader({ icon, title, description, onBack }) {
     {goBack && <button type="button" className="dw-back" aria-label="Back" onClick={goBack}><ChevronLeft size={16}/></button>}
     {icon && <span className="dw-head-icon" aria-hidden="true">{icon}</span>}
     <div>
-      <h2>{title}</h2>
+      <h2>{titleCase(title)}</h2>
       {description && <p>{description}</p>}
     </div>
   </header>
@@ -413,7 +414,7 @@ export function LogTradeDialog({ defaultDate, onClose, onSaved }) {
         <Field label="Date"><input type="date" value={form.date} onChange={set('date')}/></Field>
         <Field label="Side"><Choice label="Side" options={['Long', 'Short']} value={form.side} onChange={set('side')} tones={{ Long: 'long', Short: 'short' }}/></Field>
         <Field label="Setup">
-          <select value={form.setup} onChange={set('setup')}>{Object.keys(SETUP_CODES).map((setup) => <option key={setup}>{setup}</option>)}</select>
+          <Select value={form.setup} onChange={set('setup')}>{Object.keys(SETUP_CODES).map((setup) => <option key={setup}>{setup}</option>)}</Select>
         </Field>
         <div className="dlg-field"><span>Entry time</span><TimePicker label="Entry time" value={form.time} onChange={set('time')}/></div>
         <div className="dlg-field">
@@ -471,7 +472,7 @@ export function PropEntryDialog({ onClose }) {
       <div className="dlg-grid">
         <Field label="Type" wide><Choice label="Type" options={['Payout', 'Expense']} value={form.kind} onChange={set('kind')}/></Field>
         <Field label="Account" wide>
-          <select value={form.account} onChange={set('account')}>{accounts.map((account) => <option key={account.id} value={account.id}>{account.firm} {account.size / 1000}K · {account.id}</option>)}</select>
+          <Select value={form.account} onChange={set('account')}>{accounts.map((account) => <option key={account.id} value={account.id}>{account.firm} {account.size / 1000}K · {account.id}</option>)}</Select>
         </Field>
         {form.kind === 'Expense' && <Field label="Category" wide><Choice label="Category" options={['Evaluation', 'Reset', 'Subscription', 'Activation']} value={form.category} onChange={set('category')}/></Field>}
         <Field label="Amount" error={touched && !(amount > 0) && 'Enter an amount'}><input inputMode="decimal" value={form.amount} onChange={set('amount')} placeholder="0.00" aria-invalid={touched && !(amount > 0)}/></Field>
@@ -506,7 +507,7 @@ export function AddAccountDialog({ onClose }) {
   return <Dialog title="Add an account" subtitle="Track balance, drawdown room and payouts" onClose={onClose} width={480}>
     <form className="dlg-body" onSubmit={save} noValidate>
       <div className="dlg-grid">
-        <Field label="Firm" wide><select value={form.firm} onChange={set('firm')}>{FIRMS.map((firm) => <option key={firm}>{firm}</option>)}</select></Field>
+        <Field label="Firm" wide><Select value={form.firm} onChange={set('firm')}>{FIRMS.map((firm) => <option key={firm}>{firm}</option>)}</Select></Field>
         <Field label="Account number" wide error={touched && idError}><input value={form.id} onChange={set('id')} placeholder="e.g. APEX-248193-18" aria-invalid={!!(touched && idError)}/></Field>
         <Field label="Size" wide><Choice label="Size" options={['25000', '50000', '100000', '150000']} value={form.size} onChange={set('size')} format={(option) => `${Number(option) / 1000}K`}/></Field>
         <Field label="Stage"><Choice label="Stage" options={['Evaluation', 'Funded']} value={form.phase} onChange={set('phase')}/></Field>

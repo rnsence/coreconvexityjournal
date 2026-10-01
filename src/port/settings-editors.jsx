@@ -8,6 +8,7 @@ import { Card } from '../workspace'
 import {
   ASSET_CLASSES, FEE_KINDS, GOAL_METRICS, RULE_KINDS, blankFee, blankGoal, blankRule, blankTemplate, browserZone, goalProgress,
 } from './settings-data'
+import { Select } from '../select'
 
 /** A settings group: chip title, one line of detail, then its controls. */
 export function Section({ title, detail, aside, className = '', children }) {
@@ -50,10 +51,10 @@ function Rows({ head, cols, empty, children }) {
   </div>
 }
 
-const AccountSelect = ({ value, accounts, onChange, label }) => <select aria-label={label} value={value ?? ''} onChange={(event) => onChange(event.target.value || null)}>
+const AccountSelect = ({ value, accounts, onChange, label }) => <Select aria-label={label} value={value ?? ''} onChange={(event) => onChange(event.target.value || null)}>
   <option value="">Every account</option>
   {accounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name}</option>)}
-</select>
+</Select>
 
 const patch = (list, index, next) => list.map((item, i) => (i === index ? { ...item, ...next } : item))
 
@@ -69,11 +70,11 @@ export function GoalsEditor({ goals, saved, content, accounts, errors, privacy, 
         return <div className="st-row-wrap" key={index}>
           <div className="st-row" role="group" aria-label={`Goal ${index + 1}`}>
             <Cell><input aria-label="Name" placeholder="Monthly target" value={goal.name} onChange={(event) => update(index, { name: event.target.value })}/></Cell>
-            <Cell><select aria-label="Metric" value={goal.metric} onChange={(event) => update(index, { metric: event.target.value })}>
+            <Cell><Select aria-label="Metric" value={goal.metric} onChange={(event) => update(index, { metric: event.target.value })}>
               {GOAL_METRICS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select></Cell>
+            </Select></Cell>
             <Cell error={errors[`goals.${index}.target`]}><input aria-label="Target" inputMode="decimal" placeholder={goal.metric === 'win_rate' ? '0.55' : 'Target'} value={goal.target} aria-invalid={!!errors[`goals.${index}.target`]} onChange={(event) => update(index, { target: event.target.value })}/></Cell>
-            <Cell><select aria-label="Period" value={goal.period} onChange={(event) => update(index, { period: event.target.value })}><option value="week">Weekly</option><option value="month">Monthly</option></select></Cell>
+            <Cell><Select aria-label="Period" value={goal.period} onChange={(event) => update(index, { period: event.target.value })}><option value="week">Weekly</option><option value="month">Monthly</option></Select></Cell>
             <Cell><AccountSelect label="Account" value={goal.account_id} accounts={accounts} onChange={(value) => update(index, { account_id: value })}/></Cell>
             <RemoveButton label={`Remove goal ${index + 1}`} onClick={() => onChange(goals.filter((_, i) => i !== index))}/>
           </div>
@@ -99,9 +100,9 @@ export function TradingRulesEditor({ rules, accounts, errors, onChange }) {
         const kind = RULE_KINDS.find(([value]) => value === rule.kind)
         return <div className="st-row" key={index} role="group" aria-label={`Trading rule ${index + 1}`}>
           <Cell><AccountSelect label="Account" value={rule.account_id} accounts={accounts} onChange={(value) => update(index, { account_id: value })}/></Cell>
-          <Cell><select aria-label="Rule" value={rule.kind} onChange={(event) => update(index, { kind: event.target.value })}>
+          <Cell><Select aria-label="Rule" value={rule.kind} onChange={(event) => update(index, { kind: event.target.value })}>
             {RULE_KINDS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-          </select></Cell>
+          </Select></Cell>
           {rule.kind === 'window' ? <>
             <Cell><input type="time" aria-label="From" value={rule.start} onChange={(event) => setTime(index, 'start', event.target.value)}/></Cell>
             <Cell error={errors[`trading_rules.${index}.end`]}><input type="time" aria-label="Until" value={rule.end} aria-invalid={!!errors[`trading_rules.${index}.end`]} onChange={(event) => setTime(index, 'end', event.target.value)}/></Cell>
@@ -125,13 +126,13 @@ export function FeeRulesEditor({ rules, accounts, errors, onChange }) {
     <Rows cols="minmax(0,1fr) minmax(0,1fr) 96px minmax(0,1fr) 120px 26px" head={['Account', 'Asset class', 'Symbol', 'Fee kind', 'Per unit', '']} empty="No fee rules. Reported fees are used as they are.">
       {rules.map((rule, index) => <div className="st-row" key={index} role="group" aria-label={`Fee rule ${index + 1}`}>
         <Cell><AccountSelect label="Account" value={rule.account_id} accounts={accounts} onChange={(value) => update(index, { account_id: value })}/></Cell>
-        <Cell><select aria-label="Asset class" value={rule.asset_class} onChange={(event) => update(index, { asset_class: event.target.value })}>
+        <Cell><Select aria-label="Asset class" value={rule.asset_class} onChange={(event) => update(index, { asset_class: event.target.value })}>
           {ASSET_CLASSES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-        </select></Cell>
+        </Select></Cell>
         <Cell><input aria-label="Symbol or root" placeholder="ES" value={rule.symbol} onChange={(event) => update(index, { symbol: event.target.value.toUpperCase() })}/></Cell>
-        <Cell><select aria-label="Fee kind" value={rule.kind} onChange={(event) => update(index, { kind: event.target.value })}>
+        <Cell><Select aria-label="Fee kind" value={rule.kind} onChange={(event) => update(index, { kind: event.target.value })}>
           {FEE_KINDS.map((kind) => <option key={kind} value={kind}>{kind}</option>)}
-        </select></Cell>
+        </Select></Cell>
         <Cell error={errors[`fee_rules.${index}.per_unit`]}><span className="st-affix"><em>$</em><input aria-label="Per contract or share" inputMode="decimal" placeholder="0.59" value={rule.per_unit} aria-invalid={!!errors[`fee_rules.${index}.per_unit`]} onChange={(event) => update(index, { per_unit: event.target.value })}/></span></Cell>
         <RemoveButton label={`Remove fee rule ${index + 1}`} onClick={() => onChange(rules.filter((_, i) => i !== index))}/>
       </div>)}

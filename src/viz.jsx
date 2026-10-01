@@ -4,7 +4,22 @@
  * the measured container so plot areas line up across neighbouring modules.
  */
 import React, { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+
 import { symbolClassSlug, symbolMark } from './symbols'
+
+// Title Case for headings: small joining words stay lower (except first/last); words that already carry capitals,
+// digits or symbols (P&L, A+, 50K, NQ) are left exactly as written. Non-strings pass through untouched.
+const SMALL_WORDS = new Set(['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'from', 'in', 'into', 'nor', 'of', 'on', 'or', 'per', 'the', 'to', 'vs', 'via', 'with'])
+export function titleCase(text) {
+  if (typeof text !== 'string') return text
+  const words = text.split(' ')
+  return words.map((word, index) => {
+    if (!word || /[A-Z].*[A-Z]|[0-9&+·×−/]/.test(word) || /[A-Z]/.test(word.slice(1))) return word
+    const lower = word.toLowerCase()
+    if (index > 0 && index < words.length - 1 && SMALL_WORDS.has(lower)) return lower
+    return word.replace(/(^|-)([a-z])/g, (_, dash, letter) => dash + letter.toUpperCase())
+  }).join(' ')
+}
 
 /* ------------------------------------------------------------------ format */
 
@@ -92,7 +107,7 @@ export function Module({ title, meta, actions, state = 'ready', minData, childre
   return <section className={`module ${className}`}>
     {(title || actions) && <header className="module-head">
       <div className="module-label">
-        {title && <h2>{title}</h2>}
+        {title && <h2>{titleCase(title)}</h2>}
         {meta && <span className="module-meta">{meta}</span>}
       </div>
       {actions && <div className="module-actions">{actions}</div>}
@@ -1360,6 +1375,15 @@ export function MiniRing({ wins, losses, size = 44 }) {
 }
 
 /** Daily P&L as thin upward bars from one baseline, with a dotted run-rate trend across the window. */
+/** Column with a rounded cap and a flat foot that only softens its corners, so it sits on the baseline. */
+function columnPath(x, y, width, height, cap, foot) {
+  const r = Math.min(cap, width / 2, height / 2)
+  const f = Math.min(foot, width / 2, Math.max(0, height - r))
+  const bottom = y + height
+  return `M${x},${bottom - f}V${y + r}A${r},${r} 0 0 1 ${x + r},${y}H${x + width - r}A${r},${r} 0 0 1 ${x + width},${y + r}`
+    + `V${bottom - f}A${f},${f} 0 0 1 ${x + width - f},${bottom}H${x + f}A${f},${f} 0 0 1 ${x},${bottom - f}Z`
+}
+
 export function DailyPulse({ series, privacy = false }) {
   const [ref, size] = useSize()
   const [active, setActive] = useState(null)
@@ -1398,7 +1422,7 @@ export function DailyPulse({ series, privacy = false }) {
       {series.map((item, index) => {
         const x = pad.left + index * band + (band - barWidth) / 2
         const top = yAt(sizes[index])
-        return <rect key={item.date} className={`pulse-bar ${toneOf(item.pnl)}${active === index ? ' is-active' : ''}`} x={x} y={top} width={barWidth} height={Math.max(2, base - top)} rx={Math.min(4, barWidth / 2)} />
+        return <path key={item.date} className={`pulse-bar ${toneOf(item.pnl)}${active === index ? ' is-active' : ''}`} d={columnPath(x, top, barWidth, Math.max(2, base - top), Math.min(4, barWidth / 2), 1.5)} />
       })}
       <path className="pulse-trend" d={trend} vectorEffect="non-scaling-stroke" />
       {series.map((item, index) => <rect

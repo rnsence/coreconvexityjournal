@@ -83,16 +83,17 @@ export function ScatterChart({ points, xLabel, yLabel, xFormat, yFormat, tip, he
   const plotHeight = Math.max(60, height - pad.top - pad.bottom)
   const xs = points.map((point) => point.x)
   const ys = points.map((point) => point.y)
-  const extent = (list) => {
-    let lo = Math.min(...list); let hi = Math.max(...list)
-    if (lo === hi) { lo -= 1; hi += 1 }
-    const ticks = niceTicks(lo, hi, 5)
-    const step = ticks.length > 1 ? ticks[1] - ticks[0] : 1
-    if (ticks[0] > lo) ticks.unshift(ticks[0] - step)
-    if (ticks[ticks.length - 1] < hi) ticks.push(ticks[ticks.length - 1] + step)
-    return { lo: ticks[0], hi: ticks[ticks.length - 1], ticks }
+  // The plot hugs the data (a 4% margin, never below zero for fields that can't go negative);
+  // round ticks are kept only where they fall inside it, so no band of empty axis is left over.
+  const extent = (list, count = 5) => {
+    const min = Math.min(...list), max = Math.max(...list)
+    const span = max - min || Math.abs(max) || 1
+    const lo = min >= 0 ? Math.max(0, min - span * 0.04) : min - span * 0.04
+    const hi = max + span * 0.04
+    const ticks = niceTicks(lo, hi, count).filter((tick) => tick >= lo && tick <= hi)
+    return { lo, hi, ticks }
   }
-  const X = extent(xs)
+  const X = extent(xs, 7)
   const Y = extent(ys)
   const xAt = (value) => pad.left + ((value - X.lo) / ((X.hi - X.lo) || 1)) * plotWidth
   const yAt = (value) => pad.top + (1 - (value - Y.lo) / ((Y.hi - Y.lo) || 1)) * plotHeight
@@ -111,15 +112,21 @@ export function ScatterChart({ points, xLabel, yLabel, xFormat, yFormat, tip, he
       <text className="rp-axis-title" x={pad.left + 6} y={pad.top + 11}>↑ {yLabel}</text>
       {points.map((item, index) => <circle
         key={item.id}
-        className={`rp-dot ${item.trade.pnl > 0 ? 'pos' : item.trade.pnl < 0 ? 'neg' : 'flat'}${active === index ? ' is-active' : ''}`}
-        cx={xAt(item.x)} cy={yAt(item.y)} r={active === index ? 6 : 4}
+        className={`rp-dot ${item.trade.pnl > 0 ? 'pos' : item.trade.pnl < 0 ? 'neg' : 'flat'}`}
+        cx={xAt(item.x)} cy={yAt(item.y)} r={4}
       />)}
-      {points.map((item, index) => <circle
-        key={`hit-${item.id}`} className={`rp-dot-hit${onPick ? ' is-pickable' : ''}`}
-        cx={xAt(item.x)} cy={yAt(item.y)} r={9}
-        onPointerEnter={() => setActive(index)} onPointerLeave={() => setActive(null)}
-        onClick={onPick ? () => onPick(item, index) : undefined}
-      />)}
+      {point && <circle className={`rp-dot is-active ${point.trade.pnl > 0 ? 'pos' : point.trade.pnl < 0 ? 'neg' : 'flat'}`} cx={xAt(point.x)} cy={yAt(point.y)} r={6}/>}
+      {/* One overlay snaps to the nearest dot: overlapping per-dot hit areas made the highlight flicker in dense clusters. */}
+      <rect className={`rp-scatter-hit${onPick && point ? ' is-pickable' : ''}`} x={pad.left} y={pad.top} width={plotWidth} height={plotHeight}
+        onPointerMove={(event) => {
+          const box = event.currentTarget.ownerSVGElement.getBoundingClientRect()
+          const mx = event.clientX - box.left, my = event.clientY - box.top
+          let best = null, bestDistance = 18 * 18
+          points.forEach((item, index) => { const dx = xAt(item.x) - mx, dy = yAt(item.y) - my, d = dx * dx + dy * dy; if (d < bestDistance) { bestDistance = d; best = index } })
+          if (best !== active) setActive(best)
+        }}
+        onPointerLeave={() => setActive(null)}
+        onClick={onPick && point ? () => onPick(point, active) : undefined}/>
       {point && <>
         <line className="cume-cross" x1={xAt(point.x)} y1={pad.top} x2={xAt(point.x)} y2={pad.top + plotHeight}/>
         <line className="cume-cross" x1={pad.left} y1={yAt(point.y)} x2={pad.left + plotWidth} y2={yAt(point.y)}/>

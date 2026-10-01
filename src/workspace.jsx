@@ -8,8 +8,7 @@ import {
   Search, Star, X,
 } from 'lucide-react'
 import {
-  ChartState, CumulativeChart, SymbolToken, TipRows, Tooltip, compactMoney, money, niceTicks, percent, ratio,
-  smoothPath, toneOf, useEasternToday, useSize,
+  ChartState, CumulativeChart, SymbolToken, TipRows, Tooltip, compactMoney, money, niceTicks, percent, ratio, smoothPath, toneOf, useEasternToday, useSize, titleCase,
 } from './viz'
 import {
   calendarGrid, equitySeries, groupStats, rollingWinRate, scopeByRange, streaks, summarize,
@@ -24,6 +23,7 @@ import { ManualFillsForm, recordedMessage } from './port/trades-fillsform'
 import { AllMetrics } from './port/trades-metrics'
 import { accountForTrade, clearFlash, peekFlash, realizedR, setFlash } from './port/trading-data'
 import { Drawer, DrawerHeader, Sheet } from './dialogs'
+import { Select } from './select'
 
 /** Nice ticks, extended one step so the top (and bottom) gridline clears the data. */
 const coverTicks = (min, max, count = 4) => {
@@ -56,7 +56,7 @@ export function PageHead({ title, meta, actions }) {
   return <header className="home-header ws-header">
     <div className="home-greeting">
       <div className="greeting-plate">
-        <h1>{title}</h1>
+        <h1>{titleCase(title)}</h1>
         {meta && <p className="ws-meta">{meta}</p>}
       </div>
     </div>
@@ -145,7 +145,7 @@ export function Segmented({ options, value, onChange, label, className = '' }) {
 
 export function Card({ title, aside, className = '', shell = false, children }) {
   const head = (title || aside) && <div className={`ws-card-head${shell ? ' shell-head' : ''}`}>
-    {title && <div className="card-title">{title}</div>}
+    {title && <div className="card-title">{titleCase(title)}</div>}
     {aside}
   </div>
   return <section className={`home-card ws-card ${shell ? 'duo ' : ''}${className}`}>
@@ -580,9 +580,9 @@ export function TradesPage({ privacy, range = 'All', initialQuery = '', openLog 
       </label>
       <Segmented options={['All', 'Wins', 'Losses']} value={outcome} onChange={setOutcome} label="Outcome"/>
       <Segmented options={['All', 'Long', 'Short']} value={side} onChange={setSide} label="Side"/>
-      <select className="ws-select" value={setup} onChange={(event) => setSetup(event.target.value)} aria-label="Setup">
+      <Select className="ws-select" value={setup} onChange={(event) => setSetup(event.target.value)} aria-label="Setup">
         {setups.map((option) => <option key={option}>{option}</option>)}
-      </select>
+      </Select>
       <span className="ws-count">
         {archived.length > 0 && <button type="button" className="tl-restore" onClick={() => { setArchived([]); writeStore('cc-trade-archived', []) }}>{plural(archived.length, 'archived trade')} · Restore</button>}
         {plural(filtered.length, 'result')}

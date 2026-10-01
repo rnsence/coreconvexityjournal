@@ -7,6 +7,7 @@ import { Plus, X } from 'lucide-react'
 import { Field } from '../dialogs'
 import { money } from '../viz'
 import { KEYS, groupFills, loadAccounts, pointValueFor, readJSON, recordBatch, uid, writeJSON } from './trading-data'
+import { Select } from '../select'
 import './trades.css'
 
 const pad2 = (value) => String(value).padStart(2, '0')
@@ -85,20 +86,20 @@ export function ManualFillsForm({ trade = null, privacy, onCancel, onSaved }) {
     {conversion && <p className="tx-callout">These legs start from the typed entry, exit and contracts. Check the side, times, fees and multiplier: the P&L will be recomputed from these fills and replace the typed {money(trade.pnl, { privacy })}. Undoing this entry from the import history brings the typed P&L back.</p>}
     <div className="dlg-grid">
       <Field label="Account">
-        <select required value={form.account} onChange={set('account')}>
+        <Select required value={form.account} onChange={set('account')}>
           <option value="" disabled>Select account</option>
           {accounts.map((account) => <option key={account.id} value={account.id}>{account.content.name}</option>)}
-        </select>
+        </Select>
       </Field>
       <Field label="Symbol"><input required maxLength={40} placeholder="ESZ6" value={form.symbol} onChange={set('symbol')}/></Field>
       <Field label="Currency"><input required pattern="[A-Za-z]{3}" maxLength={3} value={form.currency} onChange={set('currency')}/></Field>
       <Field label="Multiplier (point value)"><input required inputMode="decimal" placeholder="50" value={form.multiplier} onChange={set('multiplier')}/></Field>
       <Field label="Asset class">
-        <select value={form.assetClass} onChange={set('assetClass')}>
+        <Select value={form.assetClass} onChange={set('assetClass')}>
           <option value="">From the symbol</option>
           <option value="stock">Stock or ETF</option><option value="future">Future</option><option value="option">Option</option>
           <option value="crypto">Crypto</option><option value="forex">Forex</option>
-        </select>
+        </Select>
       </Field>
       <Field label="Underlying"><input maxLength={20} placeholder="Optional" value={form.underlying} onChange={set('underlying')}/></Field>
       {form.assetClass === 'option' && <>
@@ -106,7 +107,7 @@ export function ManualFillsForm({ trade = null, privacy, onCancel, onSaved }) {
         <div className="tr-pair">
           <Field label="Strike"><input inputMode="decimal" value={form.strike} onChange={set('strike')}/></Field>
           <Field label="Put or call">
-            <select value={form.right} onChange={set('right')}><option value="">—</option><option value="call">Call</option><option value="put">Put</option></select>
+            <Select value={form.right} onChange={set('right')}><option value="">—</option><option value="call">Call</option><option value="put">Put</option></Select>
           </Field>
         </div>
       </>}
@@ -115,7 +116,7 @@ export function ManualFillsForm({ trade = null, privacy, onCancel, onSaved }) {
     <fieldset className="tr-fieldset plain">
       <legend>Fills</legend>
       {legs.map((leg, index) => <div className="tr-leg" key={index}>
-        <label><span>Side</span><select value={leg.side} onChange={setLeg(index, 'side')}><option value="buy">Buy</option><option value="sell">Sell</option></select></label>
+        <label><span>Side</span><Select value={leg.side} onChange={setLeg(index, 'side')}><option value="buy">Buy</option><option value="sell">Sell</option></Select></label>
         <label><span>Quantity</span><input required inputMode="decimal" value={leg.quantity} onChange={setLeg(index, 'quantity')}/></label>
         <label><span>Price</span><input required inputMode="decimal" value={leg.price} onChange={setLeg(index, 'price')}/></label>
         <label><span>Fee</span><input inputMode="decimal" value={leg.fee} onChange={setLeg(index, 'fee')}/></label>

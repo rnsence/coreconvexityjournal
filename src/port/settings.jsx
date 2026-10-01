@@ -9,6 +9,7 @@ import { Field } from '../dialogs'
 import { AISetupEditor, FeeRulesEditor, GoalsEditor, Note, Section, TradingRulesEditor } from './settings-editors'
 import { AlertsPanel, AppearanceCard, ExportButtons, LabelsManager, ProfileCards, SampleData } from './settings-panels'
 import { METHODS, SETTINGS_KEY, ZONES, journalAccounts, loadSettings, normalise, postSettings, validate } from './settings-data'
+import { Select } from '../select'
 import './settings.css'
 
 /** Tabs, and which form fields live on each (for the unsaved / error markers). */
@@ -135,22 +136,22 @@ function SettingsForm({ settings, privacy, tab, setTab, saved, onSaved, onReload
         <AppearanceCard/>
         <Section title="Defaults" detail="The account preselected in the journal's forms, the calendar's first weekday, the timezone that decides today (daily loss limits, today's journal), and the sizer's risk budget.">
           <div className="dlg-grid st-fields-grid">
-            <Field label="Default account"><select value={draft.default_account_id ?? ''} onChange={(event) => set('default_account_id', event.target.value || null)}>
+            <Field label="Default account"><Select value={draft.default_account_id ?? ''} onChange={(event) => set('default_account_id', event.target.value || null)}>
               <option value="">First account</option>
               {accounts.map((account) => <option key={account.account_id} value={account.account_id}>{account.name}</option>)}
-            </select></Field>
-            <Field label="Week starts on"><select value={draft.week_start} onChange={(event) => set('week_start', event.target.value)}>
+            </Select></Field>
+            <Field label="Week starts on"><Select value={draft.week_start} onChange={(event) => set('week_start', event.target.value)}>
               <option value="monday">Monday</option><option value="sunday">Sunday</option>
-            </select></Field>
+            </Select></Field>
             <Field label="Timezone" error={shown.timezone} hint={!shown.timezone && !draft.timezone ? "Blank uses this browser's timezone" : undefined}>
               <input list="journal-zones" placeholder="This browser's" value={draft.timezone} aria-invalid={!!shown.timezone} onChange={(event) => set('timezone', event.target.value.trim())}/>
               <datalist id="journal-zones">{ZONES.map((zone) => <option key={zone} value={zone}/>)}</datalist>
             </Field>
             <Field label="Sizer risk" error={shown.default_risk}>
               <span className="st-pair">
-                <select aria-label="Default risk as" value={draft.default_risk_mode ?? ''} onChange={(event) => set('default_risk_mode', event.target.value || null)}>
+                <Select aria-label="Default risk as" value={draft.default_risk_mode ?? ''} onChange={(event) => set('default_risk_mode', event.target.value || null)}>
                   <option value="">No default</option><option value="money">Money</option><option value="percent">% of account</option>
-                </select>
+                </Select>
                 {draft.default_risk_mode && <span className="st-affix">{draft.default_risk_mode === 'money' ? <em>$</em> : <em className="after">%</em>}
                   {input('default_risk', { inputMode: 'decimal', 'aria-label': 'Default risk', placeholder: draft.default_risk_mode === 'money' ? '200' : '1' })}</span>}
               </span>
@@ -177,9 +178,9 @@ function SettingsForm({ settings, privacy, tab, setTab, saved, onSaved, onReload
               <Field label="Scratch threshold" error={shown.scratch_threshold}>
                 <span className="st-affix"><em>±$</em>{input('scratch_threshold', { inputMode: 'decimal', 'aria-label': 'Scratch threshold' })}</span>
               </Field>
-              <Field label="P&L basis"><select aria-label="P&L basis" value={draft.stats_basis} onChange={(event) => set('stats_basis', event.target.value)}>
+              <Field label="P&L basis"><Select aria-label="P&L basis" value={draft.stats_basis} onChange={(event) => set('stats_basis', event.target.value)}>
                 <option value="net">Net of fees</option><option value="gross">Gross, before fees</option>
-              </select></Field>
+              </Select></Field>
             </div>
           </Section>
           {accounts.length > 0 && <Section title="Per account" detail="An account can use its own matching method and scratch threshold; blank uses the journal's.">
@@ -190,9 +191,9 @@ function SettingsForm({ settings, privacy, tab, setTab, saved, onSaved, onReload
                 const error = shown[`accounts.${account.account_id}`]
                 return <tr key={account.account_id}>
                   <td><b>{account.name}</b><small>{account.account_id}</small></td>
-                  <td><div className="dlg-field"><select aria-label={`${account.name} matching`} value={o?.matching_method ?? ''} onChange={(event) => setOverride(account.account_id, { matching_method: event.target.value || null })}>
+                  <td><div className="dlg-field"><Select aria-label={`${account.name} matching`} value={o?.matching_method ?? ''} onChange={(event) => setOverride(account.account_id, { matching_method: event.target.value || null })}>
                     <option value="">Journal default</option>{METHODS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-                  </select></div></td>
+                  </Select></div></td>
                   <td><div className="dlg-field"><input inputMode="decimal" aria-label={`${account.name} scratch`} placeholder="Default" value={o?.scratch_threshold ?? ''} aria-invalid={!!error} onChange={(event) => setOverride(account.account_id, { scratch_threshold: event.target.value })}/>{error && <small className="is-error">{error}</small>}</div></td>
                 </tr>
               })}</tbody>

@@ -5,7 +5,7 @@
 import React, { useMemo, useState } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { groupStats } from '../analytics'
-import { money } from '../viz'
+import { money, titleCase } from '../viz'
 import { accountForTrade, assetClassOf, fillsFor, minutesOf, realizedR, symbolRoot } from './trading-data'
 import './trades.css'
 
@@ -232,7 +232,7 @@ export function AllMetrics({ trades, reviews, privacy }) {
   const show = (section) => focus === 'Show everything' || focus === section
   return <section className={`home-card ws-card tm-card duo${open ? ' is-open' : ''}`} aria-labelledby="journal-calculations-title">
     <button type="button" className="tm-toggle shell-head" aria-expanded={open} aria-controls="tm-fold" onClick={() => { setSeen(true); setOpen(!open) }}>
-      <span className="card-title" id="journal-calculations-title">All metrics</span>
+      <span className="card-title" id="journal-calculations-title">All Metrics</span>
       <span className="tm-lede">Trade statistics · calculated from your trades in this range, in USD</span>
       <span className="cc-caret-box"><ChevronDown size={14} strokeWidth={2.2}/></span>
     </button>
@@ -261,7 +261,7 @@ export function AllMetrics({ trades, reviews, privacy }) {
         {show('Breakdowns') && <section className="tm-section">
           <header><h3>Breakdowns</h3><span>The same trades grouped by their fields</span></header>
           <div className="tm-tables">{tables.map(([title, rows]) => <div className="tm-table" key={title}>
-            <h4>{title}</h4>
+            <h4>{titleCase(title)}</h4>
             {rows.length ? <div className="tm-rows">
               <div className="tm-row head"><span>Key</span><span>Trades</span><span>WR</span><span>P&L</span></div>
               {rows.slice(0, 31).map((row) => <div className="tm-row" key={row.key}>
@@ -280,7 +280,7 @@ export function AllMetrics({ trades, reviews, privacy }) {
           </div>
         </section>}
         {show('Data coverage') && <section className="tm-section">
-          <header><h3>Data coverage</h3><span>Which optional trade fields have been filled in</span></header>
+          <header><h3>Data Coverage</h3><span>Which optional trade fields have been filled in</span></header>
           <div className="tm-coverage">{covered.map(([name, present]) => <div key={name}>
             <span>{name}</span>
             <span className="tm-bar" role="progressbar" aria-valuemin={0} aria-valuemax={stats.count || 1} aria-valuenow={present}><i style={{ width: `${(present / (stats.count || 1)) * 100}%` }}/></span>

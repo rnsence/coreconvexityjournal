@@ -342,6 +342,9 @@ export function applyCommand(intent) {
       replace(bump(entry, { attachments: [...entry.attachments, { ...intent.attachment, annotation: null }] }))
     } else if (intent.kind === 'remove-attachment') {
       replace(bump(entry, { attachments: entry.attachments.filter((file) => file.attachment_id !== intent.attachment_id) }))
+    } else if (intent.kind === 'rewrite-attachment') {
+      if (!entry.attachments.some((item) => item.attachment_id === intent.attachment_id)) throw new CommandError(404, 'This attachment was removed.')
+      replace(bump(entry, { attachments: entry.attachments.map((item) => (item.attachment_id === intent.attachment_id ? { ...item, src: intent.src, size_bytes: intent.size_bytes } : item)) }))
     } else if (intent.kind === 'annotate') {
       const file = entry.attachments.find((item) => item.attachment_id === intent.attachment_id)
       if (!file) throw new CommandError(404, 'This attachment was removed.')

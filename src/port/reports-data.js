@@ -319,7 +319,7 @@ export function formatMetric(value, metric, privacy = false) {
   return value.toFixed(2)
 }
 
-export const POINT_FIELDS = { pnl: 'P&L', r: 'Realized R', hold_seconds: 'Hold (seconds)', hour: 'Hour', rating: 'Rating' }
+export const POINT_FIELDS = { pnl: 'P&L', r: 'Realized R', hold_seconds: 'Hold time', hour: 'Hour', rating: 'Rating' }
 const pointField = (trade, field) => ({ pnl: trade.pnl, r: trade.r, hold_seconds: trade.holdSeconds, hour: trade.hour + Number(trade.time.slice(3, 5)) / 60, rating: trade.rating })[field]
 export const scatterPoints = (trades, x, y) => trades
   .map((trade) => ({ x: pointField(trade, x), y: pointField(trade, y), id: trade.id, trade }))

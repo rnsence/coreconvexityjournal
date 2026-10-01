@@ -4,16 +4,18 @@
  * revision, and the process-vs-outcome matrix. All local; grades never read P&L.
  */
 import React, { useMemo, useState } from 'react'
-import { Archive, BookOpenCheck, ChevronRight, ClipboardCheck, History, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Archive, BookOpenCheck, ChevronLeft, ChevronRight, ClipboardCheck, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Archive as ArchiveBox, CaretRight, PencilSimpleLine } from '@phosphor-icons/react'
 import { Card, MetricStrip, PageHead, Segmented } from '../workspace'
 import { ChartState, money, toneOf } from '../viz'
-import { Field, Sheet } from '../dialogs'
+import { Drawer, Field, Sheet } from '../dialogs'
 import { tradeLog } from '../data'
 import { enrich, readStore, writeStore } from './reports-data'
 import {
   GRADES, RULE_LIMIT, current, gradeBasis, gradeOf, loadPlaybooks, loadReviews, newRuleId, plannedRisk,
   revisionOf, storePlaybooks, storeReviews,
 } from './playbooks-data'
+import { Select } from '../select'
 import './playbooks.css'
 
 const TABS = ['Playbooks', 'Process reviews', 'Process vs outcome']
@@ -22,68 +24,118 @@ const shortDay = (iso) => new Date(`${iso.slice(0, 10)}T00:00:00Z`).toLocaleDate
 const outOfDate = (review) => review && review.trade_current_revision > review.content.trade_revision
 const EMPTY_CONTENT = { name: '', description: '', planned_risk: '', risk_unit: 'usd', entry_criteria: '', exit_criteria: '', rules: [] }
 
-/* ============================================================ performance line */
+/* ============================================================ stats */
 
-function Performance({ trades, privacy }) {
-  if (!trades.length) return <p className="pb-perf muted">No trades logged under this setup yet.</p>
+function statsOf(trades) {
   const wins = trades.filter((trade) => trade.pnl > 0)
   const losses = trades.filter((trade) => trade.pnl < 0)
-  const net = trades.reduce((total, trade) => total + trade.pnl, 0)
-  const lost = -losses.reduce((total, trade) => total + trade.pnl, 0)
   const won = wins.reduce((total, trade) => total + trade.pnl, 0)
-  const avgR = trades.reduce((total, trade) => total + trade.r, 0) / trades.length
-  return <dl className="pb-perf" aria-label="Performance">
-    <div><dt className="sr-only">Net P&L</dt><dd className={`strong tone-${toneOf(net)}`}>{money(net, { privacy, decimals: 0 })}</dd></div>
-    <div><dd>{plural(trades.length, 'trade')}</dd></div>
-    {wins.length + losses.length > 0 && <div><dt>win</dt><dd>{Math.round((wins.length / (wins.length + losses.length)) * 100)}%</dd></div>}
-    {lost > 0 && <div><dt>PF</dt><dd>{(won / lost).toFixed(2)}</dd></div>}
-    <div><dt>avg</dt><dd>{avgR.toFixed(2)}R</dd></div>
-  </dl>
+  const lost = -losses.reduce((total, trade) => total + trade.pnl, 0)
+  return {
+    n: trades.length, wins: wins.length, losses: losses.length, won, lost, net: won - lost,
+    win: wins.length + losses.length ? wins.length / (wins.length + losses.length) : null,
+    pf: lost > 0 ? won / lost : null,
+    avgR: trades.length ? trades.reduce((total, trade) => total + trade.r, 0) / trades.length : null,
+  }
+}
+
+function StatRow({ stats }) {
+  if (!stats.n) return <p className="pb-none">No trades logged under this setup yet.</p>
+  return <div className="pb-stats">
+    <dl>
+      <div><dt>Trades</dt><dd>{stats.n}</dd></div>
+      <div><dt>Win</dt><dd>{stats.win == null ? '—' : `${Math.round(stats.win * 100)}%`}</dd></div>
+      <div><dt>PF</dt><dd className={stats.pf != null && stats.pf < 1 ? 'is-low' : ''}>{stats.pf == null ? '—' : stats.pf.toFixed(2)}</dd></div>
+      <div><dt>Avg</dt><dd>{stats.avgR == null ? '—' : `${stats.avgR.toFixed(2)}R`}</dd></div>
+    </dl>
+    <span className="pb-split" aria-hidden="true"><i className="pos" style={{ flex: stats.wins || 0.0001 }}/><i className="neg" style={{ flex: stats.losses || 0.0001 }}/></span>
+  </div>
 }
 
 /* ============================================================ playbook card */
 
-function PlaybookCard({ playbook, trades, privacy, onEdit, onArchive, archived }) {
-  const [history, setHistory] = useState(false)
+const RULES_SHOWN = 3
+
+function PlaybookCard({ playbook, trades, privacy, onOpen, onEdit, onArchive, archived, index }) {
   const head = current(playbook)
   const content = head.content
-  return <section className={`home-card ws-card pb-card${archived ? ' is-archived' : ''}`} aria-label={`Playbook ${content.name}`}>
-    <header className="pb-card-head">
-      <div>
-        <h2>{content.name}{archived && <span className="pb-status">Archived</span>}</h2>
-        <p className="pb-card-meta">Revision {head.revision} · planned risk {plannedRisk(content)}</p>
-        <Performance trades={trades} privacy={privacy}/>
-      </div>
-      {!archived && <div className="pb-card-actions">
-        <button type="button" className="ws-outline pb-small" onClick={onEdit}><Pencil size={13}/> Edit</button>
-        <button type="button" className="pb-icon" aria-label={`Archive ${content.name}`} onClick={onArchive}><Archive size={14}/></button>
-      </div>}
+  const stats = useMemo(() => statsOf(trades), [trades])
+  const extra = content.rules.length - RULES_SHOWN
+  return <section className={`home-card ws-card pb-card duo${archived ? ' is-archived' : ''}`} aria-label={`Playbook ${content.name}`} style={{ '--i': index }}>
+    <header className="shell-head pb-card-head">
+      <h2 title={content.name}>{content.name}</h2>
+      {archived && <span className="pb-status">Archived</span>}
+      {stats.n > 0 && <b className={`pb-net tone-${toneOf(stats.net)}`}>{money(stats.net, { privacy, decimals: 0 })}</b>}
+      {!archived && <span className="pb-card-acts">
+        <button type="button" className="pb-act" aria-label={`Edit ${content.name}`} title="Edit" onClick={onEdit}><PencilSimpleLine size={15} weight="duotone"/></button>
+        <button type="button" className="pb-act" aria-label={`Archive ${content.name}`} title="Archive" onClick={onArchive}><ArchiveBox size={15} weight="duotone"/></button>
+      </span>}
     </header>
-    {content.description && <p className="pb-desc">{content.description}</p>}
-    <dl className="pb-criteria">
-      <div><dt>Entry criteria</dt><dd>{content.entry_criteria || '—'}</dd></div>
-      <div><dt>Exit criteria</dt><dd>{content.exit_criteria || '—'}</dd></div>
-    </dl>
-    <div className="pb-rules">
-      <span className="pb-label">Rules</span>
-      {content.rules.length
-        ? <ol>{content.rules.map((item) => <li key={item.rule_id}>{item.text}</li>)}</ol>
-        : <p className="pb-muted">No rules yet; reviews can still check planned risk.</p>}
-    </div>
-    <div className={`pb-history${history ? ' is-open' : ''}`}>
-      <button type="button" className="pb-history-toggle" aria-expanded={history} onClick={() => setHistory(!history)}>
-        <span className="cc-caret-box"><ChevronRight size={13} strokeWidth={2.2}/></span>
-        <History size={13}/> {plural(playbook.revisions.length, 'revision')}
-      </button>
-      <div className="pb-history-body" inert={!history}><div>
+    <button type="button" className="shell-body pb-card-body" onClick={onOpen} aria-label={`Open ${content.name}`}>
+      {content.description && <p className="pb-desc">{content.description}</p>}
+      <StatRow stats={stats}/>
+      {content.rules.length > 0
+        ? <ol className="pb-mini-rules">
+            {content.rules.slice(0, RULES_SHOWN).map((item) => <li key={item.rule_id}>{item.text}</li>)}
+            {extra > 0 && <li className="pb-more">+{extra} more {extra === 1 ? 'rule' : 'rules'}</li>}
+          </ol>
+        : <p className="pb-none">No rules yet.</p>}
+    </button>
+    <footer className="pb-card-foot">
+      <span>Rev {head.revision}</span>
+      <span>Risk {plannedRisk(content)}</span>
+      <span className="pb-open">Details<CaretRight size={11} weight="bold"/></span>
+    </footer>
+  </section>
+}
+
+/** Everything about one playbook, in the springy drawer: numbers, the plan, rules and revision history. */
+function PlaybookDrawer({ playbook, trades, privacy, onClose, onEdit, onArchive, onStep, index, total }) {
+  const head = current(playbook)
+  const content = head.content
+  const stats = statsOf(trades)
+  const archived = playbook.lifecycle_status === 'archived'
+  return <Drawer label={`Playbook ${content.name}`} viewKey={playbook.playbook_id} width={500} onClose={onClose}>
+    <div className="trade-panel dw-trade pb-drawer">
+      <div className="tp-head">
+        <div>
+          <div className="tp-title"><span className="pb-dw-icon"><BookOpenCheck size={15}/></span><b>{content.name}</b>{archived && <span className="pb-status">Archived</span>}</div>
+          <small>Revision {head.revision} · planned risk {plannedRisk(content)}</small>
+        </div>
+        {total > 1 && <div className="tp-nav">
+          <button type="button" aria-label="Previous playbook" disabled={index <= 0} onClick={() => onStep(-1)}><ChevronLeft size={15}/></button>
+          <button type="button" aria-label="Next playbook" disabled={index >= total - 1} onClick={() => onStep(1)}><ChevronRight size={15}/></button>
+        </div>}
+      </div>
+      <div className="tp-result">
+        <strong className={stats.n ? `tone-${toneOf(stats.net)}` : ''}>{stats.n ? money(stats.net, { privacy }) : '—'}</strong>
+        <span className="pb-dw-sub">{stats.n ? `${plural(stats.n, 'trade')} on this setup` : 'No trades yet'}</span>
+      </div>
+      {stats.n > 0 && <StatRow stats={stats}/>}
+      {content.description && <p className="pb-dw-desc">{content.description}</p>}
+      <div className="pb-dw-plan">
+        <section><span>Entry</span><p>{content.entry_criteria || '—'}</p></section>
+        <section><span>Exit</span><p>{content.exit_criteria || '—'}</p></section>
+      </div>
+      <section className="pb-dw-rules">
+        <span className="pb-dw-label">Rules <em>{content.rules.length}</em></span>
+        {content.rules.length ? <ol>{content.rules.map((item) => <li key={item.rule_id}>{item.text}</li>)}</ol> : <p className="pb-none">No rules yet; reviews can still check planned risk.</p>}
+      </section>
+      <section className="pb-dw-history">
+        <span className="pb-dw-label">History</span>
         <ol>{[...playbook.revisions].reverse().map((item) => <li key={item.revision}>
+          <span className={`pb-dot ${item.action}`}/>
           <b>Revision {item.revision}</b>
           <span className={`pb-action ${item.action}`}>{item.action === 'create' ? 'Created' : item.action === 'archive' ? 'Archived' : 'Revised'}</span>
-          <small>{shortDay(item.recorded_at)} · {plural(item.content.rules.length, 'rule')} · {plannedRisk(item.content)}</small>
+          <small>{shortDay(item.recorded_at)} · {plural(item.content.rules.length, 'rule')}</small>
         </li>)}</ol>
-      </div></div>
+      </section>
+      {!archived && <div className="dw-actions">
+        <button type="button" className="ws-outline" onClick={onArchive}><Archive size={14}/> Archive</button>
+        <button type="button" className="start-day" onClick={onEdit}><Pencil size={14}/> Edit playbook</button>
+      </div>}
     </div>
-  </section>
+  </Drawer>
 }
 
 /* ============================================================ editor */
@@ -115,10 +167,10 @@ function PlaybookEditor({ playbook, onClose, onSave }) {
         <div className="pb-two">
           <Field label="Planned risk per trade"><input aria-label="Planned risk" required inputMode="decimal" pattern="[0-9]+(\.[0-9]+)?" placeholder="250" value={draft.planned_risk} onChange={set('planned_risk')}/></Field>
           <Field label="Risk unit">
-            <select aria-label="Risk unit" value={draft.risk_unit} onChange={set('risk_unit')}>
+            <Select aria-label="Risk unit" value={draft.risk_unit} onChange={set('risk_unit')}>
               <option value="usd">USD per trade</option>
               <option value="percent">% of account per trade</option>
-            </select>
+            </Select>
           </Field>
         </div>
         <Field label="Description"><textarea aria-label="Description" rows={2} maxLength={5000} value={draft.description} onChange={set('description')}/></Field>
@@ -186,11 +238,11 @@ function ReviewSheet({ trade, review, playbooks, onClose, onSave, privacy }) {
       <fieldset disabled={pending}>
         {!active.length && !pinnedPlaybook ? <p className="pb-muted">Create a playbook in the Playbooks tab first.</p> : <>
           <Field label="Playbook">
-            <select aria-label="Playbook" required value={pin?.id ?? ''} onChange={(event) => choose(event.target.value)}>
+            <Select aria-label="Playbook" required value={pin?.id ?? ''} onChange={(event) => choose(event.target.value)}>
               <option value="" disabled>Select a playbook</option>
               {pinnedPlaybook?.lifecycle_status === 'archived' && <option value={pinnedPlaybook.playbook_id} disabled>{current(pinnedPlaybook).content.name} (archived)</option>}
               {active.map((item) => <option key={item.playbook_id} value={item.playbook_id}>{current(item).content.name}</option>)}
-            </select>
+            </Select>
           </Field>
           {pinned && <p className="pb-pinned" aria-label="Pinned revision">
             Grading against revision {pin.revision}{head && head.revision !== pin.revision && ` (current is ${head.revision})`} · planned risk {plannedRisk(pinned.content)}
@@ -212,11 +264,11 @@ function ReviewSheet({ trade, review, playbooks, onClose, onSave, privacy }) {
           })}
           {pinned && !rules.length && <p className="pb-muted">This revision has no rules; the grade comes from planned risk alone.</p>}
           <Field label="Actual risk vs plan">
-            <select aria-label="Risk adherence" value={risk} onChange={(event) => setRisk(event.target.value)}>
+            <Select aria-label="Risk adherence" value={risk} onChange={(event) => setRisk(event.target.value)}>
               <option value="within">Within planned risk</option>
               <option value="exceeded">Exceeded planned risk</option>
               <option value="unknown">Not checked</option>
-            </select>
+            </Select>
           </Field>
           <Field label="Notes"><textarea aria-label="Process notes" rows={3} maxLength={5000} value={notes} onChange={(event) => setNotes(event.target.value)}/></Field>
           {pinned && <p className="pb-preview">Grade if saved <span className={`pb-grade g-${complete ? gradeOf({ rules: rules.map((item) => ({ mark: marks[item.rule_id]?.mark })), risk_adherence: risk }).grade : 'none'}`}>{complete ? gradeOf({ rules: rules.map((item) => ({ mark: marks[item.rule_id]?.mark })), risk_adherence: risk }).grade : '–'}</span>{!complete && <small>Mark every rule to grade</small>}</p>}
@@ -244,9 +296,9 @@ function Matrix({ playbooks, reviews, tradeById, privacy }) {
     return [...map.values()].sort((a, b) => b.reviewed - a.reviewed)
   }, [reviews, tradeById])
   const nameOf = (id) => { const playbook = playbooks.find((item) => item.playbook_id === id); return playbook ? current(playbook).content.name : 'Playbook' }
-  if (!groups.length) return <Card><p className="pb-muted pad">No reviewed trades yet. Use “Review process” on a trade in the Process reviews tab.</p></Card>
+  if (!groups.length) return <Card shell title="Process vs outcome"><p className="pb-muted pad">No reviewed trades yet. Use “Review process” on a trade in the Process reviews tab.</p></Card>
   return <div className="ws-grid one-one pb-matrix">
-    {groups.map((group) => <Card key={group.id} title={nameOf(group.id)} aside={<span className="ws-hint">n={group.reviewed} reviewed trades{group.stale ? ` · ${group.stale} reviewed an earlier trade revision` : ''}</span>}>
+    {groups.map((group) => <Card shell key={group.id} title={nameOf(group.id)} className="pb-matrix-card" aside={<span className="ws-hint">{plural(group.reviewed, 'reviewed trade')}{group.stale ? ` · ${group.stale} out of date` : ''}</span>}>
       <div className="ws-table-wrap">
         <table className="feed-table ws-table compact ledger pb-matrix-table" aria-label={`Process vs outcome: ${nameOf(group.id)}`}>
           <thead><tr><th>Grade</th><th>Result mix</th><th>Wins</th><th>Losses</th><th>Breakeven</th><th>n</th><th>Net P&L</th></tr></thead>
@@ -283,6 +335,7 @@ export function PlaybooksPage({ privacy }) {
   const [showAll, setShowAll] = useState(false)
   const [editing, setEditing] = useState(null) // 'new' | playbook_id
   const [reviewing, setReviewing] = useState(null) // trade id
+  const [opened, setOpened] = useState(null) // playbook id in the drawer
   const setTab = (next) => { setTabState(next); writeStore('pb-tab', next) }
   const setPlaybooks = (next) => { setPlaybooksState(next); storePlaybooks(next) }
   const setReviews = (next) => { setReviewsState(next); storeReviews(next) }
@@ -330,6 +383,8 @@ export function PlaybooksPage({ privacy }) {
     const review = reviews[trade.id]
     return reviewFilter === 'All' || (reviewFilter === 'Reviewed' ? !!review : reviewFilter === 'Not reviewed' ? !review : outOfDate(review))
   })
+  const shownPlaybooks = status === 'Active' ? active : archived
+  const openedIndex = shownPlaybooks.findIndex((playbook) => playbook.playbook_id === opened)
   const editingPlaybook = editing && editing !== 'new' ? playbooks.find((playbook) => playbook.playbook_id === editing) : null
   const reviewingTrade = reviewing ? tradeById.get(reviewing) : null
 
@@ -347,16 +402,14 @@ export function PlaybooksPage({ privacy }) {
       { label: 'Out of date', value: `${stale}`, tone: stale ? 'neg' : undefined, sub: stale ? 'Trade changed after review' : 'Every review is current', line: { type: 'gauge', share: stale / Math.max(1, reviewList.length), tone: 'neg' } },
     ]}/>
 
-    <div className="ws-tabs">
+    <div className="pb-bar">
       <Segmented options={TABS} value={tab} onChange={setTab} label="Playbooks" className="compact rail-switch report-switch"/>
+      {tab === 'Playbooks' && <Segmented options={['Active', 'Archived']} value={status} onChange={setStatus} label="Playbook status" className="compact pb-status-seg"/>}
+      {tab === 'Process reviews' && <Segmented options={['All', 'Reviewed', 'Not reviewed', 'Out of date']} value={reviewFilter} onChange={setReviewFilter} label="Review filter" className="compact pb-status-seg"/>}
     </div>
 
     <div className="pb-panel" key={tab}>
       {tab === 'Playbooks' && <>
-        <div className="pb-toolbar">
-          <Segmented options={['Active', 'Archived']} value={status} onChange={setStatus} label="Playbook status" className="cal-match"/>
-          <span className="ws-count">{plural(status === 'Active' ? active.length : archived.length, 'playbook')}</span>
-        </div>
         {(status === 'Active' ? active : archived).length === 0
           ? status === 'Active'
             ? <section className="home-card ws-card pb-empty">
@@ -367,15 +420,16 @@ export function PlaybooksPage({ privacy }) {
               </section>
             : <Card><ChartState state="empty" detail="Archived playbooks appear here. Past reviews keep their pinned revision."/></Card>
           : <div className="pb-grid">
-              {(status === 'Active' ? active : archived).map((playbook) => <PlaybookCard
-                key={playbook.playbook_id} playbook={playbook} privacy={privacy} archived={status === 'Archived'}
+              {shownPlaybooks.map((playbook, index) => <PlaybookCard
+                key={playbook.playbook_id} playbook={playbook} privacy={privacy} archived={status === 'Archived'} index={index}
                 trades={bySetup.get(current(playbook).content.name) ?? []}
+                onOpen={() => setOpened(playbook.playbook_id)}
                 onEdit={() => setEditing(playbook.playbook_id)} onArchive={() => archive(playbook.playbook_id)}
               />)}
             </div>}
       </>}
 
-      {tab === 'Process reviews' && <Card title="Recent playbook trades" aside={<Segmented options={['All', 'Reviewed', 'Not reviewed', 'Out of date']} value={reviewFilter} onChange={setReviewFilter} label="Review filter" className="cal-match"/>}>
+      {tab === 'Process reviews' && <Card shell title="Recent playbook trades" className="pb-reviews" aside={<span className="ws-hint">{plural(shownTrades.length, 'trade')}</span>}>
         {shownTrades.length ? <div className="ws-table-wrap">
           <table className="feed-table ws-table compact ledger pb-review-table">
             <thead><tr><th>Date</th><th>Symbol</th><th>Side</th><th>Setup</th><th>Outcome</th><th>Process</th><th>Review</th></tr></thead>
@@ -394,7 +448,7 @@ export function PlaybooksPage({ privacy }) {
                     {outOfDate(review) && <span className="pb-badge stale">Review out of date</span>}
                   </span>
                 </td>
-                <td><button type="button" className="ws-outline pb-small" onClick={() => setReviewing(trade.id)}><ClipboardCheck size={13}/> {review ? 'Update process review' : 'Review process'}</button></td>
+                <td><button type="button" className={`pb-review-btn${review ? '' : ' is-new'}`} onClick={() => setReviewing(trade.id)}><ClipboardCheck size={13}/> {review ? 'Update' : 'Review'}</button></td>
               </tr>
             })}</tbody>
           </table>
@@ -404,13 +458,18 @@ export function PlaybooksPage({ privacy }) {
 
       {tab === 'Process vs outcome' && <>
         <div className="pb-intro">
-          <h2>Process vs outcome</h2>
           <p>Reviewed trades by process grade and result. The grade comes only from rule adherence and planned risk; the result is each trade’s current P&L with the Trades page definitions (scratch trades counted apart).</p>
         </div>
         <Matrix playbooks={playbooks} reviews={reviews} tradeById={tradeById} privacy={privacy}/>
       </>}
     </div>
 
+    {openedIndex >= 0 && <PlaybookDrawer
+      playbook={shownPlaybooks[openedIndex]} trades={bySetup.get(current(shownPlaybooks[openedIndex]).content.name) ?? []} privacy={privacy}
+      index={openedIndex} total={shownPlaybooks.length} onStep={(delta) => setOpened(shownPlaybooks[openedIndex + delta]?.playbook_id ?? opened)}
+      onClose={() => setOpened(null)}
+      onEdit={() => { setEditing(opened); setOpened(null) }} onArchive={() => { archive(opened); setOpened(null) }}
+    />}
     {editing && <PlaybookEditor playbook={editingPlaybook} onClose={() => setEditing(null)} onSave={savePlaybook}/>}
     {reviewingTrade && <ReviewSheet trade={reviewingTrade} review={reviews[reviewing]} playbooks={playbooks} privacy={privacy} onClose={() => setReviewing(null)} onSave={saveReview}/>}
   </div>

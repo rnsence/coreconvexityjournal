@@ -1,6 +1,6 @@
 /* Dashboard (src/port/dashboard.jsx). Every selector is prefixed d3-, plus MUI chart classes scoped to .d3. */
 
-.d3 { --d3-plate: 0 1px 1px rgba(16,24,40,.05), 0 1.5px 3px -1.5px rgba(16,24,40,.1); }
+.d3 { --d3-plate: var(--shadow-tight); }
 .d3 .d3-row { display: grid; gap: 16px; margin-top: 16px; align-items: stretch; }
 .d3 .d3-perf { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); }
 .d3 .d3-bottom { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
@@ -124,7 +124,7 @@
 .d3 .MuiChartsGrid-line { stroke: #f2f4f7 !important; }
 .d3 .MuiLineElement-root { stroke-width: 2; }
 .d3 .MuiChartsAxisHighlight-root { stroke: rgba(16,24,40,.18) !important; stroke-dasharray: none !important; }
-.MuiChartsTooltip-paper { border: 0 !important; border-radius: 10px !important; background: rgba(255,255,255,.96) !important; box-shadow: 0 1px 2px rgba(16,24,40,.08), 0 4px 12px -4px rgba(16,24,40,.16) !important; font-family: Inter, ui-sans-serif, system-ui, sans-serif !important; }
+.MuiChartsTooltip-paper { border: 0 !important; border-radius: 10px !important; background: rgba(255,255,255,.96) !important; box-shadow: var(--shadow-tight) !important; font-family: Inter, ui-sans-serif, system-ui, sans-serif !important; }
 .MuiChartsTooltip-paper * { font-family: inherit !important; font-size: 12px !important; }
 
 /* phones: one column, controls wrap under the title */
