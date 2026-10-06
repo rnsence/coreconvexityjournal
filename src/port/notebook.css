@@ -750,32 +750,32 @@
 @media (max-width: 620px) { .nb-annotator .nb-an-bar { flex-wrap: wrap; } .nb-annotator .nb-an-colours { gap: 5px; } }
 /* tags: a stack of cards fanned to the right, spread into a row on click */
 .nb-page .nb-note.duo .nb-note-tags { position: relative; display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 8px; }
-.nb-page .nb-tag-mirror { position: absolute; visibility: hidden; pointer-events: none; display: flex; gap: 6px; white-space: nowrap; }
-.nb-page .nb-tagstack {
+:is(.nb-page, .rp-page) .nb-tag-mirror { position: absolute; visibility: hidden; pointer-events: none; display: flex; gap: 6px; white-space: nowrap; }
+:is(.nb-page, .rp-page) .nb-tagstack {
   --peek: 9px; --ease: cubic-bezier(.22,.82,.28,1);
   position: relative; flex: none; display: block; height: 22px; width: calc(var(--w0) + (var(--n) - 1) * var(--peek)); max-width: 100%;
   padding: 0; border: 0; border-radius: 6px; background: none; font: inherit; cursor: pointer; transition: width .46s var(--ease), height .46s var(--ease);
 }
-.nb-page .nb-tagstack:disabled { cursor: default; }
-.nb-page .nb-tagstack:not(.is-open):not(:disabled):hover { --peek: 13px; }
-.nb-page .nb-tagstack.is-open { width: var(--wopen); height: var(--hopen); }
-.nb-page .nb-tagstack:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(46,124,246,.25); }
-.nb-page .nb-tagstack .nb-tag {
+:is(.nb-page, .rp-page) .nb-tagstack:disabled { cursor: default; }
+:is(.nb-page, .rp-page) .nb-tagstack:not(.is-open):not(:disabled):hover { --peek: 13px; }
+:is(.nb-page, .rp-page) .nb-tagstack.is-open { width: var(--wopen); height: var(--hopen); }
+:is(.nb-page, .rp-page) .nb-tagstack:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(46,124,246,.25); }
+:is(.nb-page, .rp-page) .nb-tagstack .nb-tag {
   position: absolute; top: 0; left: 0; width: var(--w0); overflow: hidden; white-space: nowrap;
   transform: translate(calc(var(--i) * var(--peek)), 0) scale(calc(1 - var(--i) * .08)); transform-origin: right center;
   box-shadow: 0 0 0 1.5px #fff; transition: transform .46s var(--ease), width .46s var(--ease), background-color .3s ease;
 }
-.nb-page .nb-tagstack .nb-tag:nth-child(2) { background: #e9ecf1; }
-.nb-page .nb-tagstack .nb-tag:nth-child(3) { background: #e2e6ec; }
-.nb-page .nb-tagstack .nb-tag:nth-child(4) { background: #dbe0e7; }
-.nb-page .nb-tagstack .nb-tag > span { transition: opacity .25s ease; }
-.nb-page .nb-tagstack:not(.is-open) .nb-tag:not(:first-child) > span { opacity: 0; }
-.nb-page .nb-tagstack.is-open .nb-tag { width: var(--tw); transform: translate(var(--ox), var(--oy)) scale(1); background: var(--fill, #f2f4f7); }
-.nb-page .nb-tagstack.is-open .nb-tag > span { transition-delay: .08s; }
-.nb-page .nb-tagstack.is-measuring, .nb-page .nb-tagstack.is-measuring .nb-tag { transition: none; }
-.nb-page .nb-tagmore { flex: none; height: 22px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-faint); font: inherit; font-size: 11.5px; font-weight: 550; cursor: pointer; transition: background .14s ease, color .14s ease; }
-.nb-page .nb-tagmore:hover { background: var(--fill, #f2f4f7); color: var(--ink); }
-@media (prefers-reduced-motion: reduce) { .nb-page .nb-tagstack, .nb-page .nb-tagstack .nb-tag, .nb-page .nb-tagstack .nb-tag > span { transition: none; } }
+:is(.nb-page, .rp-page) .nb-tagstack .nb-tag:nth-child(2) { background: #e9ecf1; }
+:is(.nb-page, .rp-page) .nb-tagstack .nb-tag:nth-child(3) { background: #e2e6ec; }
+:is(.nb-page, .rp-page) .nb-tagstack .nb-tag:nth-child(4) { background: #dbe0e7; }
+:is(.nb-page, .rp-page) .nb-tagstack .nb-tag > span { transition: opacity .25s ease; }
+:is(.nb-page, .rp-page) .nb-tagstack:not(.is-open) .nb-tag:not(:first-child) > span { opacity: 0; }
+:is(.nb-page, .rp-page) .nb-tagstack.is-open .nb-tag { width: var(--tw); transform: translate(var(--ox), var(--oy)) scale(1); background: var(--fill, #f2f4f7); }
+:is(.nb-page, .rp-page) .nb-tagstack.is-open .nb-tag > span { transition-delay: .08s; }
+:is(.nb-page, .rp-page) .nb-tagstack.is-measuring, :is(.nb-page, .rp-page) .nb-tagstack.is-measuring .nb-tag { transition: none; }
+:is(.nb-page, .rp-page) .nb-tagmore { flex: none; height: 22px; padding: 0 6px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-faint); font: inherit; font-size: 11.5px; font-weight: 550; cursor: pointer; transition: background .14s ease, color .14s ease; }
+:is(.nb-page, .rp-page) .nb-tagmore:hover { background: var(--fill, #f2f4f7); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { :is(.nb-page, .rp-page) .nb-tagstack, :is(.nb-page, .rp-page) .nb-tagstack .nb-tag, :is(.nb-page, .rp-page) .nb-tagstack .nb-tag > span { transition: none; } }
 /* attachments pill: same chip as the tags, quiet + beside it */
 .nb-page .nb-files-toggle { height: 22px; gap: 5px; padding: 0 8px 0 7px; border-radius: 6px; background: var(--fill, #f2f4f7); box-shadow: none; color: var(--ink-soft); font-size: 11.5px; font-weight: 500; transition: background .14s ease, color .14s ease; }
 .nb-page .nb-files-toggle:hover, .nb-page .nb-files-toggle.is-open { background: #e9ecf1; box-shadow: none; color: var(--ink); }
@@ -792,3 +792,12 @@
 /* ticker names on the right of the date row; their logos sit in the card's corner */
 .nb-page .nb-note-tickers { display: flex; align-items: center; gap: 10px; min-width: 0; margin-left: auto; overflow: hidden; white-space: nowrap; }
 .nb-page .nb-note-tickers .nb-note-sym b { color: var(--ink-soft); font-size: 12px; font-weight: 600; letter-spacing: .01em; }
+/* header actions side by side like every other page: Export as the white outline pill, then New entry */
+#root .page.nb-page .nb-head-actions { flex-direction: row; align-items: center; gap: 8px; }
+#root .page.nb-page .nb-head-actions :is(.start-day, .nb-export > .nb-btn) { width: auto; }
+#root .page.nb-page .nb-head-actions .nb-export > .nb-btn { background: #fff !important; }
+#root .page.nb-page .ws-header .home-actions { align-self: center; }
+/* the same stack in a report card: tag chips use the report's chip look */
+.rp-page .rp-rcard-chips .nb-note-tags { position: relative; display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 8px; margin: 0; }
+.rp-page .rp-rcard-chips .nb-tag { height: 22px; display: inline-flex; align-items: center; padding: 0 8px; border-radius: 6px; background: var(--fill, #f2f4f7); color: var(--ink-soft); font-size: 11.5px; font-weight: 500; }
+.rp-page .rp-rcard-chips:has(.nb-tagstack) { display: block; width: 100%; } .rp-page .rp-rcard-chips .nb-note-tags { width: 100%; }

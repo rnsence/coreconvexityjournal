@@ -1,0 +1,115 @@
+/* Playbooks → Outcomes (Outcomes in src/port/playbooks.jsx): does following the plan pay? */
+.pb-page .ou { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.pb-page .ou-card { display: flex; flex-direction: column; min-width: 0; }
+.pb-page .ou-head { justify-content: space-between; }
+.pb-page .ou-body, .pb-page .ou-bells { position: relative; flex: 1; display: flex; flex-direction: column; }
+
+/* ---------------------------------------------------------------- headline + side-by-side */
+.pb-page .ou-hero { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 28px; align-items: center; padding: 6px 4px 22px; border-bottom: 1px solid var(--line-soft, #f2f4f7); }
+.pb-page .ou-verdict strong { display: block; color: var(--ink); font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: -.05em; font-variant-numeric: tabular-nums; animation: ou-rise .5s cubic-bezier(.16,1.1,.29,1) both; }
+.pb-page .ou-verdict p { max-width: 220px; margin: 10px 0 0; color: var(--ink-soft); font-size: 13.5px; line-height: 1.45; }
+@keyframes ou-rise { from { opacity: 0; transform: translateY(6px); } }
+
+.pb-page .ou-table { display: flex; flex-direction: column; margin: 0; }
+.pb-page .ou-tr { display: grid; grid-template-columns: 76px minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 14px; min-height: 30px; }
+.pb-page .ou-tr + .ou-tr { border-top: 1px solid var(--line-soft, #f2f4f7); }
+.pb-page .ou-tr dt { color: var(--ink-faint); font-size: 12px; }
+.pb-page .ou-tr dd { margin: 0; color: var(--ink); font-size: 13.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.pb-page .ou-th dd { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-faint); font-size: 12px; font-weight: 500; }
+.pb-page .ou-key { width: 9px; height: 9px; border-radius: 50%; }
+.pb-page .ou-key.is-followed { background: var(--ink, #2b2f35); }
+.pb-page .ou-key.is-broke { box-sizing: border-box; border: 2px solid var(--ink-faint, #98a2b3); background: #fff; }
+.pb-page .ou-rate { display: flex; align-items: center; gap: 8px; }
+.pb-page .ou-rate b { min-width: 34px; font-weight: 500; }
+.pb-page .ou-rate i { position: relative; flex: 1; max-width: 90px; height: 4px; border-radius: 2px; background: #eef0f3; overflow: hidden; }
+.pb-page .ou-rate i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--w); border-radius: 2px; background: var(--ink, #2b2f35); animation: ou-grow .7s cubic-bezier(.22,.82,.28,1) both; }
+.pb-page .ou-rate.is-broke i::after { background: #b4bac5; }
+@keyframes ou-grow { from { width: 0; } }
+
+/* ---------------------------------------------------------------- strip plot: every trade, two lanes */
+.pb-page .ou-strip { position: relative; display: flex; flex-direction: column; flex: 1; justify-content: center; gap: 4px; padding: 18px 4px 4px; }
+.pb-page .ou-strip-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; color: var(--ink-faint); font-size: 12px; }
+.pb-page .ou-legend { display: inline-flex; align-items: center; gap: 12px; color: var(--ink-faint); font-size: 12px; font-weight: 400; }
+.pb-page .ou-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.pb-page .ou-legend i { width: 8px; height: 8px; border-radius: 50%; }
+.pb-page .ou-legend i.pos { background: #22c47d; } .pb-page .ou-legend i.neg { background: #f5615a; }
+.pb-page .ou-legend i.avg { width: 2px; height: 11px; border-radius: 1px; background: var(--ink, #2b2f35); }
+.pb-page .ou-legend i.dot-followed { background: var(--ink, #2b2f35); }
+.pb-page .ou-legend i.dot-broke { box-sizing: border-box; border: 2px solid var(--ink-faint, #98a2b3); background: #fff; }
+
+.pb-page .ou-lane { display: grid; grid-template-columns: 92px minmax(0, 1fr); align-items: center; gap: 12px; }
+.pb-page .ou-lane-label { color: var(--ink-soft); font-size: 12.5px; font-weight: 500; }
+.pb-page .ou-lane-track { position: relative; height: 58px; border-radius: 10px; background: var(--canvas-soft, #f7f8fa); }
+.pb-page .ou-zero { position: absolute; top: 4px; bottom: 4px; width: 0; border-left: 1px dashed #d0d5dd; }
+.pb-page .ou-dot { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; box-sizing: border-box; border: 1.5px solid #fff; opacity: .9; cursor: default; transition: transform .14s ease, opacity .14s ease; animation: ou-pop .4s cubic-bezier(.16,1.1,.29,1) both; }
+.pb-page .ou-dot.pos { background: #22c47d; } .pb-page .ou-dot.neg { background: #f5615a; } .pb-page .ou-dot.flat { background: #b4bac5; }
+.pb-page .ou-lane.is-broke .ou-dot { opacity: .55; }
+.pb-page .ou-dot:hover { z-index: 2; opacity: 1; transform: scale(1.6); }
+@keyframes ou-pop { from { opacity: 0; transform: scale(.4); } }
+.pb-page .ou-avg { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; border-radius: 1px; background: var(--ink, #2b2f35); pointer-events: none; transition: left .45s cubic-bezier(.22,.82,.28,1); }
+.pb-page .ou-lane.is-broke .ou-avg { background: #98a2b3; }
+.pb-page .ou-avg b { position: absolute; bottom: 100%; left: 50%; margin-bottom: 3px; padding: 1px 6px; border-radius: 6px; background: #fff; font-size: 11.5px; font-weight: 600; white-space: nowrap; transform: translateX(-50%); box-shadow: 0 0 0 1px var(--line, #eaecf0); }
+#root .pb-page .ou-avg b { box-shadow: 0 0 0 1px var(--line, #eaecf0) !important; }
+.pb-page .ou-lane + .ou-lane { margin-top: 26px; }
+.pb-page .ou-axis { position: relative; height: 16px; margin-left: 104px; color: var(--ink-faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+.pb-page .ou-axis span { position: absolute; top: 2px; transform: translateX(-50%); white-space: nowrap; }
+.pb-page .ou-axis span:first-child { transform: none; } .pb-page .ou-axis span:last-child { transform: translateX(-100%); }
+
+/* ---------------------------------------------------------------- dumbbells by playbook */
+.pb-page .ou-bells { gap: 0; padding: 4px 4px 2px; }
+.pb-page .ou-bell-head, .pb-page .ou-bell { display: grid; grid-template-columns: minmax(96px, 132px) minmax(0, 1fr) 76px; align-items: center; gap: 14px; }
+.pb-page .ou-bell-head { padding-bottom: 8px; color: var(--ink-faint); font-size: 11.5px; }
+.pb-page .ou-bell-head > span:last-child { text-align: right; }
+.pb-page .ou-bell-scale { position: relative; height: 14px; }
+.pb-page .ou-bell-scale em { position: absolute; top: 0; font-style: normal; font-variant-numeric: tabular-nums; white-space: nowrap; transform: translateX(-50%); }
+.pb-page .ou-bell { min-height: 50px; margin: 0 -8px; padding: 0 8px; border-radius: 10px; transition: background .14s ease; outline: none; }
+.pb-page .ou-bell + .ou-bell { border-top: 1px solid var(--line-soft, #f2f4f7); }
+.pb-page .ou-bell:hover, .pb-page .ou-bell:focus-visible { background: var(--canvas-soft, #f7f8fa); }
+.pb-page .ou-bell-name { display: flex; flex-direction: column; gap: 1px; min-width: 0; color: var(--ink); font-size: 13px; font-weight: 550; }
+.pb-page .ou-bell-name small { color: var(--ink-faint); font-size: 11.5px; font-weight: 400; }
+.pb-page .ou-bell-track { position: relative; height: 22px; }
+.pb-page .ou-bell-track .ou-zero { top: -6px; bottom: -6px; }
+.pb-page .ou-bell-line { position: absolute; top: 50%; height: 3px; margin-top: -1.5px; border-radius: 2px; opacity: .45; animation: ou-grow-x .6s cubic-bezier(.22,.82,.28,1) both; }
+.pb-page .ou-bell-line.pos { background: #22c47d; } .pb-page .ou-bell-line.neg { background: #f5615a; }
+@keyframes ou-grow-x { from { transform: scaleX(0); } }
+.pb-page .ou-bell-dot { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; box-sizing: border-box; border-radius: 50%; transition: left .45s cubic-bezier(.22,.82,.28,1), transform .14s ease; }
+.pb-page .ou-bell-dot.is-followed { z-index: 1; background: var(--ink, #2b2f35); border: 2px solid #fff; }
+.pb-page .ou-bell-dot.is-broke { background: #fff; border: 2px solid #98a2b3; }
+.pb-page .ou-bell:hover .ou-bell-dot { transform: scale(1.15); }
+.pb-page .ou-gap { justify-self: end; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.pb-page .ou-gap.is-none { color: var(--ink-faint); font-size: 12px; }
+
+@media (max-width: 1180px) { .pb-page .ou { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) {
+  .pb-page .ou-hero { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .pb-page .ou-verdict strong { font-size: 36px; }
+  .pb-page .ou-lane { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .pb-page .ou-axis { margin-left: 0; }
+  .pb-page .ou-bell-head, .pb-page .ou-bell { grid-template-columns: 90px minmax(0, 1fr) 62px; gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .pb-page :is(.ou-verdict strong, .ou-dot, .ou-rate i::after, .ou-bell-line) { animation: none; } }
+
+/* takeaways under the dumbbells: one line each, in plain words */
+.pb-page .ou-takeaways { display: flex; flex-direction: column; gap: 8px; margin-top: auto; padding-top: 16px; }
+.pb-page .ou-takeaways p { display: flex; align-items: flex-start; gap: 10px; margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--canvas-soft, #f7f8fa); color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.pb-page .ou-takeaways i { flex: none; width: 6px; height: 6px; margin-top: 6px; border-radius: 2px; }
+.pb-page .ou-takeaways i.pos { background: #22c47d; } .pb-page .ou-takeaways i.neg { background: #f5615a; }
+.pb-page .ou-takeaways b { color: var(--ink); font-weight: 600; }
+/* the lanes take whatever height the row gives the card, so there's no dead band above them */
+.pb-page .ou-strip { justify-content: flex-start; }
+.pb-page .ou-lane { flex: 1; align-items: stretch; min-height: 58px; }
+.pb-page .ou-lane-label { align-self: center; }
+.pb-page .ou-lane-track { height: auto; min-height: 58px; }
+@media (max-width: 640px) {
+  .pb-page .ou-lane { flex: none; }
+  .pb-page .ou-lane-track { height: 64px; }
+  /* phones: the playbook name gets its own line above its dumbbell */
+  .pb-page .ou-bell-head, .pb-page .ou-bell { grid-template-columns: minmax(0, 1fr) 62px; grid-template-areas: 'name gap' 'track track'; row-gap: 6px; padding-top: 10px; padding-bottom: 12px; }
+  .pb-page .ou-bell-head { grid-template-areas: 'name gap' 'track track'; padding: 0 0 4px; }
+  .pb-page .ou-bell-name { grid-area: name; flex-direction: row; align-items: baseline; gap: 6px; }
+  .pb-page .ou-bell-head > span:first-child { grid-area: name; } .pb-page .ou-bell-head > span:last-child { grid-area: gap; }
+  .pb-page .ou-bell-track, .pb-page .ou-bell-scale { grid-area: track; }
+  .pb-page .ou-gap { grid-area: gap; }
+}
+/* edge labels on the dumbbell scale hug the ends instead of centring past them */
+.pb-page .ou-bell-scale em:first-child { transform: translateX(-4%); } .pb-page .ou-bell-scale em:last-child { transform: translateX(-96%); }

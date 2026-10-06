@@ -1,18 +1,18 @@
 /**
  * Import: add fills by hand, import a broker statement (CSV) with a preview before
- * anything is saved, sync from Tradovate, undo imports and group leftover fills.
+ * anything is saved, undo imports and group leftover fills.
  * Everything runs locally; committed fills become trades in the journal.
  */
-import React, { useMemo, useRef, useState } from 'react'
-import { CircleAlert, FileSpreadsheet, Info, Plus, RefreshCw, Trash2, Undo2, Upload } from 'lucide-react'
+import React, { useRef, useState } from 'react'
+import { CircleAlert, FileSpreadsheet, Info, Undo2, Upload } from 'lucide-react'
 import { PageHead, MetricStrip, Card } from '../workspace'
 import { Sheet } from '../dialogs'
 import { money } from '../viz'
 import { ManualFillsForm, recordedMessage } from './trades-fillsform'
 import {
-  KEYS, addTrades, clearFlash, fifo, groupFills, knownFills, loadAccounts, loadBatches, loadUngrouped, notifyData, parsePoints,
-  peekFlash, pointValueFor, readJSON, recordBatch, round, saveBatches, saveUngrouped, setFlash, stamp, symbolRoot, tradeFromFills,
-  undoBatch, uid, writeJSON,
+  addTrades, clearFlash, fifo, groupFills, knownFills, loadAccounts, loadBatches, loadUngrouped, notifyData, parsePoints,
+  peekFlash, pointValueFor, recordBatch, round, saveBatches, saveUngrouped, setFlash, stamp, symbolRoot, tradeFromFills,
+  undoBatch, uid,
 } from './trading-data'
 import { Select } from '../select'
 import './import.css'
@@ -296,51 +296,55 @@ function ImportFills({ privacy, flash }) {
   }
 
   return <div className="im-import">
-    <p className="im-intro">Import a broker export: Tradovate, NinjaTrader, TopstepX, Rithmic and TradingView are recognised from their headers; any other CSV of executions can be mapped column by column. Trade summaries and position averages are refused; fills are never inferred from them.</p>
-
     <div
       className={`im-drop${dragging ? ' is-drag' : ''}${file ? ' has-file' : ''}`}
       onDragOver={(event) => { event.preventDefault(); setDragging(true) }}
       onDragLeave={() => setDragging(false)}
       onDrop={(event) => { event.preventDefault(); setDragging(false); readFile(event.dataTransfer.files?.[0]) }}
     >
-      <span className="im-drop-icon"><FileSpreadsheet size={18}/></span>
+      <span className="im-drop-icon"><FileSpreadsheet size={20}/></span>
       <div className="im-drop-copy">
-        <b>{file ? file.name : 'Statement file (CSV, up to 1 MiB)'}</b>
-        <span>{file ? `${(file.size / 1024).toFixed(1)} KB · ${preview ? plural(preview.counts.rows, 'row') : 'reading…'}` : 'Drop a file here, or choose one'}</span>
+        <b>{file ? file.name : 'Drop your broker export here'}</b>
+        <span>{file ? `${(file.size / 1024).toFixed(1)} KB · ${preview ? plural(preview.counts.rows, 'row') : 'reading…'}` : 'Tradovate, NinjaTrader, TopstepX, Rithmic, TradingView or any CSV · up to 1 MB'}</span>
       </div>
       <label className="im-btn">
-        <Upload size={13}/> {file ? 'Choose another' : 'Choose file'}
+        {file ? 'Choose another' : 'Choose file'}
         <input ref={inputRef} type="file" accept=".csv,.txt,text/csv" aria-label="Statement file" onChange={(event) => { readFile(event.target.files?.[0]); event.target.value = '' }}/>
       </label>
     </div>
-    <p className="im-samples">No export handy? Try a sample:
-      <button type="button" onClick={() => choose({ name: 'tradovate-orders-2026-09-25.csv', size: SAMPLE_TRADOVATE.length, text: SAMPLE_TRADOVATE })}>Tradovate orders export</button>
+    <p className="im-samples">Try a sample:
+      <button type="button" onClick={() => choose({ name: 'tradovate-orders-2026-09-25.csv', size: SAMPLE_TRADOVATE.length, text: SAMPLE_TRADOVATE })}>Tradovate</button>
       <button type="button" onClick={() => choose({ name: 'my-broker-fills.csv', size: SAMPLE_GENERIC.length, text: SAMPLE_GENERIC })}>Other CSV</button>
     </p>
     {fileError && <Feedback tone="error">{fileError}</Feedback>}
 
-    <div className="im-options">
+    {/* the two choices most imports need; everything else is folded away */}
+    <div className="im-options im-options-main">
       <label><span>Format</span>
         <Select aria-label="Import format" value={options.format} onChange={set('format')}>
           <option value="">Detect from the file</option>
           {IMPORT_FORMATS.map((format) => <option key={format.id} value={format.id}>{format.label}</option>)}
         </Select>
       </label>
-      <label><span>Point values (futures, optional)</span><input aria-label="Point values" placeholder="ES=50, MNQ=2" value={options.points} onChange={set('points')}/></label>
-      <label><span>Statement timezone</span><input aria-label="Statement timezone" value={options.timezone} onChange={set('timezone')}/></label>
-      <label><span>Currency (no column)</span><input aria-label="Import currency" maxLength={3} value={options.currency} onChange={set('currency')}/></label>
-      <label><span>Contract multiplier</span><input aria-label="Contract multiplier" inputMode="decimal" value={options.multiplier} onChange={set('multiplier')}/></label>
       <label><span>Journal account</span>
         <Select aria-label="Import account" value={options.account} onChange={set('account')}>
           <option value="">No account</option>
           {accounts.map((account) => <option key={account.id} value={account.id}>{account.content.name}</option>)}
         </Select>
       </label>
-      <label><span>Statement net realized P&L</span><input inputMode="decimal" placeholder="optional" value={options.statementNet} onChange={set('statementNet')}/></label>
-      <label><span>Statement fees</span><input inputMode="decimal" placeholder="optional" value={options.statementFees} onChange={set('statementFees')}/></label>
-      {file && <div className="im-options-action"><button type="button" className="im-btn" disabled={checking} onClick={() => runPreview(file, options)}><RefreshCw size={13}/> {checking ? 'Checking…' : 'Update preview'}</button></div>}
     </div>
+    <details className="im-more">
+      <summary>More options</summary>
+      <div className="im-options">
+        <label><span>Point values</span><input aria-label="Point values" placeholder="ES=50, MNQ=2" value={options.points} onChange={set('points')}/></label>
+        <label><span>Timezone</span><input aria-label="Statement timezone" value={options.timezone} onChange={set('timezone')}/></label>
+        <label><span>Currency</span><input aria-label="Import currency" maxLength={3} value={options.currency} onChange={set('currency')}/></label>
+        <label><span>Contract multiplier</span><input aria-label="Contract multiplier" inputMode="decimal" value={options.multiplier} onChange={set('multiplier')}/></label>
+        <label><span>Statement net P&L</span><input inputMode="decimal" placeholder="Optional" value={options.statementNet} onChange={set('statementNet')}/></label>
+        <label><span>Statement fees</span><input inputMode="decimal" placeholder="Optional" value={options.statementFees} onChange={set('statementFees')}/></label>
+      </div>
+    </details>
+    {file && <div className="im-options-action"><button type="button" className="im-btn" disabled={checking} onClick={() => runPreview(file, options)}>{checking ? 'Checking…' : 'Update preview'}</button></div>}
 
     {preview && !preview.generic && <div className="im-detected" aria-label="Detected format">
       <p><b>{preview.formatLabel}</b> · statement timezone {options.timezone || 'UTC'} · point values from the standard contract specs unless set above</p>
@@ -510,173 +514,46 @@ function ImportHistory() {
   </Card>
 }
 
-/* ------------------------------------------------------------ §12 broker sync */
-
-const loadConnections = () => readJSON(KEYS.connections, [])
-const saveConnections = (list) => writeJSON(KEYS.connections, list)
-const syncSummary = (result) => [
-  `${plural(result.new, 'new fill')}`,
-  result.duplicate ? `${result.duplicate} already in the journal` : null,
-  result.undone ? `${result.undone} from an undone sync, left out` : null,
-  result.skipped ? `${result.skipped} skipped` : null,
-].filter(Boolean).join(' · ')
-
-function ConnectionRow({ connection, accounts, onChange }) {
-  const [busy, setBusy] = useState(null)
-  const [error, setError] = useState(null)
-  const accountName = accounts.find((account) => account.id === connection.account_id)?.content.name
-  const sync = () => {
-    setBusy('sync'); setError(null)
-    window.setTimeout(() => {
-      if (connection.paused) { setBusy(null); setError('Sync refused: this connection is paused until you connect again.'); return }
-      const first = !connection.last_sync
-      const result = first ? { new: 2, duplicate: 0, undone: 0, skipped: 0 } : { new: 0, duplicate: 2, undone: 0, skipped: 1, notes: ['Order 90412 was cancelled, so it has no fill.'] }
-      const next = { ...connection, last_sync: new Date().toISOString(), last_new_count: result.new, result }
-      onChange(next)
-      if (first) {
-        const date = new Date().toISOString().slice(0, 10)
-        const base = { symbol: 'MNQZ6', currency: 'USD', multiplier: 2, source: 'import', file_name: `Tradovate sync · ${connection.source_account}` }
-        recordBatch({
-          fileName: `Tradovate sync · ${connection.source_account}`, account: connection.account_id, counts: { duplicate: 0 },
-          fills: [
-            { ...base, side: 'buy', quantity: 1, price: 21448.5, fee: 0.62, executed_at: `${date}T10:12:07`, row_number: 1, source_execution_id: `TV-${Date.now()}` },
-            { ...base, side: 'sell', quantity: 1, price: 21459.25, fee: 0.62, executed_at: `${date}T10:26:44`, row_number: 2, source_execution_id: `TV-${Date.now() + 1}` },
-          ],
-        })
-      }
-      setBusy(null)
-    }, 900)
-  }
-  return <li className="im-conn">
-    <div className="im-conn-head">
-      <div>
-        <b>{connection.source_account}</b>
-        <small>{connection.login} · {connection.environment}{accountName ? ` → ${accountName}` : ''}</small>
-      </div>
-      {connection.paused && <span className="im-badge neg">Paused</span>}
-      <div className="im-conn-actions">
-        <button type="button" className="im-btn" disabled={!!busy} onClick={sync}><RefreshCw size={13} className={busy === 'sync' ? 'im-spin' : ''}/> {busy === 'sync' ? 'Syncing…' : 'Sync now'}</button>
-        <button type="button" className="im-btn icon" aria-label={`Remove ${connection.source_account}`} disabled={!!busy} onClick={() => onChange(null)}><Trash2 size={13}/></button>
-      </div>
-    </div>
-    <p className="im-muted">Last sync {connection.last_sync ? new Date(connection.last_sync).toLocaleString() : 'never'}{connection.last_new_count != null ? ` · ${connection.last_new_count} new` : ''}</p>
-    {connection.last_error && <p className="im-error" role="alert">{connection.paused ? `${connection.last_error.replace(/\.?$/, '.')} Connect again with corrected credentials to resume.` : connection.last_error}</p>}
-    {connection.result && !connection.last_error && <div className="im-sync-result" aria-label="Sync result">
-      <span>{syncSummary(connection.result)}</span>
-      {connection.result.notes?.map((note) => <small key={note}>{note}</small>)}
-    </div>}
-    {error && <Feedback tone="error">{error}</Feedback>}
-  </li>
-}
-
-const EMPTY_CREDENTIALS = { environment: 'demo', username: '', password: '', appId: '', cid: '', secret: '' }
-
-function BrokerSync() {
-  const accounts = loadAccounts().filter((account) => !account.archived)
-  const [connections, setConnections] = useState(loadConnections)
-  const [credentials, setCredentials] = useState(EMPTY_CREDENTIALS)
-  const [found, setFound] = useState(null)
-  const [pick, setPick] = useState({ source: '', account: '' })
-  const [busy, setBusy] = useState(null)
-  const [error, setError] = useState(null)
-  const update = (list) => { setConnections(list); saveConnections(list) }
-  const set = (key) => (event) => { setCredentials((current) => ({ ...current, [key]: event.target.value })); setFound(null) }
-  const complete = Object.values(credentials).every((value) => String(value).trim())
-  const findAccounts = () => {
-    setBusy('find'); setError(null)
-    window.setTimeout(() => {
-      setBusy(null)
-      if (credentials.password === 'wrong') { setError('Tradovate refused the sign-in: check the username, password and API key.'); return }
-      const stem = (credentials.environment === 'demo' ? 'DEMO' : 'LIVE') + String(Math.abs(credentials.username.split('').reduce((total, char) => total * 31 + char.charCodeAt(0), 7)) % 900000 + 100000)
-      const list = [stem, `${stem}-2`]
-      setFound(list); setPick({ source: list[0], account: '' })
-    }, 700)
-  }
-  const connect = () => {
-    setBusy('connect')
-    window.setTimeout(() => {
-      const paused = credentials.password === 'expired'
-      update([...connections, {
-        id: uid('conn'), broker: 'tradovate', source_account: pick.source, login: credentials.username.trim(), environment: credentials.environment,
-        account_id: pick.account || null, last_sync: null, last_new_count: null, paused, last_error: paused ? 'Tradovate rejected the saved credentials' : null,
-      }])
-      setCredentials(EMPTY_CREDENTIALS); setFound(null); setBusy(null)
-    }, 600)
-  }
-  return <Card title="Sync from Tradovate" className="im-broker" aside={<span className="ws-hint">Every 15 minutes</span>}>
-    <section aria-label="Broker sync">
-      <p className="im-muted">Fills arrive every 15 minutes, deduplicated against imports of the Tradovate orders export. Tradovate only returns recent sessions, so import older history from the export.</p>
-      {connections.length > 0 && <ul className="im-conns">{connections.map((connection) => <ConnectionRow
-        key={connection.id} connection={connection} accounts={accounts}
-        onChange={(next) => update(next ? loadConnections().map((item) => (item.id === connection.id ? next : item)) : connections.filter((item) => item.id !== connection.id))}
-      />)}</ul>}
-      <details className="im-connect" open={!connections.length}>
-        <summary>Connect a Tradovate account</summary>
-        <p className="im-muted">Needs a Tradovate API key (Application Settings → API Access). The password and secret are encrypted on the server and never shown again.</p>
-        <div className="im-connect-grid">
-          <label><span>Environment</span><Select value={credentials.environment} onChange={set('environment')} autoComplete="off"><option value="live">Live</option><option value="demo">Demo (simulation)</option></Select></label>
-          <label><span>Username</span><input value={credentials.username} onChange={set('username')} autoComplete="off"/></label>
-          <label><span>Password</span><input type="password" value={credentials.password} onChange={set('password')} autoComplete="off"/></label>
-          <label><span>App ID</span><input value={credentials.appId} onChange={set('appId')} autoComplete="off"/></label>
-          <label><span>CID</span><input value={credentials.cid} onChange={set('cid')} autoComplete="off"/></label>
-          <label><span>Secret</span><input type="password" value={credentials.secret} onChange={set('secret')} autoComplete="off"/></label>
-        </div>
-        {error && <Feedback tone="error">{error}</Feedback>}
-        {!found && <button type="button" className="im-btn" disabled={!complete || busy === 'find'} onClick={findAccounts}>{busy === 'find' ? 'Signing in…' : 'Find accounts'}</button>}
-        {found && <div className="im-found">
-          <label><span>Tradovate account</span><Select value={pick.source} onChange={(event) => setPick({ ...pick, source: event.target.value })}>{found.map((name) => <option key={name}>{name}</option>)}</Select></label>
-          <label><span>File under</span><Select value={pick.account} onChange={(event) => setPick({ ...pick, account: event.target.value })}>
-            <option value="">No journal account</option>
-            {accounts.map((account) => <option key={account.id} value={account.id}>{account.content.name}</option>)}
-          </Select></label>
-          <button type="button" className="start-day im-connect-btn" disabled={busy === 'connect'} onClick={connect}>{busy === 'connect' ? 'Connecting…' : 'Connect'}</button>
-        </div>}
-      </details>
-    </section>
-  </Card>
-}
-
 /* ------------------------------------------------------------ page */
 
 // Designs by RNSENCE Studio
-export function ImportPage({ privacy, setPage }) {
+export function ImportPage({ privacy, setPage, embedded = false }) {
   const [flash] = useState(() => peekFlash('import'))
   React.useEffect(() => { clearFlash('import') }, [])
   const [sheet, setSheet] = useState(false)
   const batches = loadBatches()
   const committed = batches.filter((batch) => batch.status === 'committed')
   const ungrouped = loadUngrouped()
-  const connections = loadConnections()
   const imported = committed.reduce((total, batch) => total + batch.counts.new, 0)
   const trades = committed.reduce((total, batch) => total + batch.trade_ids.length, 0)
   const dupes = batches.reduce((total, batch) => total + batch.counts.duplicate, 0)
 
-  return <div className="page home ws-page im-page">
-    <PageHead
+  // embedded in Settings: the section heading stands in for the page title and the stats strip is left out
+  return <div className={`page home ws-page im-page${embedded ? ' is-embedded' : ''}`}>
+    {embedded ? <div className="embed-actions"><button className="start-day" onClick={() => setSheet(true)}>Add fills</button></div> : <PageHead
       title="Import"
-      meta={`${plural(committed.length, 'import')} · ${plural(ungrouped.length, 'ungrouped fill')} · ${plural(connections.length, 'broker connection')}`}
+      meta={`${plural(committed.length, 'import')} · ${plural(ungrouped.length, 'ungrouped fill')}`}
       actions={<>
         {setPage && <button className="ws-outline" onClick={() => setPage('Trades')}>Open trades</button>}
-        <button className="start-day" onClick={() => setSheet(true)}><Plus size={16} strokeWidth={2.2}/> Add fills</button>
+        <button className="start-day" onClick={() => setSheet(true)}>Add fills</button>
       </>}
-    />
+    />}
 
-    <MetricStrip items={[
-      { label: 'Fills imported', value: String(imported), sub: `${committed.length} ${committed.length === 1 ? 'batch' : 'batches'} in history` },
-      { label: 'Trades grouped', value: String(trades), sub: 'Flat to flat, from the fills' },
-      { label: 'Ungrouped fills', value: String(ungrouped.length), sub: ungrouped.length ? 'Open or reversing positions' : 'Nothing waiting' },
-      { label: 'Duplicates skipped', value: String(dupes), sub: 'Never imported twice' },
-    ]}/>
+    {!embedded && <MetricStrip items={[
+      { label: 'Fills', value: String(imported), sub: committed.length ? `Across ${plural(committed.length, 'import')}` : 'No imports yet' },
+      { label: 'Trades', value: String(trades), sub: 'Reconstructed from fills' },
+      { label: 'Open fills', value: String(ungrouped.length), sub: ungrouped.length ? 'Awaiting a closing fill' : 'All fills matched' },
+      { label: 'Duplicates', value: String(dupes), sub: 'Excluded on import' },
+    ]}/>}
 
     {flash?.kind === 'manual' && <p className="im-status" role="status">{flash.text}</p>}
     {flash?.kind === 'message' && <p className="im-status" role="status">{flash.text}</p>}
 
     <div className="ws-grid two-one im-layout">
-      <Card title="Import fills" aside={<span className="ws-hint">Preview, map and check a statement before anything is saved</span>}>
+      <Card title="Import fills">
         <ImportFills privacy={privacy} flash={flash}/>
       </Card>
       <div className="im-side">
-        <BrokerSync/>
         <UngroupedFills privacy={privacy}/>
         <ImportHistory/>
       </div>

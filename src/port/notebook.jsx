@@ -1,8 +1,8 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Archive, ArchiveRestore, Bold, Circle, CalendarDays, Check, ChevronDown, CircleAlert, Code, Download, ChevronRight, Hash, Heading2, Info, Italic, List, ListOrdered,
-  NotebookPen, Pencil, Plus, Quote, Search, WifiOff, X,
+  Archive, ArchiveRestore, Bold, Circle, CalendarDays, Check, CircleAlert, Code, ChevronRight, Hash, Heading2, Info, Italic, List, ListOrdered,
+  NotebookPen, Pencil, Quote, Search, WifiOff, X,
 } from 'lucide-react'
 import { PageHead, Card } from '../workspace'
 import { SymbolToken } from '../viz'
@@ -34,33 +34,26 @@ function useNotebookVersion() {
   return version
 }
 
-/** The entries "query": pending on a new filter key, refetches in place when the store changes. */
+/** The entries, read straight from the local store (no backend yet), so nothing waits; refetches when the store changes. */
 function useEntries(filters, version) {
   const key = JSON.stringify(filters)
-  const [loadedKey, setLoadedKey] = useState(null)
   const [pages, setPages] = useState(1)
-  const [fetchingMore, setFetchingMore] = useState(false)
   const [attempt, setAttempt] = useState(0)
-  useEffect(() => {
-    setPages(1)
-    const timer = setTimeout(() => setLoadedKey(key), loadedKey === null ? 520 : 260)
-    return () => clearTimeout(timer)
-  }, [key])
+  useEffect(() => { setPages(1) }, [key])
   const result = useMemo(() => {
     try { return { data: queryEntries(filters), error: null } } catch (error) { return { data: null, error } }
   }, [key, version, attempt])
-  const isPending = loadedKey !== key
   const list = result.data ? result.data.slice(0, pages * PAGE_SIZE) : []
   return {
-    isPending,
-    isError: !isPending && !!result.error,
-    isSuccess: !isPending && !result.error,
+    isPending: false,
+    isError: !!result.error,
+    isSuccess: !result.error,
     error: result.error,
     list,
-    hasNextPage: !isPending && !!result.data && result.data.length > list.length,
-    isFetchingNextPage: fetchingMore,
-    fetchNextPage: () => { setFetchingMore(true); setTimeout(() => { setPages((value) => value + 1); setFetchingMore(false) }, 380) },
-    refetch: () => { setLoadedKey(null); setAttempt((value) => value + 1); setTimeout(() => setLoadedKey(key), 300) },
+    hasNextPage: !!result.data && result.data.length > list.length,
+    isFetchingNextPage: false,
+    fetchNextPage: () => setPages((value) => value + 1),
+    refetch: () => setAttempt((value) => value + 1),
   }
 }
 
@@ -101,8 +94,8 @@ export function NotebookPage() {
       title="Notebook"
       meta={`${plural(counts.active, 'note')} · ${counts.archived} archived · ${plural(counts.files, 'attachment')}`}
       actions={<div className="nb-head-actions">
-        <button type="button" className="start-day" disabled={composing} onClick={() => { create.reset(); setComposing(true) }}><Plus size={16} strokeWidth={2.2}/> New entry</button>
         <ExportMenu pending={exporting} onExport={runExport}/>
+        <button type="button" className="start-day" disabled={composing} onClick={() => { create.reset(); setComposing(true) }}>New entry</button>
       </div>}
     />
 
@@ -244,7 +237,7 @@ function ExportMenu({ pending, onExport }) {
   }
   return <div className="nb-export" ref={rootRef} onKeyDown={onKey}>
     <button type="button" className="nb-btn" aria-haspopup="menu" aria-expanded={open} disabled={pending} onClick={() => { setCursor(0); setOpen((value) => !value) }}>
-      <Download size={14}/>{pending ? 'Exporting…' : 'Export'}<ChevronDown size={13} className="nb-caret"/>
+      {pending ? 'Exporting…' : 'Export'}
     </button>
     {open && <div className="nb-menu" role="menu">
       {items.map(([format, label], index) => <button
@@ -263,8 +256,8 @@ const TAG_H = 22
 const MORE_W = 64
 
 // Tags rest as a small stack of cards fanned to the right; a click spreads them into a normal row,
-// wrapping onto more lines when they don't fit. More than four fold behind a "+N more".
-function TagStack({ tags }) {
+// wrapping onto more lines when they don't fit. More than four fold behind a "+N more". Reports reuse it for their scope chips.
+export function TagStack({ tags, prefix = '#' }) {
   const [open, setOpen] = useState(false)
   const [all, setAll] = useState(false)
   const [widths, setWidths] = useState([])
@@ -301,12 +294,12 @@ function TagStack({ tags }) {
   })
   const single = shown.length === 1
   return <div className="nb-note-tags" ref={row}>
-    <span ref={mirror} className="nb-tag-mirror" aria-hidden="true">{shown.map((item) => <span key={item} className="nb-tag">#{item}</span>)}</span>
+    <span ref={mirror} className="nb-tag-mirror" aria-hidden="true">{shown.map((item) => <span key={item} className="nb-tag">{prefix}{item}</span>)}</span>
     <button type="button" className={`nb-tagstack${open ? ' is-open' : ''}${ready ? '' : ' is-measuring'}`} disabled={single}
       aria-expanded={single ? undefined : open} aria-label={`Tags: ${tags.join(', ')}`}
       style={{ '--n': shown.length, '--w0': `${widths[0] ?? 0}px`, '--wopen': `${widest}px`, '--hopen': `${y + TAG_H}px` }}
       onClick={() => setOpen((value) => !value)}>
-      {shown.map((item, i) => <span key={item} className="nb-tag" style={{ '--i': i, '--ox': `${offsets[i][0]}px`, '--oy': `${offsets[i][1]}px`, '--tw': `${widths[i] ?? 0}px`, zIndex: shown.length - i }}><span>#{item}</span></span>)}
+      {shown.map((item, i) => <span key={item} className="nb-tag" style={{ '--i': i, '--ox': `${offsets[i][0]}px`, '--oy': `${offsets[i][1]}px`, '--tw': `${widths[i] ?? 0}px`, zIndex: shown.length - i }}><span>{prefix}{item}</span></span>)}
     </button>
     {extra > 0 && <button type="button" className="nb-tagmore" onClick={() => { setOpen(true); setAll(true) }}>+{extra} more</button>}
   </div>

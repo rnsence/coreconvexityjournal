@@ -5,35 +5,33 @@ import { money, useEasternToday, useMarketSession, titleCase } from './viz'
 import { BufferGaugeIcon, PasswordIcon, ShieldRiskIcon, TargetProgressIcon } from './icons'
 import { Icon } from '@iconify/react'
 import viewSidebarIcon from '@iconify-icons/material-symbols/view-sidebar'
-import { MoreNavIcon } from './nav-icons'
+import {
+  DashboardNavIcon, CalendarNavIcon, JournalNavIcon, TradesNavIcon, PropFirmsNavIcon, ReportsNavIcon, NotebookNavIcon,
+  PlaybooksNavIcon, ProgressNavIcon, MoreNavIcon,
+} from './nav-icons'
+import { GettingStarted } from './port/getting-started'
+import { UserMenu } from './port/user-menu'
 import AddSolidIcon from '@iconify-react/basil/add-solid'
 import SettingsSolidIcon from '@iconify-react/basil/settings-solid'
 import {
-  SlidersHorizontal,
-  ChevronDown, Sparkles, Search, Bell, Download, Image as ImageIcon, Mic, Star,
-  ArrowUpRight, Menu, CircleHelp, GripVertical, ChevronLeft, ChevronRight, LogOut,
-  TrendingUp, TrendingDown, Target, CalendarDays, Plus,
-  LayoutDashboard, NotebookPen, Receipt, Landmark, ChartNoAxesCombined, BookOpen, Library, ListChecks,
-  Import as ImportIcon, WalletCards, Settings, ChevronsUpDown,
+  ChevronDown, Sparkles, Search, Download, Image as ImageIcon, Mic, Star, ArrowUpRight, Menu,
+  GripVertical, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Target, Plus, Settings,
 } from 'lucide-react'
 
 export const navGroups = [
   {
     id: 'workspace',
     items: [
-      ['Dashboard', LayoutDashboard], ['Calendar', CalendarDays], ['Daily journal', NotebookPen],
-      ['Trades', Receipt],
-      ['Prop firms', Landmark], ['Reports', ChartNoAxesCombined],
+      ['Dashboard', DashboardNavIcon], ['Calendar', CalendarNavIcon], ['Daily journal', JournalNavIcon],
+      ['Trades', TradesNavIcon],
+      ['Prop firms', PropFirmsNavIcon], ['Reports', ReportsNavIcon],
     ],
   },
   {
     id: 'journal',
     heading: 'Journal',
     items: [
-      ['Notebook', BookOpen], ['Playbooks', Library], ['Progress', ListChecks], ['Assistant', Sparkles],
-    ],
-    overflow: [
-      ['Import', ImportIcon], ['Accounts', WalletCards], ['Settings', Settings],
+      ['Notebook', NotebookNavIcon], ['Playbooks', PlaybooksNavIcon], ['Progress', ProgressNavIcon],
     ],
   },
 ]
@@ -81,7 +79,7 @@ function NavButton({ label, Icon, page, onSelect, badge, muted = false }) {
     className={`nav-link${active ? ' active' : ''}${muted ? ' subtle' : ''}`}
     onClick={onSelect}
   >
-    <span className="nav-icon"><Icon size={17} strokeWidth={1.75} /></span>
+    <span className="nav-icon"><Icon size={17} strokeWidth={1.9} filled={active} /></span>
     <span className="sidebar-label">{label}</span>
     {badge && <em>{badge}</em>}
   </button>
@@ -140,16 +138,14 @@ function SidebarContents({ page, setPage, openLog, closeMobile, mobile = false, 
     </nav>
 
     <div className="sidebar-bottom">
+      {!collapsed && <GettingStarted go={go} />}
       <div className="account-row">
-        <button className="profile-button" onClick={go('Profile')}>
-          <Avatar className="profile-avatar" />
-          <span className="profile-copy sidebar-label"><b>{profile.name}</b><small>{profile.caption}</small></span>
-        </button>
-        <button className="profile-signout sidebar-label" type="button" aria-label="Sign out"><LogOut size={15} strokeWidth={2} /></button>
-      </div>
-      <div className="sidebar-legal sidebar-label">
-        {['Privacy', 'Terms', 'Disclaimer', 'Support'].map(item =>
-          <button key={item} type="button" onClick={go(item)}>{item}</button>)}
+        <UserMenu go={go}>
+          {({ open, toggle, menuId }) => <button className="profile-button" type="button" aria-haspopup="menu" aria-expanded={open} aria-controls={open ? menuId : undefined} onClick={toggle}>
+            <Avatar className="profile-avatar" />
+            <span className="profile-copy sidebar-label"><b>{profile.name}</b><small>{profile.caption}</small></span>
+          </button>}
+        </UserMenu>
       </div>
     </div>
   </>
@@ -234,7 +230,7 @@ function SettingsMenu({ range, setRange, privacy, setPrivacy }) {
       type="button" className={`settings-trigger${open ? ' is-open' : ''}${range !== 'All' ? ' is-scoped' : ''}`}
       aria-haspopup="true" aria-expanded={open} aria-label={`Settings, range ${range}`} title="Settings" onClick={() => setOpen(!open)}
     >
-      <SlidersHorizontal size={15} strokeWidth={1.9} />
+      <Settings size={15} strokeWidth={1.9} />
       {range !== 'All' && <em>{range}</em>}
     </button>
     {open && <div className="settings-panel" role="menu">
@@ -292,7 +288,7 @@ export function Topbar({ page, setPage, range, setRange, setSidebarOpen, privacy
           <button type="button" className="crumb" onClick={() => setPage?.('Dashboard')}>
             <HomeIcon size={14} strokeWidth={1.9} /> Home
           </button>
-          <ChevronRight className="crumb-sep" size={14} strokeWidth={2} />
+          <span className="crumb-sep" aria-hidden="true">/</span>
           <span className="crumb current" aria-current="page">{page}</span>
         </nav>
       </div>

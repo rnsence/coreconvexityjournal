@@ -44,7 +44,7 @@
 }
 
 * { box-sizing: border-box; }
-html { min-width: 320px; background: var(--bg); }
+html { min-width: 320px; background: var(--bg); overscroll-behavior-y: none; }
 body { margin: 0; min-width: 320px; min-height: 100vh; background: var(--bg); color: var(--text); }
 button, input, textarea, select { font: inherit; }
 button { color: inherit; }
@@ -70,6 +70,8 @@ h1, h2, h3, p { margin-top: 0; }
   box-shadow: inset 1px 0 1px rgba(16,24,40,.05), inset 1.5px 0 3px -1.5px rgba(16,24,40,.1), inset 0 1px 1px rgba(16,24,40,.05), inset 0 1.5px 3px -1.5px rgba(16,24,40,.1); }
 .sidebar { z-index: 30; display: flex; flex-direction: column; overflow: hidden; background: var(--sidebar); border: 0; }
 .desktop-sidebar { position: sticky; top: 12px; width: 100%; height: calc(100vh - 24px); align-self: start; border-radius: 24px 0 0 24px; box-shadow: none; }
+/* the shell's height lands on a fraction, so a flush sticky rail got nudged up at the end of the page; 1px of slack keeps it pinned */
+.desktop-sidebar { margin-bottom: -1px; }
 .desktop-sidebar.expanded { width: 100%; box-shadow: none; }
 .mobile-sidebar { display: none; }
 .sidebar-brand { height: var(--topbar-h); min-height: var(--topbar-h); padding: 0 14px; display: flex; align-items: center; gap: 10px; }
@@ -357,7 +359,7 @@ main { width: 100%; }
 .cal-tabs { display: flex; align-items: center; gap: 4px; margin-bottom: 14px; }
 .cal-tabs button { height: 30px; padding: 0 12px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--on-canvas-muted); font-size: 12.5px; }
 .cal-tabs button:hover { background: rgba(16,17,19,.05); color: var(--on-canvas); }
-.cal-tabs button.active { border-color: var(--canvas-line); background: var(--surface, #fff); color: var(--on-canvas); font-weight: 600; box-shadow: var(--shadow-tight); }
+.cal-tabs button.active { border-color: transparent; background: var(--surface, #fff); color: var(--on-canvas); font-weight: 600; box-shadow: var(--shadow-tight); }
 
 .month-board {
   --panel: #ffffff; --panel-2: #f5f6f7; --panel-3: #eceef0;
@@ -885,7 +887,7 @@ input, textarea, select { width: 100%; border: 0; border-radius: 7px; background
 .cal-search kbd { border-color: var(--canvas-line); color: var(--on-canvas-muted); }
 .cal-tabs button { color: var(--on-canvas-muted); }
 .cal-tabs button:hover { background: rgba(16,17,19,.05); color: var(--on-canvas); }
-.cal-tabs button.active { border-color: var(--canvas-line); background: var(--canvas); color: var(--on-canvas); box-shadow: var(--shadow-tight); }
+.cal-tabs button.active { border-color: transparent; background: var(--canvas); color: var(--on-canvas); box-shadow: var(--shadow-tight); }
 
 .empty-page h1 { color: var(--on-canvas); font-size: 26px; font-weight: 650; letter-spacing: -.03em; }
 .empty-page p, .empty-page .eyebrow { color: var(--on-canvas-muted); }
@@ -2740,7 +2742,6 @@ button.glance-chip.is-link:hover { background: var(--canvas-soft, #f7f8fa); box-
 /* equity curve: one brand line, a whisper of fill */
 .page.home .cume-line, .page.home .trend-path { stroke: var(--brand); stroke-width: 1.8; }
 .page.home .cume-area { opacity: .45; }
-.page.home .cume-dd { stroke: var(--ink-faint); opacity: .5; }
 .page.home .session-line .line-path { stroke: var(--pos-mark); }
 .page.home .intraday-mark.pos { fill: var(--pos-mark); }
 .page.home .intraday-mark.neg { fill: var(--neg-mark); }
@@ -3403,8 +3404,6 @@ button.glance-chip.is-link:hover { background: rgba(125,140,170,.08); border-rad
   box-shadow: var(--shadow-tight);
 }
 /* rows snap flush under the header (30.5px), so none is left half-hidden peeking out below it */
-.page.home .feed-scroll { scroll-snap-type: y mandatory; scroll-padding-top: 30.5px; }
-.page.home .feed-scroll .feed-table tbody tr { scroll-snap-align: start; }
 
 /* pull the greeting row down onto the content below it */
 .page.home .home-header:has(.welcome-title) { row-gap: 0; margin-bottom: 10px; }
@@ -3922,7 +3921,7 @@ button.glance-chip.is-link:hover { background: rgba(125,140,170,.08); border-rad
 .ws-page .ws-seg.cal-match { gap: 4px; padding: 3px; border-radius: 12px; }
 .ws-page .ws-seg.cal-match button { height: 26px; padding: 0 11px; border: 1px solid transparent; border-radius: 8px; color: rgb(107, 112, 118); font-size: 12px; }
 .ws-page .ws-seg.cal-match button:hover { color: var(--ink); }
-.ws-page .ws-seg.cal-match button.active { border-color: rgba(16,17,19,.11); background: #fff; color: rgb(16, 17, 19); font-weight: 600; box-shadow: var(--shadow-tight) !important; }
+.ws-page .ws-seg.cal-match button.active { border-color: transparent; background: #fff; color: rgb(16, 17, 19); font-weight: 600; box-shadow: var(--shadow-tight) !important; }
 
 /* firm logos: brand-blue mark on a raised white tile */
 .acct-logo:has(img) {
@@ -4218,7 +4217,7 @@ button.glance-chip.is-link:hover { background: rgba(125,140,170,.08); border-rad
 .nav-link .nav-icon svg { width: 18px; height: 18px; }
 .nav-link:hover .nav-icon { color: var(--text); }
 .nav-link.active .nav-icon { background: none !important; color: var(--text); box-shadow: none !important; }
-.nav-link { height: 36px; gap: 12px; font-size: 14px; }
+.nav-link { height: 32px; margin: 4px 0; gap: 12px; font-size: 14px; }
 .nav-link.active { background: var(--panel-2, #f5f6f7); color: var(--text); font-weight: 600; }
 .nav-link.active::after { display: none; }
 
@@ -4318,9 +4317,10 @@ button.glance-chip.is-link:hover { background: rgba(125,140,170,.08); border-rad
 .sidebar-quick .quick-primary:hover .sidebar-label { color: var(--text); }
 .nav-link { gap: 7px; }
 
-/* outline nav glyphs sit lighter than the old filled set */
+/* outline nav glyphs sit a step under the labels; the current page swaps in the filled cut at full ink */
 .nav-link .nav-icon svg { width: 17px; height: 17px; }
-.nav-link .nav-icon { color: #8b9098; }
+.nav-link .nav-icon { color: #667085; transition: color .15s ease; }
+.nav-link:hover .nav-icon { color: #344054; }
 .nav-link.active .nav-icon { color: var(--text); }
 .nav-link.active { background: #eceef1; }
 .nav-link:hover:not(.active) { background: #f3f4f6; }
@@ -4496,7 +4496,7 @@ button.glance-chip.is-link:hover { background: rgba(125,140,170,.08); border-rad
 .sidebar-brand { padding-top: 24px; }
 .sidebar-brand { padding-top: 22px; }
 
-.nav-link.active { background: #eeeeee; }
+.nav-link.active { background: #ebebeb; box-shadow: var(--shadow-tight); }
 .nav-link:hover:not(.active) { background: #f4f4f4; }
 .sidebar-quick .quick-add { background: #f2f2f2; }
 .sidebar-quick .quick-primary:hover .quick-add { background: #ebebeb; }
@@ -5030,7 +5030,7 @@ button.glance-chip.is-link:hover { background: rgba(125,140,170,.08); border-rad
 @media (prefers-reduced-motion: reduce) { .sheet, .sheet-backdrop { animation: none; } }
 
 /* the page frame keeps a comfortable cap on wide screens */
-:root { --page-max: 1580px; --chip-h: 28px; --card-title-size: 15px; --today: #0c111d; --today-ink: #fff; }
+:root { --page-max: 1580px; --chip-h: 28px; --card-title-size: 15px; --today: #0c111d; --today-ink: #fff; --lede: #6b7076; }
 .app-shell { margin: 12px; }
 .workspace { margin-right: 10px; }
 
@@ -5297,7 +5297,7 @@ span.side-mark, i.side-mark, .side-mark { line-height: 1; padding: 0 0 1px !impo
 .page.home:not(.journal):not(.ws-page) .ws-seg button.active,
 .ws-page .ws-seg button.active, .journal .ws-seg button.active, .page.home .ws-seg button.active,
 .ws-seg button[aria-selected='true'] {
-  border-color: rgba(16,17,19,.11) !important; background: #fff !important;
+  border-color: transparent !important; background: #fff !important;
   color: rgb(43,47,53) !important; font-weight: 600;
   box-shadow: var(--shadow-tight) !important;
 }
@@ -5488,7 +5488,7 @@ span.side-mark, i.side-mark, .side-mark { line-height: 1; padding: 0 0 1px !impo
 .market-pill em { display: inline-flex; align-items: center; gap: 8px; }
 .market-pill em::before { content: ''; width: 1px; height: 11px; background: rgba(16,24,40,.1); }
 /* closed: the light is off (hollow), the label steps back, the next open leads the eye */
-.market-pill.closed i { background: transparent; box-shadow: inset 0 0 0 1.5px #98a2b3; }
+.market-pill.closed i { background: var(--today, #0c111d); box-shadow: none; }
 .market-pill.closed b { color: #475467; font-weight: 550; }
 .market-pill.closed em { color: #667085; }
 /* jump + settings join the same chip family as the clock and date */
@@ -5796,7 +5796,7 @@ body { min-height: 100dvh; padding: 12px; box-sizing: border-box; }
 }
 /* the legend sits above the chart, aligned right */
 .prop-ws .flow-chart { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-.prop-ws .flow-legend { align-self: flex-end; margin-top: 10px; flex-wrap: nowrap; white-space: nowrap; }
+.prop-ws .flow-legend { align-self: stretch; justify-content: center; margin-top: 10px; flex-wrap: wrap; row-gap: 4px; white-space: nowrap; }
 .prop-ws .flow-chart .grouped-columns, .prop-ws .flow-chart > :first-child { margin-top: 10px; }
 
 /* the journal's trade table gets the blotter's header bar and row states */
@@ -5923,9 +5923,10 @@ body { min-height: 100dvh; padding: 12px; box-sizing: border-box; }
 @media (prefers-reduced-motion: reduce) { .dw-ledger .lg-swap { animation: lg-fade-in .18s ease both; } }
 @keyframes lg-fade-in { from { opacity: 0; } to { opacity: 1; } }
 /* ledger: a fixed window onto every entry; "show all" unlocks scrolling instead of growing the card */
-.prop-ws .lg-scroll { max-height: 399px; overflow: hidden; overscroll-behavior: contain; scrollbar-width: none; }
+/* eight rows show, the rest scroll inside; a soft fade marks that more rows are below until the end is reached */
+.prop-ws .lg-scroll { max-height: 399px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 .prop-ws .lg-scroll::-webkit-scrollbar { width: 0; }
-.prop-ws .lg-scroll.is-open { overflow-y: auto; -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 28px), rgba(0,0,0,.35)); mask-image: linear-gradient(180deg, #000 calc(100% - 28px), rgba(0,0,0,.35)); }
+.prop-ws .lg-scroll.has-more { overflow-y: auto; -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 28px), rgba(0,0,0,.35)); mask-image: linear-gradient(180deg, #000 calc(100% - 28px), rgba(0,0,0,.35)); }
 .prop-ws .lg-scroll thead th { position: sticky; top: 0; z-index: 1; }
 /* month switcher sits in the same dashed bar as the ledger's "show all": month centred, arrows at the ends */
 .prop-cal-card .pc-foot { display: block; margin-top: 10px; }
@@ -6131,6 +6132,10 @@ body { min-height: 100dvh; padding: 12px; box-sizing: border-box; }
 .ms-viz .sv-line { stroke-dasharray: 1; stroke-dashoffset: 1; animation: sv-draw .9s cubic-bezier(.45,.05,.2,1) .1s forwards; }
 .ms-viz .sv-grow-x { transform-box: fill-box; transform-origin: left center; animation: sv-grow-x .55s cubic-bezier(.22,.82,.28,1) .08s both; }
 @keyframes sv-grow-x { from { transform: scaleX(0); } }
+.sv-split { display: flex; align-items: center; gap: 3px; width: 100%; height: 16px; }
+.sv-split i { flex: 1 1 0; min-width: 4px; height: 6px; border-radius: 3px; background: #22c47d; transform-origin: left center; animation: sv-grow-x .55s cubic-bezier(.22,.82,.28,1) .08s both; }
+.sv-split i.neg { background: #f5615a; }
+@media (prefers-reduced-motion: reduce) { .sv-split i { animation: none; } }
 .ms-viz .sv-bar { transform-box: fill-box; transform-origin: center bottom; animation: sv-grow .45s cubic-bezier(.22,.82,.28,1) both; animation-delay: calc(.05s + var(--i, 0) * .025s); }
 .ms-viz .sv-dot { animation: sv-fade .3s ease both; animation-delay: calc(.05s + var(--i, 0) * .03s); }
 @keyframes sv-draw { to { stroke-dashoffset: 0; } }
@@ -6180,7 +6185,7 @@ body { min-height: 100dvh; padding: 12px; box-sizing: border-box; }
 /* symbols / setups switch: the standard segmented control, spanning the rail, with a quiet count */
 .rail-switch { width: 100%; display: flex !important; gap: 4px !important; padding: 4px !important; border-radius: 12px !important; border: 0 !important; box-shadow: none !important; }
 .rail-switch button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 30px !important; padding: 0 12px !important; font-size: 12.5px !important; }
-.rail-switch button.active { border-color: rgba(16,17,19,.11) !important; font-weight: 600; }
+.rail-switch button.active { border-color: transparent !important; font-weight: 600; }
 .rail-switch button em { padding: 0 5px; border-radius: 5px; background: rgba(16,24,40,.06); color: var(--ink-faint); font-size: 10.5px; font-style: normal; font-weight: 600; line-height: 16px; }
 
 /* overall score: concentric activity rings, centre readout, legend underneath */
@@ -6455,7 +6460,10 @@ body { min-height: 100dvh; padding: 12px; box-sizing: border-box; }
 .page.home .te-chg { margin-top: 7px; }
 .page.home .te-card { padding: 12px 14px 12px 15px; }
 /* top earners: figures in the stat-tile value type (21/600, -.03em, ink) */
-.page.home .te-value { font-size: 21px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; color: #2b2f35; }
+/* the figure is net P&L on the symbol, not a quote: signed, no cents, coloured by outcome; the line under it is quiet */
+.page.home .te-value { font-size: 20px; font-weight: 600; letter-spacing: -.03em; line-height: 1.1; color: #2b2f35; }
+.page.home .te-chg { color: var(--ink-faint) !important; font-weight: 500; }
+.page.home .te-value.tone-pos { color: #0e9f6e; } .page.home .te-value.tone-neg { color: #e0453c; }
 .page.home .te-value { margin-top: 4px; } .page.home .te-chg { margin-top: 6px; }
 .rl-line.is-plain { stroke-width: 2; }
 
@@ -6600,3 +6608,870 @@ body { min-height: 100dvh; padding: 12px; box-sizing: border-box; }
 @keyframes cs-in { from { opacity: 0; transform: translateY(-4px) scale(.98); } }
 @keyframes cs-in-up { from { opacity: 0; transform: translateY(4px) scale(.98); } }
 @media (prefers-reduced-motion: reduce) { .cs-menu { animation: none; } }
+
+/* dashboard: this week as seven day plates under the greeting */
+.page.home .hw-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+.page.home .hw-day { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 11px 14px 12px; border-radius: 12px; background: #fff; box-shadow: 0 0 0 1px var(--line, #eaecf0), var(--shadow-tight); }
+.page.home .hw-day-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.page.home .hw-day-top b { display: inline-flex; align-items: center; gap: 5px; color: var(--ink); font-size: 13.5px; font-weight: 650; letter-spacing: -.01em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.page.home .hw-day-today { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 4px; border-radius: 6px; background: var(--today, #0c111d); color: var(--today-ink, #fff); font-size: 12px; }
+.page.home .hw-day-rate { color: var(--ink-faint); font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.page.home .hw-day.has-trades .hw-day-rate { color: var(--ink); font-weight: 600; }
+.page.home .hw-day small { overflow: hidden; color: var(--ink-faint); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.page.home .hw-day small em { font-style: normal; font-weight: 500; }
+.page.home .hw-day small em.tone-pos { color: #0e9f6e; } .page.home .hw-day small em.tone-neg { color: #e0453c; }
+.page.home .hw-day.is-future { background: #fafbfc; box-shadow: 0 0 0 1px var(--line-soft, #f2f4f7); }
+.page.home .hw-day.is-future b { color: var(--ink-faint); }
+.page.home .hw-day.is-today { box-shadow: 0 0 0 1px rgba(16,24,40,.16), var(--shadow-tight); }
+@media (max-width: 1100px) { .page.home .hw-week { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .page.home .hw-week { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 8px; margin: 0 -2px; padding: 2px; scrollbar-width: none; } .page.home .hw-day { flex: 0 0 132px; scroll-snap-align: start; } }
+.page.home .hw-day-top { height: 20px; }
+.page.home .hw-day-today { height: 18px; min-width: 20px; margin: -1px 0; line-height: 18px; }
+/* week strip, duotone: grey frame holding the day + rate, raised white body for the trades */
+.page.home .hw-week { margin-bottom: 16px; }
+.page.home .hw-day.duo { gap: 0; padding: 0; border-radius: 14px; background: #f7f7f8; box-shadow: 0 0 0 1px rgba(16,24,40,.05); }
+.page.home .hw-day.duo > .hw-day-top { height: auto; min-height: 0 !important; padding: 9px 12px 8px !important; }
+.page.home .hw-day.duo > small.shell-body { display: block; margin: 0 !important; padding: 9px 12px 10px !important; border-radius: 12px !important; background: #fff !important; box-shadow: 0 -1px 2px rgba(16,24,40,.04), 0 1px 2px rgba(16,24,40,.05) !important; }
+.page.home .hw-day.duo.is-future { background: #fafafb; box-shadow: 0 0 0 1px rgba(16,24,40,.03); }
+.page.home .hw-day.duo.is-future > small.shell-body { background: #fdfdfd !important; box-shadow: 0 0 0 1px rgba(16,24,40,.03) !important; }
+.page.home .hw-day.duo.is-today { box-shadow: 0 0 0 1.5px rgba(16,24,40,.22); }
+.page.home .hw-week { margin-bottom: 20px; }
+
+
+/* dashboard: plain welcome line above the overview plate */
+.page.home .home-welcome { margin: 2px 2px 20px; }
+.page.home .home-welcome h1 { margin: 0; color: var(--ink); font-size: 24px; font-weight: 700; letter-spacing: -.03em; line-height: 1.2; }
+.page.home .home-welcome p { margin: 4px 0 0; color: var(--ink-faint); font-size: 13.5px; }
+.page.home .home-header h2.welcome-title { margin: 0; color: var(--ink); font-size: 18px; font-weight: 650; letter-spacing: -.02em; line-height: 1.25; }
+@media (max-width: 620px) { .page.home .home-welcome h1 { font-size: 22px; } }
+
+/* page headers, duotone: the title sits on the grey frame, its meta line on a raised white panel */
+.page .greeting-plate.greeting-plate {
+  display: flex !important; flex-direction: column; gap: 0; padding: 0 4px 4px !important;
+  border: 0 !important; border-radius: 16px !important; background: #f7f7f8 !important; background-image: none !important;
+  box-shadow: 0 0 0 1px rgba(16,24,40,.05) !important;
+}
+.page .greeting-plate.greeting-plate::before, .page .greeting-plate.greeting-plate::after { display: none !important; }
+.page .greeting-plate.greeting-plate > h1 { margin: 0; padding: 10px 14px 9px; line-height: 1.2; }
+.page .greeting-plate.greeting-plate > p {
+  margin: 0 !important; padding: 9px 14px 10px; border-radius: 12px; background: #fff;
+  box-shadow: 0 -1px 2px rgba(16,24,40,.04), 0 1px 2px rgba(16,24,40,.05);
+}
+.page .greeting-plate.greeting-plate { align-self: stretch; width: auto; box-sizing: border-box; } @media (max-width: 760px) { .page .greeting-plate.greeting-plate { width: 100%; } }
+/* header title starts on the same 14px line as every card title below it */
+.page .greeting-plate.greeting-plate > h1 { padding-left: 10px; }
+@media (max-width: 760px) { .page .home-header .home-greeting { align-self: stretch; width: 100%; } }
+/* dashboard welcome: same duotone header as every other page */
+.page.home .home-welcome { display: flex; flex-direction: column; margin: 0 0 20px; padding: 0 4px 4px; border-radius: 16px; background: #f7f7f8; box-shadow: 0 0 0 1px rgba(16,24,40,.05); }
+.page.home .home-welcome h1 { padding: 10px 14px 9px 10px; font-size: 23px; font-weight: 650; letter-spacing: -.028em; line-height: 1.2; }
+.page.home .home-welcome p { margin: 0; padding: 9px 14px 10px; border-radius: 12px; background: #fff; box-shadow: 0 -1px 2px rgba(16,24,40,.04), 0 1px 2px rgba(16,24,40,.05); color: var(--ink-faint); font-size: 12.5px; }
+@media (max-width: 620px) { .page.home .home-welcome h1 { font-size: 24px; } }
+
+/* forms in the springy drawer (Sheet → Drawer): the old side-panel layout is cancelled, the
+   drawer's own panel and motion take over; the header and actions stay pinned while the body scrolls */
+.dw-panel:has(.dw-sheet) { padding: 0; }
+.dw-panel:has(.dw-sheet) .dw-grip { z-index: 3; }
+.sheet.dw-sheet {
+  position: static; display: block; width: auto; height: auto !important; border-radius: 0; overflow: visible;
+  background: transparent; box-shadow: none !important; transform: none; animation: none !important; transition: none;
+}
+.dw-sheet > .dlg-head { position: sticky; top: 0; z-index: 2; padding: 22px 22px 14px !important; background: #fff; border-bottom: 1px solid var(--line-soft); animation: none !important; }
+.dw-sheet > .dlg-head h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -.02em; }
+.dw-sheet > .dlg-head p { margin: 4px 0 0; max-width: 56ch; color: var(--ink-faint); font-size: 12.5px; line-height: 1.45; }
+.dw-sheet > .sheet-body { overflow: visible; padding: 16px 22px 20px; animation: none !important; }
+.dw-sheet > .sheet-foot { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: 8px; padding: 12px 22px 14px; background: rgba(255,255,255,.96); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); border-top: 1px solid var(--line-soft); animation: none !important; }
+@media (max-width: 520px) { .dw-sheet > .dlg-head { padding: 20px 16px 12px !important; } .dw-sheet > .sheet-body { padding: 14px 16px 18px; } .dw-sheet > .sheet-foot { padding: 12px 16px 14px; } }
+/* drawer forms: one dark primary action, and the site's P&L green/red (not the old panel's brighter pair) */
+.dw-panel .dw-sheet .start-day:not(:disabled), .dw-panel .dw-sheet .nb-ed-save:not(:disabled) { background: #0c111d !important; background-image: none !important; color: #fff !important; box-shadow: none !important; }
+.dw-panel .dw-sheet .start-day:not(:disabled):hover, .dw-panel .dw-sheet .nb-ed-save:not(:disabled):hover { background: #1d2433 !important; }
+.dw-panel .dw-sheet .start-day:disabled, .dw-panel .dw-sheet .nb-ed-save:disabled { background: #f2f4f7 !important; color: #98a2b3 !important; box-shadow: none !important; }
+.dw-panel .dw-sheet .start-day svg, .dw-panel .dw-sheet .nb-ed-save svg { color: currentColor; }
+.dw-sheet { --pos: #0e9f6e; --neg: #e0453c; --pos-mark: #22c47d; --neg-mark: #f5615a; }
+.dw-sheet .tone-pos { color: #0e9f6e !important; }
+.dw-sheet .tone-neg { color: #e0453c !important; }
+.dw-sheet .cal-side.long, .dw-sheet button.on.kept { background: rgba(34,196,125,.13) !important; color: #0b8a5d !important; }
+.dw-sheet .cal-side.short, .dw-sheet button.on.broke { background: rgba(245,97,90,.12) !important; color: #c8352d !important; }
+
+/* ------------------------------------------------------------ dashboard cards (.dc)
+   The two-tone shells stay (grey title strip over a white body); figures grow,
+   and the small print closes in a soft inset panel. */
+.page.home.dc .home-top { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px !important; }
+/* the lower row shares the top row's proportions, so the tiles keep their size and the two rows line up */
+.page.home.dc .dc-wide { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 16px; align-items: stretch; margin-top: 16px; }
+@media (max-width: 1240px) { .page.home.dc .home-top, .page.home.dc .dc-wide { grid-template-columns: minmax(0, 1fr); } }
+
+.page.home.dc .shell > .shell-head, .page.home.dc .shell > .shell-head > span, .page.home.dc .compare-label, .page.home.dc .radar-card .card-title { display: inline-flex; align-items: center; gap: 8px; }
+.page.home.dc .shell > .shell-head { display: flex; }
+.page.home.dc .shell > .shell-head em {
+  margin-left: auto; padding: 3px 8px; border-radius: 7px; background: #fff; color: var(--ink-soft); font-size: 11.5px; font-style: normal; font-weight: 600;
+}
+
+/* figures */
+/* tile figures read like the Top Earners cards beside them: a mid-size figure over one quiet line */
+.page.home.dc .stat-tile .tile-main strong { font-size: 22px !important; font-weight: 600 !important; letter-spacing: -.03em; line-height: 1.1; }
+.page.home.dc .dc-fig { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.page.home.dc .dc-fig small { color: var(--ink-faint); font-size: 12px; font-weight: 500; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.page.home.dc .pulse-head strong { font-size: 26px; font-weight: 700; letter-spacing: -.04em; }
+
+/* the soft inset panel that closes a card */
+.page.home.dc .dc-inset { margin: 14px 0 0 !important; padding: 12px 14px !important; border: 0 !important; border-radius: 14px; background: #f7f8fa; }
+.page.home.dc .tile-rows.dc-inset { display: flex; flex-direction: column; gap: 6px; }
+.page.home.dc .pulse-stats.dc-inset { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; }
+.page.home.dc .pulse-stats.dc-inset > div { display: flex; flex-direction: column; gap: 3px; padding: 0 14px; border-left: 1px solid #e7e9ee; }
+.page.home.dc .pulse-stats.dc-inset > div:first-child { padding-left: 2px; border-left: 0; }
+.page.home.dc .pulse-stats.dc-inset dt { color: var(--ink-faint); font-size: 12px; }
+.page.home.dc .pulse-stats.dc-inset dd { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) { .page.home.dc .pulse-stats.dc-inset { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 12px; } .page.home.dc .pulse-stats.dc-inset > div:nth-child(3) { padding-left: 2px; border-left: 0; } }
+/* titles sit next to their icon; any switch is pushed to the right */
+.page.home.dc .chart-shell > .shell-head { justify-content: flex-start !important; }
+.page.home.dc .shell > .shell-head > .ws-seg, .page.home.dc .score-card-head > .ws-seg { margin-left: auto; }
+.page.home.dc .win-card .ws-seg button { padding: 0 8px; }
+.page.home.dc .radar-card .card-title { white-space: nowrap; }
+
+/* Overall Score takes the same two-tone shell: title in the grey strip, rings and meter on white plates */
+.page.home.dc:not(.journal):not(.ws-page) .radar-card.dc-duo { display: flex; flex-direction: column; gap: 8px; padding: 0 !important; border: 0 !important; border-radius: 14px !important; background: #f7f7f8 !important; box-shadow: var(--shadow-tight) !important; }
+.page.home.dc .radar-card.dc-duo > .score-card-head { display: flex; align-items: center; justify-content: space-between; height: 40px; margin: 0 0 -8px !important; padding: 0 8px 0 14px !important; }
+.page.home.dc .radar-card.dc-duo .card-title { margin: 0 !important; color: var(--ink) !important; font-size: 13px !important; font-weight: 600 !important; }
+.page.home.dc .radar-card.dc-duo .score-card-head .ws-seg { transform: scale(.94); transform-origin: right center; }
+.page.home.dc .radar-card.dc-duo > .radar-main, .page.home.dc .radar-card.dc-duo > .score-foot { margin: 0 !important; border: 0 !important; border-radius: 14px !important; background: #fff !important; box-shadow: var(--shadow-tight) !important; }
+.page.home.dc .radar-card.dc-duo > .radar-main { flex: 1; }
+.page.home.dc .radar-card .score-rings .sr-sub { font-size: 10px; }
+.page.home.dc .radar-card .score-foot .score-value { font-size: 22px !important; font-weight: 650 !important; letter-spacing: -.03em; }
+.page.home.dc .radar-card .score-foot .score-value small { font-size: 12px !important; }
+
+/* cumulative chart: two layered fills, the rolling net a deeper blue over the cumulative wash */
+.cume-run-area { fill: url(#cumeRunFill); }
+.page.home .cume-area { opacity: 1; }
+.page.home .cume-chart .cume-run { stroke: #1f4fc4; stroke-width: 1.8; stroke-dasharray: none; }
+.page.home .cume-key .k-run { background: #1f4fc4; }
+
+/* stat tiles: the figure on the left, one small visual on the right in the same marks the cards around them use */
+.page.home.dc .stat-tile .tile-main { display: flex; align-items: center !important; justify-content: space-between !important; gap: 14px; min-height: 52px; padding: 0 14px !important; }
+.page.home.dc .stat-tile .tile-main strong { margin: 0 !important; }
+.page.home.dc .dc-viz { flex: none; width: 150px; height: 48px; margin-left: auto; display: flex; align-items: center; justify-content: flex-end; }
+/* a shared mini-chart rule squeezes these to 64x26; each keeps its drawn size here */
+.page.home.dc .dc-viz .mini-ring { width: 46px !important; height: 46px !important; }
+.page.home.dc .dc-viz .mini-chart:not(.mini-ring) { width: 132px !important; height: 46px !important; }
+.page.home.dc .dc-area { display: block; width: 150px; height: 48px; }
+.page.home.dc .dc-area .al { position: relative; width: 100%; height: 100%; }
+.page.home.dc .dc-viz .ring-win { stroke: #22c47d; }
+.page.home.dc .dc-viz .ring-loss { stroke: #f5615a; opacity: .9; }
+.page.home.dc .dc-viz .mini-bar.pos { fill: #22c47d; }
+.page.home.dc .dc-viz .mini-bar.neg { fill: #f5615a; }
+.page.home.dc .dc-days { display: grid; grid-template-columns: repeat(10, 9px); gap: 3px; }
+.page.home.dc .dc-days i { width: 9px; height: 9px; border-radius: 2.5px; background: #e4e7ec; }
+.page.home.dc .dc-days i.pos { background: #22c47d; }
+.page.home.dc .dc-days i.neg { background: #f5615a; }
+@media (max-width: 640px) { .page.home.dc .score-panel .tile-grid { grid-template-columns: minmax(0, 1fr) !important; } }
+/* equal air above and below the figure row; a shorter tile gives its spare height to that row, so the figure stays centred */
+.page.home.dc .stat-tile > .shell-body { padding-top: 12px !important; padding-bottom: 8px !important; }
+.page.home.dc .stat-tile .tile-main { flex: 1 1 auto; }
+.page.home.dc .stat-tile .tile-rows.dc-inset { margin-top: 6px !important; }
+
+/* ------------------------------------------------------------ flat, two-tone surfaces (site-wide)
+   No drop shadows on anything that sits in the page: depth comes from the grey frame vs white plate contrast.
+   Things that float over the page (menus, listboxes, tooltips, the drawer) keep theirs, and so do focus rings.
+   #root outranks the stacked !important class rules, so this one rule settles every in-page shadow. */
+:root { --duo-frame: #f7f7f8; }
+#root, #root :not([role="menu"], [role="listbox"], [role="tooltip"], [role="dialog"], .time-pop, .nb-filtermenu, [class*="tip"], :focus-visible) { box-shadow: none !important; }
+
+/* white controls and loose cards that sat straight on the white page take the grey frame instead of a shadow */
+#root :is(.ws-seg, .cal-tabs, .ws-search, .cal-search, .ws-select, .ws-outline, .jump-trigger, .settings-trigger, .market-pill, .today-pill,
+  .brand-switcher, .rail-toggle, .quick-primary, .ws-pager, .nb-btn, .im-btn, .ac-btn, .acct-toggle, .pg-picker, .pg-badge.outline, .pg-rev-chip, .cc-caret-box) {
+  background: var(--duo-frame) !important;
+}
+#root :is(.home-card.ws-card, section.home-card:not(.shell):not(.duo):not(.radar-card):not(.cume-card), article.acct-card, .acct-card, .compare-card:not(.shell, .versus-row > *), .stat-tile:not(.shell, .journal-kpis > *)) {
+  background: var(--duo-frame) !important;
+}
+
+/* topbar: a full-width bar squared to the top of the panel (the panel's own radius rounds its corners), split from the page by a hairline */
+#root .topbar {
+  position: sticky; top: 0; z-index: 30; height: 52px !important; min-height: 52px !important; margin: 0 !important; padding: 0 32px !important;
+  border: 0 !important; border-bottom: 1px solid var(--line, #eaecf0) !important; border-radius: 0 !important;
+  background: #fff !important; -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+#root .topbar .crumb-sep { margin: 0 2px; color: #d0d5dd; font-size: 14px; font-weight: 400; }
+#root :is(.page.home, .calendar-page, .ws-page) { padding-top: 18px; }
+/* the main panel keeps a hairline edge so it doesn't melt into the white sidebar now that shadows are gone */
+#root .workspace { border: 1px solid var(--line, #eaecf0) !important; }
+
+/* journal side cards on the two-tone shell: the checklist strip stays the button that opens the drawer */
+#root .jr-duo > .checklist-head { width: 100%; height: 44px; margin: 0 !important; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; justify-content: flex-start; }
+#root .jr-duo > .checklist-head .card-title { display: inline-flex; align-items: center; gap: 4px; }
+#root .jr-duo .cl-kept { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; padding-right: 6px; }
+#root .jr-duo .cl-kept .checklist-sub { margin: 0; }
+#root .jr-duo .cl-kept .discipline-ring { --ring-size: 22px; flex: none; width: 22px !important; height: 22px !important; min-width: 22px !important; }
+#root .jr-duo .cl-kept .discipline-ring::before { inset: 3.5px; background: var(--duo-frame); }
+
+/* two-tone cards: the grey frame wraps the white plate on every side with a thin bezel (inner radius = outer 14px − 4px) */
+:root { --duo-bezel: 4px; --duo-inner-radius: 10px; }
+#root :is(.shell, .duo) > .shell-body { margin: 0 var(--duo-bezel) var(--duo-bezel) !important; border-radius: var(--duo-inner-radius) !important; }
+#root .radar-card.dc-duo { padding-bottom: var(--duo-bezel) !important; }
+#root .radar-card.dc-duo > :is(.radar-main, .score-foot) { margin: 0 var(--duo-bezel) !important; border-radius: var(--duo-inner-radius) !important; }
+
+/* payout calendar: the month switch lives in the title strip, beside the legend, at chip height */
+.prop-cal-card .pc-tools { display: flex; align-items: center; gap: 14px; }
+.prop-cal-card .pc-month { display: inline-flex; align-items: center; gap: 2px; height: var(--chip-h, 28px); padding: 0 2px; border-radius: 9px; background: #fff; }
+.prop-cal-card .pc-month button { width: 24px; height: 24px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--ink-faint); cursor: pointer; transition: background .14s ease, color .14s ease; }
+.prop-cal-card .pc-month button:hover { background: var(--fill, #f2f4f7); color: var(--ink); }
+.prop-cal-card .pc-month button:active { transform: translateY(1px); }
+.prop-cal-card .pc-month span { min-width: 68px; color: var(--ink); font-size: 12.5px; font-weight: 600; text-align: center; font-variant-numeric: tabular-nums; }
+.prop-cal-card .pc-head span { padding-right: 7px; text-align: right; }
+
+/* page header: the actions ride in the title strip of the grey plate, right-aligned, instead of floating beside it */
+#root .greeting-plate .ws-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+#root .greeting-plate .ws-title-row h1 { min-width: 0; margin: 0; padding: 10px 10px 9px; line-height: 1.2; }
+#root .greeting-plate .ws-plate-actions .ws-outline { background: #fff !important; }
+#root .greeting-plate .ws-plate-actions { display: flex; flex-direction: row; align-items: center; gap: 8px; flex: none; margin: 6px 4px 6px 0; }
+#root .greeting-plate .ws-plate-actions > * { margin: 0 !important; }
+#root .ws-header { grid-template-columns: minmax(0, 1fr) !important; }
+@media (max-width: 640px) { #root .greeting-plate .ws-title-row { flex-wrap: wrap; row-gap: 0; } #root .greeting-plate .ws-plate-actions { flex: 1 1 100%; min-width: 0; flex-wrap: wrap; margin: 0 4px 8px 10px; } }
+
+/* prop-firms flow row: a little shorter — tighter firm rows, slimmer cash-flow plates, a one-line legend */
+#root .prop-ws .firm-net > li { padding: 6px 12px 7px !important; }
+#root .prop-ws .flow-side { padding: 8px !important; gap: 6px !important; }
+#root .prop-ws .flow-lead { padding: 8px 12px 9px !important; }
+#root .prop-ws .flow-stats { gap: 6px !important; }
+#root .prop-ws .flow-stats > div { padding: 4px 12px 5px !important; }
+#root .prop-ws .flow-legend { gap: 4px 10px !important; flex-wrap: nowrap; font-size: 11.5px; }
+#root .prop-ws :is(.firm-card, .caps-card) .firm-net { max-height: 250px; }
+#root .prop-ws .flow-chart { gap: 4px !important; }
+#root .prop-ws .flow-chart .cat-cols { margin-top: 4px !important; }
+#root .prop-ws .flow-legend { margin-top: 7px !important; }
+
+/* ledger + payout calendar row, shorter: slimmer ledger rows (still eight before it scrolls), shorter day cells */
+#root .prop-ws .lg-scroll tbody td { padding-top: 6px !important; padding-bottom: 6px !important; }
+#root .prop-cal-card .pc-grid { gap: 4px !important; }
+#root .prop-cal-card .pc-cell { min-height: 48px !important; height: 48px; }
+#root .prop-cal-card .pc-blank { min-height: 48px !important; height: 48px; }
+
+#root .prop-ws .lg-scroll { max-height: 344px; }
+#root .prop-ws .lg-scroll :is(th, td) { padding-left: 8px !important; padding-right: 8px !important; }
+#root .prop-ws .prop-cal-card .pc-grid { grid-auto-rows: minmax(48px, 1fr); }
+
+/* table header rows share the two-tone grey of the card frames, on every page */
+#root :is(.ws-table, .feed-table) thead th { background: var(--duo-frame, #f7f7f8) !important; }
+#root .prop-cal-summary em { font-weight: 600 !important; }
+/* the calendar itself sits on a soft plate under the month summary */
+#root .prop-cal-card .payout-cal { padding: 10px; border-radius: 12px; background: var(--duo-frame, #f7f7f8); }
+#root .prop-cal-card .prop-cal-summary { margin-bottom: 10px !important; }
+#root .prop-cal-card .prop-cal-summary > span { padding-top: 7px !important; padding-bottom: 8px !important; }
+#root .prop-ws .prop-cal-card .pc-grid { grid-auto-rows: minmax(46px, 1fr); }
+#root .prop-cal-card :is(.pc-cell, .pc-blank) { min-height: 46px !important; height: 46px; }
+#root .prop-cal-card .prop-cal-summary { border-radius: 12px; background: var(--duo-frame, #f7f7f8); }
+#root .prop-cal-card .prop-cal-summary { padding: 4px; gap: 4px !important; margin-bottom: 6px !important; }
+#root .prop-cal-card .prop-cal-summary > span { padding-top: 5px !important; padding-bottom: 6px !important; border-radius: 9px !important; background: #fff !important; }
+/* the trade-count badge takes its cell's tone: a deeper wash of the same hue, the count in that hue */
+#root .pc-cell.has-entry.pos .pc-count { background: rgba(34,196,125,.16); color: #0e9f6e; }
+#root .pc-cell.has-entry.neg .pc-count { background: rgba(245,97,90,.16); color: #e0453c; }
+#root .pc-cell.has-entry .pc-count { font-weight: 600; }
+
+/* main calendar: the weekday row and day grid share one soft plate; every day is a white tile on it */
+#root .calendar-page .month-board .month-weekdays { margin: 8px 8px 0; padding: 8px 8px 0; border-radius: 12px 12px 0 0; background: var(--duo-frame, #f7f7f8); }
+#root .calendar-page .month-board .month-grid { margin: 0 8px 8px; padding: 4px 8px 8px !important; border-radius: 0 0 12px 12px; background: var(--duo-frame, #f7f7f8); }
+#root .calendar-page .month-board .day-cell:not(.has-trades) { background: #fff; }
+#root .calendar-page .month-board .day-cell.outside { background: rgba(255,255,255,.55); }
+#root .calendar-page .month-board :is(.month-weekdays, .month-grid) { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+/* narrow day tiles drop the "N trades" label so the ticker marks never run into it */
+#root .calendar-page .month-board .day-cell { container-type: inline-size; }
+@container (max-width: 132px) { #root .calendar-page .month-board .day-foot small { display: none; } }
+
+/* overview tiles: figure and caption, the small print on a soft plate, then a chart that bleeds to the plate's bottom and sides */
+#root .page.home.dc .stat-tile > .shell-body { display: flex; flex-direction: column; padding: 16px 14px 0 !important; overflow: hidden; }
+#root .page.home.dc .stat-tile .tile-main { flex: none; min-height: 0; padding: 0 2px !important; }
+#root .page.home.dc .stat-tile .tile-rows.dc-inset { margin-top: 12px !important; padding: 10px 12px !important; }
+#root .page.home.dc .dc-bleed { flex: 1 0 58px; min-height: 58px; margin: 12px -14px 0; }
+#root .page.home.dc .dc-bleed .ba { width: 100%; height: 100%; }
+.ba { position: relative; }
+.ba > svg { position: absolute; inset: 0; display: block; overflow: visible; }
+.ba-line { fill: none; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; animation: ba-draw .9s cubic-bezier(.22,.82,.28,1) both; stroke-dasharray: 1; stroke-dashoffset: 1; }
+.ba-base { stroke: #d0d5dd; stroke-width: 1; stroke-dasharray: 2 3; }
+.ba-bar.pos { fill: #22c47d; opacity: .5; }
+.ba-bar.neg { fill: #f5615a; opacity: .45; }
+@keyframes ba-draw { to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) { .ba-line { animation: none; stroke-dashoffset: 0; } }
+
+/* top earners: each card's sparkline bleeds to its bottom-right corner, fading in from the left */
+#root .page.home.dc .te-card { position: relative; overflow: hidden; }
+#root .page.home.dc .te-card .te-chart { position: absolute; right: 0; bottom: 0; width: 64%; height: 58%; margin: 0; -webkit-mask-image: linear-gradient(90deg, transparent, #000 34%); mask-image: linear-gradient(90deg, transparent, #000 34%); }
+/* figure on the left, its small print on the plate beside it, the chart full width underneath */
+#root .page.home.dc .stat-tile > .shell-body { display: grid; grid-template-columns: minmax(0, 40%) minmax(0, 1fr); grid-template-rows: auto 1fr; column-gap: 16px; align-items: center; }
+#root .page.home.dc .stat-tile .tile-main { grid-column: 1; grid-row: 1; }
+#root .page.home.dc .stat-tile .tile-rows.dc-inset { grid-column: 2; grid-row: 1; margin-top: 0 !important; }
+#root .page.home.dc .stat-tile .dc-bleed { grid-column: 1 / -1; grid-row: 2; align-self: stretch; }
+@media (max-width: 640px) {
+  #root .page.home.dc .stat-tile > .shell-body { grid-template-columns: minmax(0, 1fr); }
+  #root .page.home.dc .stat-tile .tile-rows.dc-inset { grid-column: 1; grid-row: auto; margin-top: 12px !important; }
+}
+.ba-axis { stroke: #d0d5dd; stroke-width: 1; }
+
+/* cumulative card: headline stats ride in the title strip, the series key sits under the chart */
+#root .page.home.dc .cume-card > .shell-head { justify-content: space-between !important; }
+.cume-head-stats { display: flex; align-items: baseline; gap: 18px; margin: 0; }
+.cume-head-stats > div { display: flex; align-items: baseline; gap: 6px; }
+.cume-head-stats dt { color: var(--ink-faint); font-size: 12px; font-weight: 500; }
+.cume-head-stats dd { margin: 0; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.cume-key.is-row { position: static; width: auto; flex-direction: row; justify-content: center; gap: 18px; margin: 4px 0 2px; }
+.cume-key.is-row li { grid-template-columns: 8px auto; gap: 7px; }
+@media (max-width: 760px) { .cume-head-stats > div:nth-child(n+3) { display: none; } }
+.tc { position: relative; width: 100%; height: 100%; min-height: 0; }
+#root .page.home.dc .dc-bleed .tc { position: absolute; inset: 0; }
+#root .page.home.dc .dc-bleed { position: relative; }
+.cume-head-stats { gap: 14px; min-width: 0; }
+.cume-head-stats dt { font-size: 11.5px; }
+.cume-head-stats dd { font-size: 12px; }
+/* tile charts: a quiet crosshair and an ink-ringed marker on hover; the shared tooltip card styling applies */
+.tc .MuiChartsAxisHighlight-root { stroke: rgba(16,24,40,.2) !important; stroke-dasharray: none !important; }
+.tc .MuiLineChart-highlight { fill: #fff !important; stroke: #2b2f35 !important; stroke-width: 1.5px; }
+.MuiChartsTooltip-paper { border: 0 !important; border-radius: 10px !important; background: rgba(255,255,255,.97) !important; box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px -10px rgba(16,24,40,.22) !important; font-family: Inter, ui-sans-serif, system-ui, sans-serif !important; }
+.MuiChartsTooltip-paper * { font-family: inherit !important; font-size: 12px !important; }
+/* the cumulative plot bleeds to the plate's sides; its money labels float over the left of the plot */
+#root .page.home.dc .cume-card > .shell-body { overflow: hidden; }
+#root .page.home.dc .cume-card .cume-chart { width: auto; margin-left: -14px; margin-right: -14px; }
+.cume-axis-in { paint-order: stroke; stroke: rgba(255,255,255,.85); stroke-width: 3px; stroke-linejoin: round; }
+@media (max-width: 520px) { .cume-head-stats > div:nth-child(n+2) { display: none; } }
+/* the cumulative chart leads the top row beside Top Earners; the stat tiles sit with Overall Score below */
+#root .page.home.dc .home-top > .cume-card { order: -1; display: flex; flex-direction: column; }
+#root .page.home.dc .home-top > .cume-card > .shell-body { flex: 1; display: flex; flex-direction: column; }
+/* top earners sparkline: pinned to the card's bottom-right corner (an older rule set `top`, which beat `bottom`), at the cumulative chart's line weight */
+#root .page.home.dc .te-card .te-chart { top: auto; left: auto; }
+#root .page.home.dc .te-card .al-line { stroke-width: 1.8; }
+#root .page.home .te-id { gap: 6px; align-items: center; }
+
+/* calendar facets: the white body sits inside the grey frame's bezel like every other two-tone card,
+   and the spread toggle is the plate's own footer rather than a separate floating pill */
+#root .calendar-page .rail-facets.duo { padding-bottom: var(--duo-bezel, 4px) !important; }
+#root .calendar-page .rail-facets.duo .card-fold { margin: 0 var(--duo-bezel, 4px); }
+#root .calendar-page .rail-facets.duo .card-fold .shell-body { border-radius: var(--duo-inner-radius, 10px); box-shadow: none; padding: 10px 10px 0; overflow: hidden; }
+#root .calendar-page .rail-facets.duo .rail-deck-toggle { width: auto; height: 32px; margin: 10px -10px 0 !important; padding: 0 !important; border: 0; border-top: 1px solid var(--line-soft, #f2f4f7); border-radius: 0; background: none !important; color: var(--ink-soft); font-size: 12px; font-weight: 600; transition: background .14s ease, color .14s ease; }
+#root .calendar-page .rail-facets.duo .rail-deck-toggle:hover { background: var(--fill, #f2f4f7) !important; color: var(--ink); }
+#root .calendar-page .rail-facets.duo .rail-deck-toggle { display: block; width: calc(100% + 20px) !important; }
+/* stacked, the facet card hugs its token row: a shorter row box, tighter top padding and a slimmer spread footer */
+#root .calendar-page .rail-facets.duo .rail-deck:not(.is-spread) .rail-list { height: calc(var(--row-h) - 2px); }
+#root .calendar-page .rail-facets.duo .card-fold .shell-body { padding-top: 4px; }
+#root .calendar-page .rail-facets.duo .rail-deck-toggle { height: 28px; margin-top: 6px !important; }
+/* the rail cards share their left edge with the All trades / Wins / Losses switch above them */
+#root .calendar-page .cal-rail { padding-left: 0 !important; }
+/* month footer: one tight line under the grid plate */
+#root .calendar-page .month-board .month-summary { min-height: 0 !important; height: auto !important; padding: 8px 18px 0 !important; margin: 0 !important; }
+#root .calendar-page .month-board > .shell-body { padding-bottom: 10px !important; }
+/* calendar statistics: the white body sits inside the grey frame's bezel like the other two-tone cards */
+#root .calendar-page .cal-summary.cal-stats { padding: 0 !important; }
+#root .calendar-page .cal-summary.cal-stats > .card-fold { margin: 0 var(--duo-bezel, 4px); }
+#root .calendar-page .cal-summary.cal-stats > .card-fold.open { margin-bottom: var(--duo-bezel, 4px); }
+#root .calendar-page .cal-summary.cal-stats .card-fold .shell-body { margin: 0 !important; border-radius: var(--duo-inner-radius, 10px) !important; box-shadow: none !important; }
+#root .calendar-page .cal-summary .metric-cell { padding-left: 10px !important; padding-right: 10px !important; min-width: 0; }
+#root .calendar-page .cal-summary .metric-cell strong { font-size: 16px !important; letter-spacing: -.03em; white-space: nowrap; }
+
+/* nav: only a hover fades in; an item losing its active state (or its hover) clears at once, so switching
+   pages never leaves a fading grey pill on the item you came from */
+#root .nav-link { transition: color .15s ease !important; }
+#root .nav-link:hover:not(.active) { transition: background-color .15s ease, color .15s ease !important; }
+/* trades feed now leads the top row's right column; top earners sits beside the daily P&L below */
+#root .page.home .home-top .compare-row > .feed-card { grid-column: 1 / -1; display: flex !important; flex-direction: column; min-height: 0; }
+#root .page.home .home-top .compare-row > .feed-card > .shell-body { flex: 1; min-height: 0; }
+#root .page.home .home-bottom > .te-shell { display: flex !important; flex-direction: column; min-height: 0; }
+#root .page.home .home-bottom > .te-shell .te-list { flex: 1; min-height: 0; }
+/* top earners takes the daily P&L card's height and scrolls the rest, instead of stretching the row */
+#root .page.home .home-bottom > .te-shell { contain: size; align-self: stretch; }
+#root .page.home .home-bottom > .te-shell .te-list { overflow-y: auto; scrollbar-width: none; }
+/* top row: cumulative chart, trades, overall score; second row: the four tiles beside top earners */
+#root .page.home.dc > .home-top:not(.dc-wide) { grid-template-columns: minmax(0, 1.25fr) minmax(0, .75fr) minmax(0, .9fr) !important; }
+#root .page.home.dc .dc-wide > .te-shell { contain: size; align-self: stretch; display: flex !important; flex-direction: column; min-height: 0; }
+#root .page.home.dc .dc-wide > .te-shell .te-list { flex: 1; min-height: 0; overflow-y: auto; scrollbar-width: none; }
+@media (max-width: 1240px) { #root .page.home.dc > .home-top:not(.dc-wide) { grid-template-columns: minmax(0, 1fr) !important; } #root .page.home.dc .dc-wide > .te-shell { contain: none; height: 420px; } }
+/* narrower cards drop their secondary figures instead of spilling into the next card */
+#root .page.home.dc .cume-card, #root .page.home.dc .radar-card { container-type: inline-size; }
+#root .page.home.dc .cume-card > .shell-head { overflow: hidden; }
+@container (max-width: 760px) { .cume-head-stats > div:is(:nth-child(2), :nth-child(4)) { display: none; } }
+@container (max-width: 470px) { .cume-head-stats > div:nth-child(3) { display: none; } }
+@container (max-width: 420px) { .radar-card .score-foot .panel-caption em { display: none; } }
+
+/* overall score's title strip matches the trades card beside it */
+#root .page.home.dc .radar-card.dc-duo > .score-card-head { height: 28px !important; padding: 0 10px !important; }
+#root .page.home.dc .radar-card.dc-duo .card-title { font-size: 12px !important; }
+#root .page.home.dc .radar-card.dc-duo .score-card-head .ws-seg { transform: scale(.94); transform-origin: right center; }
+
+/* week strip: day + rate in the grey strip, trade count left and P&L right on the white plate */
+#root .page.home .hw-day.duo { padding: 0 !important; border-radius: 14px !important; background: var(--duo-frame, #f7f7f8) !important; }
+#root .page.home .hw-day.duo > .hw-day-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 34px; margin: 0 !important; padding: 0 12px !important; background: none !important; }
+#root .page.home .hw-day.duo > .hw-day-top b { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); font-size: 13px; font-weight: 600; white-space: nowrap; }
+#root .page.home .hw-day.duo .hw-day-rate { color: var(--ink-faint); font-size: 12.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+#root .page.home .hw-today-tag { height: 18px; padding: 0 7px; border-radius: 999px; background: var(--today, #0c111d); color: var(--today-ink, #fff); font-size: 10.5px; font-weight: 600; line-height: 18px; }
+#root .page.home .hw-day.duo > small.shell-body { display: flex !important; align-items: center; justify-content: space-between; gap: 8px; margin: 0 var(--duo-bezel, 4px) var(--duo-bezel, 4px) !important; padding: 9px 10px !important; border-radius: var(--duo-inner-radius, 10px) !important; background: #fff !important; color: var(--ink-soft); font-size: 12.5px; white-space: nowrap; }
+#root .page.home .hw-day.duo > small.shell-body em { font-style: normal; font-weight: 500; font-variant-numeric: tabular-nums; }
+#root .page.home .hw-day.duo:not(.has-trades) > .hw-day-top b, #root .page.home .hw-day.duo:not(.has-trades) > small.shell-body { color: var(--ink-faint); }
+#root .page.home .hw-day.duo > small.shell-body { flex-direction: row !important; justify-content: space-between !important; text-align: left !important; height: auto !important; min-height: 0 !important; }
+/* the latest journaled day isn't necessarily today, so it's marked by a deeper frame rather than a "Today" tag */
+#root .page.home .hw-day.duo.is-today { background: #e9eaec !important; }
+/* the sticky header's rounded corners let rows peek through as they scroll under it: the cell itself is solid
+   white and the grey pill is drawn inside it, so nothing shows past the header */
+#root .feed-scroll .feed-table thead th { background: #fff !important; background-clip: border-box; isolation: isolate; }
+#root .feed-scroll .feed-table thead th::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--duo-frame, #f7f7f8); }
+#root .feed-scroll .feed-table thead th::after { content: ''; position: absolute; left: 0; right: 0; top: 100%; height: 5px; background: #fff; pointer-events: none; }
+
+/* day win% heat grid */
+.dh-grid { display: grid; grid-template-rows: repeat(5, var(--cell)); gap: var(--gap); height: 100%; align-content: end; }
+.dh-cell { width: var(--cell); height: var(--cell); border-radius: 3px; background: #eef0f3; transition: transform .12s ease; }
+.dh-cell:not(.is-future):hover { transform: scale(1.18); }
+.dh-cell.is-future { background: none; outline: 1px dashed #d0d5dd; outline-offset: -1px; }
+.dh-cell.is-pos.lv-1 { background: #c6f0dc; } .dh-cell.is-pos.lv-2 { background: #8ee2b8; } .dh-cell.is-pos.lv-3 { background: #4fd292; } .dh-cell.is-pos.lv-4 { background: #22c47d; }
+.dh-cell.is-neg.lv-1 { background: #fdd9d6; } .dh-cell.is-neg.lv-2 { background: #fbb0aa; } .dh-cell.is-neg.lv-3 { background: #f8857d; } .dh-cell.is-neg.lv-4 { background: #f5615a; }
+#root .page.home.dc .dc-bleed:has(.dh) { margin: 12px 0 14px; }
+@media (prefers-reduced-motion: reduce) { .dh-cell { transition: none; } }
+
+/* net P&L week bars: solid net inside a light gross cap */
+.wb svg { position: absolute; inset: 0; display: block; overflow: visible; }
+.wb-grid { stroke: #e4e7ec; stroke-width: 1; stroke-dasharray: 3 4; }
+.wb-none { fill: #e9ebef; }
+.wb svg rect { shape-rendering: geometricPrecision; }
+.wb-day.is-pos .wb-net { fill: #16b871; } .wb-day.is-pos .wb-gross { fill: #b4ebd0; }
+.wb-day.is-neg .wb-net { fill: #f04c43; } .wb-day.is-neg .wb-gross { fill: #fcc9c4; }
+.wb-day .wb-net, .wb-day .wb-gross { transition: opacity .12s ease; }
+.wb svg:has(.wb-day.is-active) .wb-day:not(.is-active) :is(.wb-net, .wb-gross) { opacity: .45; }
+#root .page.home.dc .dc-bleed:has(.wb) { margin: 12px 0 0; }
+@media (prefers-reduced-motion: reduce) { .wb-day .wb-net, .wb-day .wb-gross { transition: none; } }
+
+/* profit factor month columns: the latest month strongest, older months lighter */
+.fc svg { position: absolute; inset: 0; display: block; }
+.fc-off { fill: #eef0f3; }
+.fc-col.is-pos .fc-on { fill: #16b871; } .fc-col.is-neg .fc-on { fill: #f04c43; }
+.fc-col.shade-1 .fc-on { opacity: .78; } .fc-col.shade-2 .fc-on { opacity: .6; } .fc-col.shade-3 .fc-on { opacity: .45; } .fc-col.shade-4 .fc-on { opacity: .34; }
+.fc-col .fc-on { transition: opacity .12s ease; }
+.fc svg:has(.fc-col.is-active) .fc-col:not(.is-active) .fc-on { opacity: .25; }
+.fc svg:has(.fc-col.is-active) .fc-col.is-active .fc-on { opacity: 1; }
+#root .page.home.dc .dc-bleed:has(.fc) { margin: 10px 0 12px; }
+@media (prefers-reduced-motion: reduce) { .fc-col .fc-on { transition: none; } }
+
+/* profit factor columns, livelier: month and value under each stack, the latest strongest, segments rising in */
+.fc-value { fill: var(--ink-soft); font-size: 10.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.fc-col.shade-0 .fc-value { fill: var(--ink); }
+.fc-col.is-neg .fc-value { fill: #e0453c; }
+.fc-month { fill: var(--ink-faint); font-size: 10px; font-weight: 500; }
+.fc-col.shade-0 .fc-month { fill: var(--ink-soft); font-weight: 600; }
+.fc-on { transform-box: fill-box; transform-origin: center bottom; animation: fc-rise .42s cubic-bezier(.22,.82,.28,1) both; }
+@keyframes fc-rise { from { opacity: 0; transform: translateY(5px) scaleY(.4); } }
+@media (prefers-reduced-motion: reduce) { .fc-on { animation: none; } }
+/* top earners, compact: smaller name and figure, the coloured figure at regular weight like every list P&L */
+#root .page.home .te-card { min-height: 0 !important; padding: 15px 14px !important; }
+#root .page.home .te-id b { font-size: 13px; }
+#root .page.home .te-id .symbol-token, #root .page.home .te-id > span:first-child { width: 18px; height: 18px; }
+#root .page.home .te-value { font-size: 16px !important; font-weight: 500 !important; margin-top: 3px !important; letter-spacing: -.02em; }
+#root .page.home .te-chg { font-size: 11px; margin-top: 3px !important; }
+/* top earners: the figure leads, with the symbol right beside it; the trades line sits underneath */
+#root .page.home .te-card { display: grid !important; grid-template-columns: auto auto 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 10px; row-gap: 3px; align-content: center; }
+#root .page.home .te-card > .te-value { grid-column: 1; grid-row: 1; margin: 0 !important; max-width: none; font-weight: 650 !important; }
+#root .page.home .te-card > .te-id { grid-column: 2; grid-row: 1; max-width: none; }
+#root .page.home .te-card > .te-chg { grid-column: 1 / -1; grid-row: 2; margin: 0 !important; max-width: 60%; }
+#root .page.home .te-card > .te-id { gap: 4px !important; }
+/* the sparkline anchors to the whole card, not a grid cell, so it sits in the bottom-right corner at full size */
+#root .page.home.dc .te-card > .te-chart { grid-area: auto !important; height: 70% !important; }
+
+/* overall score radial bars */
+.score-radial .rb-track { stroke: #eef0f3; stroke-linecap: round; }
+.score-radial .rb-fill { stroke-linecap: round; }
+.score-radial .rb-fill { transform-box: view-box; transform-origin: center; animation: rb-grow .6s cubic-bezier(.22,.82,.28,1) var(--d, 0ms) both; }
+@keyframes rb-grow { from { transform: scale(.55); opacity: 0; } }
+.score-radial .rb-bar { transition: opacity .14s ease; cursor: default; }
+.score-radial .rb-bar.is-dim { opacity: .4; }
+@media (prefers-reduced-motion: reduce) { .score-radial .rb-fill { animation: none; } }
+/* top earners list scrolls without a fade at its foot, so the cards below the fold aren't shaded */
+#root .page.home .te-list { -webkit-mask-image: none !important; mask-image: none !important; }
+/* the radial keeps its drawn size beside the legend; the legend gives way instead */
+.score-radial .sr-plot { flex: none; }
+.score-radial { gap: 14px !important; }
+/* chart and key sit together as one centred pair; the key is as wide as its content, values right after the names */
+.score-radial { justify-content: center !important; }
+.score-radial .sr-legend { flex: 0 1 auto; min-width: 0 !important; width: auto !important; display: grid !important; grid-template-columns: 8px max-content auto; column-gap: 8px; row-gap: 9px; }
+.score-radial .sr-legend li { display: grid !important; grid-column: 1 / -1; grid-template-columns: subgrid !important; align-items: center; }
+.score-radial .sr-legend li b { margin-left: 10px; text-align: right; }
+.score-radial .sr-legend li { font-size: 11.5px; }
+.score-radial .sr-legend li { white-space: nowrap; }
+.score-radial .rb-month { font-size: 9.5px; }
+/* trades list scrolls without a fade at its foot, like top earners */
+#root .page.home .feed-scroll { -webkit-mask-image: none !important; mask-image: none !important; }
+/* top earners: only the logo shows; the ticker slides out beside it when its card is hovered or focused */
+@media (hover: hover) {
+  #root .page.home .te-card > .te-id b { display: inline-block; max-width: 0; overflow: hidden; opacity: 0; transform: translateX(-4px); white-space: nowrap; transition: max-width .26s cubic-bezier(.22,.82,.28,1), opacity .18s ease, transform .26s cubic-bezier(.22,.82,.28,1); }
+  #root .page.home .te-card:is(:hover, :focus-visible) > .te-id b { max-width: 80px; opacity: 1; transform: none; }
+  #root .page.home .te-card > .te-id { gap: 0 !important; }
+  #root .page.home .te-card:is(:hover, :focus-visible) > .te-id { gap: 4px !important; }
+  #root .page.home .te-card > .te-id { transition: gap .26s cubic-bezier(.22,.82,.28,1); }
+}
+@media (hover: hover) and (prefers-reduced-motion: reduce) { #root .page.home .te-card > .te-id b, #root .page.home .te-card > .te-id { transition: none; } }
+
+/* trade win% mosaic: mint wins, soft red losses, hatched breakevens */
+.wm svg { position: absolute; inset: 0; display: block; }
+.wm-win { fill: #a8ecc8; } .wm-loss { fill: #fdd5d1; }
+.wm-hatch-bg { fill: #f2f4f7; } .wm-hatch-line { stroke: #dfe3e8; stroke-width: 2; }
+.wm-label { font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums; pointer-events: none; }
+.wm-label-win { fill: #067647; } .wm-label-loss { fill: #b42318; } .wm-label-even { fill: var(--ink-faint); }
+.wm-col { transition: opacity .14s ease; }
+.wm-col.is-dim { opacity: .45; }
+#root .page.home.dc .dc-bleed:has(.wm) { flex: 1 0 46px; min-height: 46px; margin: 12px 0 12px; }
+@media (prefers-reduced-motion: reduce) { .wm-col { transition: none; } }
+/* top earners heatmap sits on the card's white plate like every other two-tone card */
+#root .page.home.dc .dc-wide > .te-shell > .te-heat { flex: 1; min-height: 0; padding: 12px !important; background: #fff !important; border-radius: var(--duo-inner-radius, 10px) !important; overflow: hidden; }
+/* dashboard trades list: the P&L column reads bold (asked for here, overriding the list-figures-at-500 rule) */
+#root .page.home.dc .feed-card .feed-table td:last-child { font-weight: 500 !important; }
+#root .page.home .hw-day.duo > small.shell-body em { font-weight: 500 !important; }
+
+/* overall score footer, tidied: the figure and its change on one line, the meter, then one quiet caption */
+#root .radar-card .sf-tidy { display: flex; flex-direction: column; gap: 8px; }
+#root .radar-card .sf-tidy .sf-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#root .radar-card .sf-tidy .score-value { display: inline-flex; align-items: baseline; gap: 2px; line-height: 1; }
+#root .radar-card .sf-tidy .sf-shift { display: inline-flex; align-items: center; gap: 3px; height: 22px; padding: 0 8px; border-radius: 7px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+#root .radar-card .sf-tidy .sf-shift.pos { background: rgba(34,196,125,.1); color: #0e9f6e; }
+#root .radar-card .sf-tidy .sf-shift.neg { background: rgba(245,97,90,.1); color: #e0453c; }
+#root .radar-card .sf-tidy .sf-caption { margin: 0; color: var(--ink-faint); font-size: 11.5px; }
+#root .radar-card .sf-tidy .sf-shift { flex: none; white-space: nowrap; }
+#root .radar-card .sf-tidy .sf-shift svg { width: 12px !important; height: 12px !important; flex: none; }
+#root .radar-card .sf-tidy .sf-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+#root .radar-card .sf-tidy .sf-caption { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* the change chip sits at the caption's own line height, so the footer reads as one quiet line */
+#root .radar-card .sf-tidy .sf-shift { height: 16px; padding: 0 5px; border-radius: 4px; font-size: 11.5px; line-height: 16px; gap: 2px; }
+#root .radar-card .sf-tidy .sf-shift svg { width: 10px !important; height: 10px !important; }
+#root .radar-card .sf-tidy .sf-caption { line-height: 16px; }
+#root .home-welcome .welcome-name { color: inherit; font-weight: 650; }
+/* firm logos keep their raised tile (soft shadow, no outline): the site-wide no-shadow rule was never meant for these */
+#root .acct-logo:has(img) { box-shadow: inset 0 1px 0 #fff, var(--shadow-tight) !important; }
+/* cash flow side: the three stats share one white plate instead of three separate inset plates */
+#root .prop-ws .flow-stats { gap: 0 !important; overflow: hidden; border-radius: 10px; background: #fff; }
+#root .prop-ws .flow-stats > div { border-radius: 0 !important; background: none !important; padding: 6px 12px 7px !important; }
+/* cash flow side sits straight on the card's white plate: no grey inset or white sub-panel behind the figures */
+#root .prop-ws .flow-side, #root .prop-ws .flow-lead { background: none !important; border: 0 !important; }
+#root .prop-ws .flow-stats { background: none !important; }
+#root .prop-ws .flow-layout { grid-template-columns: minmax(0, 1fr) 220px; gap: 22px; }
+#root .prop-ws .flow-side { padding: 4px 0 0 !important; }
+#root .prop-ws .flow-lead, #root .prop-ws .flow-stats > div { padding-left: 4px !important; padding-right: 4px !important; }
+#root .prop-ws .flow-row { align-items: stretch !important; }
+#root .prop-ws .flow-row > :is(.firm-card, .caps-card) { display: flex; flex-direction: column; }
+#root .prop-ws .flow-row > :is(.firm-card, .caps-card) > .shell-body { flex: 1; }
+/* firm rows: white plates with their soft shadow, the figure centred on the right, the bar full width below */
+#root .prop-ws :is(.firm-card, .caps-card) .firm-net > li { background: #fff; border-radius: 12px; box-shadow: var(--shadow-tight) !important; }
+#root .prop-ws :is(.firm-card, .caps-card) .firm-net .fn-head { align-items: center; }
+#root .prop-ws :is(.firm-card, .caps-card) .firm-net { padding: 2px 4px 6px 2px; }
+
+/* metric strips sit in one two-tone parent: a grey frame with the cells as white plates inside a thin bezel */
+#root .metric-strip { gap: var(--duo-bezel, 4px) !important; padding: var(--duo-bezel, 4px) !important; border-radius: 14px !important; background: var(--duo-frame, #f7f7f8) !important; }
+#root .metric-strip > .metric-cell { background: #fff !important; border-radius: var(--duo-inner-radius, 10px) !important; border: 0 !important; }
+
+/* journal KPI rows sit in the same two-tone parent as the metric strips: grey frame, white tiles, rounded */
+#root .journal-main :is(.journal-kpis, .versus-row) { gap: var(--duo-bezel, 4px) !important; padding: var(--duo-bezel, 4px) !important; border-radius: 14px !important; background: var(--duo-frame, #f7f7f8) !important; }
+#root .journal-main :is(.journal-kpis > .stat-tile, .versus-row > .compare-card) { background: #fff !important; border: 0 !important; border-radius: var(--duo-inner-radius, 10px) !important; }
+/* cash flow key spreads across the chart's full width, one item per third */
+#root .prop-ws .flow-legend { display: grid !important; grid-template-columns: repeat(3, 1fr); justify-items: center; width: 100%; align-self: stretch !important; }
+/* payout caps: the right figure is what's still available, its unit quiet beside it */
+.prop-ws .caps-left { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.prop-ws .caps-left em { color: var(--ink-faint); font-size: 11.5px; font-style: normal; font-weight: 500; }
+.prop-ws .caps-left.is-maxed { color: var(--ink-faint); }
+
+/* bullet tracks (net by firm, payout caps): thin track, dark fill to the target tick, colour past or short of it */
+/* no black: fees covered are a soft grey (profit past the tick carries the colour); drawn caps are the accent blue */
+
+/* firm and cap rows: a track of thin ticks, coloured by what each stretch means */
+.fn-ticks { display: flex; gap: 2px; height: 10px; }
+.fn-ticks > i { flex: 1 1 0; min-width: 0; border-radius: 1px; background: #e8eaee; transition: background-color .3s ease; }
+.fn-ticks > i.pos { background: #22c47d; } .fn-ticks > i.neg { background: #f5615a; }
+.fn-ticks > i.paid { background: #cfd4dc; } .fn-ticks > i.drawn { background: var(--accent, #2e7cf6); }
+@media (prefers-reduced-motion: reduce) { .fn-ticks > i { transition: none; } }
+/* firm and cap rows start near the plate's top edge; the list takes back the 6px so the cards keep their height */
+#root .prop-ws :is(.firm-card, .caps-card) .firm-net { margin-top: 0; max-height: 256px; }
+/* the cash-flow lead starts at the plate's top padding, level with the chart, instead of 12px below it */
+#root .prop-ws .flow-side { padding-top: 0 !important; }
+#root .prop-ws .flow-lead { padding-top: 0 !important; }
+/* the view select is a plain text pill, no arrow, so it pads evenly on both sides */
+#root .board-select select { padding-right: 12px !important; }
+/* Today's journal is a white pill like the view select beside it */
+#root .calendar-page .cal-today-journal { height: 34px; padding: 0 12px; border: 0 !important; border-radius: 9px; background: #fff !important; box-shadow: none !important; font-size: 12.5px; font-weight: 500; }
+/* topbar is white; its chips take the duo frame grey so they still read as plates on it */
+#root .topbar { background: #fff !important; }
+#root .topbar :is(.market-pill, .today-pill, .jump-trigger, .settings-trigger) { background: var(--duo-frame, #f7f7f8) !important; }
+#root .prop-ws .flow-lead .fn-ticks { margin: 4px 0 2px; }
+/* session card: the view's own tools sit left of the Timeline / Intraday switch, on one line */
+#root .jr-duo .st-tools { display: flex; align-items: center; gap: 14px; flex-wrap: nowrap; margin-left: auto; white-space: nowrap; }
+#root .jr-duo .st-tools .intraday-stats { flex-wrap: nowrap; }
+@media (max-width: 640px) { #root .jr-duo .st-tools .intraday-stats { display: none; } }
+@media (max-width: 640px) { #root .jr-duo .st-tools { flex-wrap: wrap; justify-content: flex-end; gap: 6px; min-width: 0; } }
+/* session card: the header always holds the title and one row of tools, so switching views never moves it */
+@media (max-width: 640px) {
+  #root .session-card > .shell-head { flex-wrap: wrap; height: auto !important; row-gap: 6px; }
+  #root .session-card .st-tools { flex: 1 1 100%; flex-wrap: nowrap; justify-content: flex-start; }
+}
+/* Packed and Intraday share one body height, so switching views doesn't resize the card; the timeline centres in it */
+#root .session-card > .shell-body { display: flex; flex-direction: column; min-height: 242px; box-sizing: border-box; }
+#root .session-card .session-timeline { flex: 1; display: flex; flex-direction: column; justify-content: center; margin-top: 0; }
+/* in the side column the week is six equal cells, the five days and the total, so it fits the column's width */
+#root .journal-side .jr-bar .jr-week { display: grid !important; grid-template-columns: repeat(var(--jr-cells, 6), minmax(0, 1fr)); width: 100%; margin: 0; }
+#root .journal-side .jr-week .jr-day { min-width: 0; padding: 0 2px !important; }
+#root .journal-side .jr-week .jr-week-total { min-width: 0; margin-left: 0; padding: 0 2px !important; }
+#root .journal-side .jr-week :is(.jr-day > small, .jr-week-total > b) { font-size: 12px !important; letter-spacing: -.01em; }
+/* the week card matches the KPI row beside it (81px): the day cells take the extra height */
+#root .journal-side .jr-week :is(.jr-day, .jr-week-total) { height: 41.6px !important; }
+/* journal trades: the header row sits 14px under the plate's top edge, the same as its side inset (the table's 4px row spacing taken back) */
+#root .journal-main .journal-table-wrap { margin-top: 0 !important; }
+#root .journal-main .journal-table { margin-top: -4px; }
+/* card tables: take back the 4px row spacing above the header row, so it sits as far from the plate's top as from its side */
+#root .shell-body > .ws-table-wrap > .feed-table { margin-top: -4px; }
+#root .prop-cal-card .prop-cal-summary { margin-top: 0 !important; }
+/* dashboard: with the score moved under Top Earners, the top row is the chart and the trades feed, in the same columns as the row below */
+#root .page.home.dc > .home-top:not(.dc-wide) { grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) !important; }
+@media (max-width: 1240px) { #root .page.home.dc > .home-top:not(.dc-wide) { grid-template-columns: minmax(0, 1fr) !important; } }
+/* the Top earners / Score switch is the head's title: the same grey-track switch as the Trades feed head, flush left */
+#root .page.home.dc .dc-panel-switch { flex: none; height: 28px !important; margin: 0 auto 0 0 !important; padding: 3px !important; border: 0 !important; border-radius: 12px !important; background: var(--duo-frame, #f7f7f8) !important; box-shadow: none !important; font-size: 12px; transform: none !important; }
+#root .page.home.dc .dc-panel-switch button { height: 22px !important; border-radius: 7px !important; padding: 0 11px !important; font-size: 12px !important; }
+/* both switches in the score head fit its 28px strip, so neither spills onto the plate */
+#root .page.home.dc .dc-wide > .radar-card .score-card-head .ws-seg { height: 28px !important; padding: 3px !important; transform: none !important; }
+#root .page.home.dc .dc-wide > .radar-card .score-card-head .ws-seg button { height: 22px !important; border-radius: 7px !important; }
+@media (max-width: 1240px) { #root .page.home.dc .dc-wide > .radar-card { height: 420px; } }
+@media (max-width: 640px) { #root .page.home.dc .dc-wide > .radar-card .score-card-head .ws-seg button, #root .page.home.dc .dc-panel-switch button { padding: 0 8px !important; } }
+/* the account drawer's figures fit one row of four */
+.dw-account .tp-figures { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+/* firm logos are flat everywhere: white tile, hairline border, no bevel or lift */
+#root .acct-logo:has(img), .st-modal .acct-logo:has(img), .dw-panel .acct-logo:has(img) { box-sizing: border-box; border: 1px solid rgba(16,24,40,.08); background: #fff !important; box-shadow: none !important; }
+/* dashboard: green and red figures are never bold; size and colour carry them */
+#root .page.home.dc :is(.tone-pos, .tone-neg, .eh-cell, .wl-bar, [class*="win"] em, [class*="win"] b) { font-weight: 500 !important; }
+/* headline figures keep their weight even when tinted */
+#root .page.home.dc .dc-fig strong:is(.tone-pos, .tone-neg) { font-weight: 600 !important; }
+/* the cumulative chart on the dashboard draws no gridlines */
+#root .page.home.dc .cume-card .cume-grid { display: none; }
+/* drawdown under $0 on the cumulative chart: how far below the best equity each session closed */
+.cume-dd-area { fill: url(#cumeDdFill); }
+.cume-dd { fill: none; stroke: #f5615a; stroke-width: 1.4; stroke-linejoin: round; opacity: .85; }
+.cume-key .k-dd { background: #f5615a; }
+.cume-focus.dd { stroke: #f5615a; stroke-width: 2; }
+.cume-dd-base { stroke: #eaecf0; stroke-width: 1; }
+#root .page.home.dc .cume-card > .shell-body { position: relative; }
+/* key swatches as small squircles */
+#root .cume-key i { border-radius: 3px !important; }
+#root .cume-key li { font-weight: 400 !important; }
+/* chip stack: one chip in front, the rest stacked behind, fanned into a row on click */
+.chip-stack-wrap { position: relative; display: flex; min-width: 0; max-width: 100%; }
+.chip-mirror { position: absolute; visibility: hidden; pointer-events: none; display: flex; white-space: nowrap; }
+.stack-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 9px; border-radius: 7px; background: var(--fill, #f2f4f7); white-space: nowrap; color: var(--ink-soft, #475467); font-size: 12px; font-weight: 400; }
+.stack-chip > span { display: inline-flex; align-items: center; gap: 6px; }
+.stack-chip .sc-label { color: var(--ink-faint, #98a2b3); font-size: 11.5px; font-weight: 500; }
+.stack-chip .sc-value { color: var(--ink, #2b2f35); font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.stack-chip .sc-value.tone-pos { color: #0e9f6e; } .stack-chip .sc-value.tone-neg { color: #e0453c; }
+.stack-chip i { flex: none; width: 8px; height: 8px; border-radius: 3px; }
+.chip-stack {
+  --peek: 7px; --ease: cubic-bezier(.22,.82,.28,1);
+  position: relative; flex: none; display: block; height: 24px; width: calc(var(--w0) + (var(--n) - 1) * var(--peek)); max-width: 100%;
+  padding: 0; border: 0; border-radius: 7px; background: none; font: inherit; cursor: pointer; transition: width .46s var(--ease), height .46s var(--ease);
+}
+.chip-stack:not(.is-open):hover { --peek: 10px; }
+.chip-stack.is-open { width: var(--wopen); height: var(--hopen); }
+.chip-stack:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(46,124,246,.25); }
+.chip-stack .stack-chip {
+  position: absolute; top: 0; left: 0; width: var(--w0); overflow: hidden; box-sizing: border-box;
+  transform: translate(calc(var(--i) * var(--peek)), 0) scale(calc(1 - var(--i) * .08)); transform-origin: right center;
+  box-shadow: 0 0 0 1.5px #fff; transition: transform .46s var(--ease), width .46s var(--ease), background-color .3s ease;
+}
+.chip-stack .stack-chip:nth-child(2) { background: #e9ecf1; }
+.chip-stack .stack-chip:nth-child(3) { background: #e2e6ec; }
+.chip-stack .stack-chip:nth-child(4) { background: #dbe0e7; }
+.chip-stack .stack-chip > span { transition: opacity .25s ease; }
+.chip-stack:not(.is-open) .stack-chip:not(:first-child) > span { opacity: 0; }
+.chip-stack.is-open .stack-chip { width: var(--tw); transform: translate(var(--ox), var(--oy)) scale(1); background: var(--fill, #f2f4f7); }
+.chip-stack.is-open .stack-chip > span { transition-delay: .08s; }
+.chip-stack.is-measuring, .chip-stack.is-measuring .stack-chip { transition: none; }
+@media (prefers-reduced-motion: reduce) { .chip-stack, .chip-stack .stack-chip, .chip-stack .stack-chip > span { transition: none; } }
+.cume-key-stack { justify-content: center; margin: 4px 0 2px; }
+.stack-chip .k-net { background: var(--accent, #2e7cf6); } .stack-chip .k-run { background: #1f4fc4; } .stack-chip .k-dd { background: #f5615a; }
+/* page subtitles share the Calendar lede colour */
+#root :is(.page-lede, .ws-meta, .journal-lede, .home-welcome > p, .home-welcome > p .welcome-name) { color: var(--lede) !important; }
+/* dashboard cards: flat white cards, one head and padding spec, no grey frame or inset plate */
+#root .page.home.dc { --dc-card-pad: 16px; --dc-head-h: 44px; }
+#root#root .page.home.dc :is(.home-top .cume-card, .home-top .feed-card, .score-panel .stat-tile, .dc-wide .te-shell, .dc-wide .radar-card.dc-duo) {
+  display: flex; flex-direction: column; gap: 0; padding: 0 !important; border: 1px solid var(--line, #eaecf0) !important; border-radius: var(--radius, 14px) !important; background: #fff !important; box-shadow: none !important; overflow: hidden;
+}
+#root#root .page.home.dc :is(.home-top .cume-card, .home-top .feed-card, .score-panel .stat-tile, .dc-wide .te-shell) > .shell-head,
+#root#root .page.home.dc .dc-wide .radar-card.dc-duo > .score-card-head {
+  flex: none; display: flex; align-items: center; gap: 10px; height: var(--dc-head-h) !important; min-height: 0 !important; margin: 0 !important; padding: 0 12px 0 var(--dc-card-pad) !important;
+  border: 0 !important; background: none !important; color: var(--ink, #2b2f35); font-size: 13px !important; font-weight: 600;
+}
+#root#root .page.home.dc :is(.home-top .cume-card, .home-top .feed-card, .score-panel .stat-tile, .dc-wide .te-shell) > .shell-body,
+#root#root .page.home.dc .dc-wide .radar-card.dc-duo > :is(.radar-main, .score-foot) {
+  flex: 1; min-height: 0; margin: 0 !important; padding: 0 var(--dc-card-pad) var(--dc-card-pad) !important; border: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: none !important;
+}
+#root#root .page.home.dc .dc-wide .radar-card.dc-duo > .score-foot { flex: none; padding-top: 12px !important; border-top: 1px solid var(--line-soft, #f2f4f7) !important; }
+#root#root .page.home.dc .home-top .cume-card .cume-chart { margin-left: calc(var(--dc-card-pad) * -1); margin-right: calc(var(--dc-card-pad) * -1); }
+#root#root .page.home.dc .home-top .cume-card > .shell-body { padding-bottom: 12px !important; }
+/* stat tiles: same gaps as the page grid, figure on top, one visual zone of the same height pinned to the bottom of every tile */
+#root#root .page.home.dc .home-top .tile-grid { gap: 16px !important; }
+#root#root .page.home.dc .score-panel .stat-tile > .shell-body { grid-template-rows: auto minmax(0, 1fr); row-gap: 14px; align-items: start; }
+#root#root .page.home.dc .score-panel .stat-tile .tile-main { align-self: start; }
+#root#root .page.home.dc .score-panel .stat-tile .dc-bleed { align-self: end; flex: none; height: 64px; min-height: 0; margin: 0 !important; }
+#root#root .page.home.dc .score-panel .stat-tile .tile-rows.dc-inset { align-self: start; }
+/* dashboard card titles use the shared card-title size (as on Prop firms) */
+#root#root .page.home.dc :is(.home-top .cume-card, .home-top .feed-card, .score-panel .stat-tile) > .shell-head > span:first-child,
+#root#root .page.home.dc .ns-head .card-title { font-size: var(--card-title-size, 15px) !important; font-weight: 600 !important; letter-spacing: -.015em; color: var(--ink, #2b2f35); }
+/* cumulative card: the stat chip sits under the title instead of beside it */
+#root#root .page.home.dc .home-top .cume-card > .shell-head { flex-direction: column !important; flex-wrap: nowrap !important; align-items: flex-start !important; justify-content: center !important; gap: 8px !important; height: auto !important; padding: 14px 16px 4px !important; overflow: visible; }
+#root#root .page.home.dc .home-top .cume-card .cume-chips { justify-content: flex-start; max-width: 100%; }
+/* stat tiles flip: a click anywhere on the card swaps its visual for the detail rows in the same slot */
+#root#root .page.home.dc .score-panel .stat-tile.is-flip { cursor: pointer; transition: border-color .15s ease, transform .18s cubic-bezier(.22,.82,.28,1); -webkit-tap-highlight-color: transparent; }
+#root#root .page.home.dc .score-panel .stat-tile.is-flip:hover { border-color: #dde1e8 !important; }
+#root#root .page.home.dc .score-panel .stat-tile.is-flip:active { transform: scale(.992); }
+#root#root .page.home.dc .score-panel .stat-tile.is-flip:focus-visible { outline: none; border-color: var(--accent, #2e7cf6) !important; box-shadow: 0 0 0 3px rgba(46,124,246,.12) !important; }
+#root#root .page.home.dc .score-panel .stat-tile .tile-rows.dc-inset {
+  grid-column: 1 / -1; grid-row: 2; align-self: end; display: flex; flex-direction: column; justify-content: center; gap: 1px; height: 64px; margin: 0 !important; padding: 6px 12px !important;
+  border-radius: 10px; background: var(--canvas-soft, #f7f8fa); line-height: 15px;
+}
+#root#root .page.home.dc .score-panel .stat-tile .tile-rows.dc-inset > div { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+#root#root .page.home.dc .score-panel .stat-tile .tile-rows.dc-inset dt { color: var(--ink-soft, #475467); font-size: 12px; }
+#root#root .page.home.dc .score-panel .stat-tile .tile-rows.dc-inset dd { margin: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+/* the swap: one shared curve with no overshoot. The outgoing layer leaves first and fast (lift, soften, fade),
+   the incoming layer follows a beat later and settles slowly; detail rows arrive one after another */
+#root#root .page.home.dc .score-panel .stat-tile { --flip-ease: cubic-bezier(.32,.72,0,1); --flip-out: cubic-bezier(.4,0,1,1); }
+#root#root .page.home.dc .score-panel .stat-tile :is(.dc-bleed, .tile-rows.dc-inset) {
+  will-change: opacity, transform, filter; transform-origin: 50% 100%;
+  transition: opacity .42s var(--flip-ease) .1s, transform .56s var(--flip-ease) .1s, filter .42s var(--flip-ease) .1s, visibility 0s linear 0s;
+}
+#root#root .page.home.dc .score-panel .stat-tile:not(.info-on) .tile-rows.dc-inset,
+#root#root .page.home.dc .score-panel .stat-tile.info-on .dc-bleed {
+  opacity: 0; filter: blur(6px); visibility: hidden; pointer-events: none;
+  transition: opacity .2s var(--flip-out), transform .26s var(--flip-out), filter .2s var(--flip-out), visibility 0s linear .26s;
+}
+#root#root .page.home.dc .score-panel .stat-tile.info-on .dc-bleed { transform: translateY(-10px) scale(.96); }
+#root#root .page.home.dc .score-panel .stat-tile:not(.info-on) .tile-rows.dc-inset { transform: translateY(12px) scale(.96); }
+/* rows ride in behind the plate */
+#root#root .page.home.dc .score-panel .stat-tile .tile-rows.dc-inset > div { transition: opacity .38s var(--flip-ease), transform .5s var(--flip-ease); transition-delay: calc(.16s + var(--row, 0) * .05s); }
+#root#root .page.home.dc .score-panel .stat-tile .tile-rows.dc-inset > div:nth-child(2) { --row: 1; }
+#root#root .page.home.dc .score-panel .stat-tile .tile-rows.dc-inset > div:nth-child(3) { --row: 2; }
+#root#root .page.home.dc .score-panel .stat-tile:not(.info-on) .tile-rows.dc-inset > div { opacity: 0; transform: translateY(6px); transition-duration: .15s; transition-delay: 0s; }
+@media (prefers-reduced-motion: reduce) {
+  #root#root .page.home.dc .score-panel .stat-tile :is(.dc-bleed, .tile-rows.dc-inset, .tile-rows.dc-inset > div) { transform: none !important; filter: none !important; transition: opacity .18s linear, visibility 0s linear .18s !important; }
+  #root#root .page.home.dc .score-panel .stat-tile.is-flip:active { transform: none; }
+}
+/* Top earners / Score: titled heads, the switch moves to a footer row in the same spot on both cards */
+#root#root .page.home.dc .dc-wide .te-shell > .shell-head > span:first-child,
+#root#root .page.home.dc .dc-wide .radar-card.dc-duo > .score-card-head .card-title { font-size: var(--card-title-size, 15px) !important; font-weight: 600 !important; letter-spacing: -.015em; color: var(--ink, #2b2f35) !important; }
+#root#root .page.home.dc .dc-wide .te-shell > .shell-head { justify-content: space-between !important; }
+#root#root .page.home.dc .dc-wide .te-shell > .shell-head em { margin-left: auto; }
+#root#root .page.home.dc .dc-wide .radar-card.dc-duo > .score-card-head .ws-seg { margin-left: auto; transform: none; }
+#root .page.home.dc .dc-panel-foot { flex: none; display: flex; align-items: center; height: 44px; padding: 0 16px 6px; }
+#root#root .page.home.dc .dc-panel-foot .dc-panel-switch { margin: 0 !important; }
+/* the earners shade key shares the footer row, on the right */
+#root#root .page.home.dc .dc-wide .te-shell { position: relative; }
+#root#root .page.home.dc .dc-wide .te-shell > .shell-body { padding-bottom: 0 !important; }
+#root#root .page.home.dc .dc-wide .te-shell .eh-key { position: absolute; right: 16px; bottom: 6px; height: 44px; }
+/* the switch row reads as the card's footer: hairline above, its own breathing room, controls centred in it */
+#root#root .page.home.dc .dc-wide :is(.te-shell, .radar-card.dc-duo) > .dc-panel-foot { height: 48px; margin-top: 12px; padding: 0 12px 0 16px; border-top: 1px solid var(--line-soft, #f2f4f7); }
+#root#root .page.home.dc .dc-wide .te-shell .eh-key { bottom: 0; height: 48px; right: 16px; }
+#root#root .page.home.dc .dc-wide .radar-card.dc-duo > .score-foot { padding-bottom: 0 !important; }
+/* score footer: switch on the left, the score meter and its shift filling the rest of the row */
+#root#root .page.home.dc .radar-card .dc-panel-foot { gap: 16px; }
+#root .radar-card .sf-inline { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; }
+#root .radar-card .sf-inline .score-meter { flex: 1; min-width: 0; width: auto; margin: 0; }
+#root#root .radar-card .sf-inline .sf-shift { height: 20px; padding: 0 6px; border-radius: 6px; font-size: 11.5px; line-height: 20px; }
+#root#root .radar-card .sf-inline.sf-tidy { flex-direction: row; gap: 10px; }
+#root .radar-card .sf-inline .meter-scale { display: none; }
+/* narrow cards: the score legend drops under the rings instead of running off the edge */
+@media (max-width: 520px) {
+  #root#root .page.home.dc .radar-card .score-rings.score-radial { flex-direction: column; align-items: center; gap: 14px; }
+  #root#root .page.home.dc .radar-card .score-rings.score-radial .sr-legend { width: 100%; max-width: 280px; }
+}
+/* chip stacks as a small deck of white plates: hairline edges, the cards behind fanned out to the right and stepping down in size */
+.stack-chip { box-sizing: border-box; height: 26px; padding: 0 10px; border: 1px solid var(--line, #eaecf0); border-radius: 8px; background: #fff; color: var(--ink-soft, #475467); font-size: 12px; }
+.stack-chip .sc-label { color: var(--ink-faint, #98a2b3); font-size: 12px; font-weight: 400; }
+.stack-chip .sc-value { font-size: 12px; font-weight: 500; }
+.stack-chip i { width: 7px; height: 7px; border-radius: 2.5px; }
+.chip-stack { --peek: 5px; height: 26px; border-radius: 8px; }
+.chip-stack:not(.is-open):hover { --peek: 8px; }
+.chip-stack .stack-chip, .chip-stack .stack-chip:nth-child(n) { background: #fff; transform-origin: right center; }
+.chip-stack:not(.is-open) .stack-chip:nth-child(2) { border-color: #e4e7ec; background: #fcfcfd; }
+.chip-stack:not(.is-open) .stack-chip:nth-child(3) { border-color: #e9ebef; background: #fafafb; }
+.chip-stack:not(.is-open) .stack-chip:nth-child(4) { border-color: #eef0f3; background: #f9f9fa; }
+.chip-stack .stack-chip { transform: translate(calc(var(--i) * var(--peek)), 0) scale(calc(1 - var(--i) * .1)); transition: transform .46s var(--ease), width .46s var(--ease), border-color .2s ease, background-color .2s ease; }
+.chip-stack.is-open .stack-chip { background: #fff; border-color: var(--line, #eaecf0); }
+.chip-stack:not(.is-open):hover .stack-chip:first-child { border-color: #d0d5dd; }
+.chip-stack:active .stack-chip:first-child { transform: translateY(1px); }
+.chip-stack.is-open:active .stack-chip:first-child { transform: translate(var(--ox), calc(var(--oy) + 1px)); }
+.chip-stack:focus-visible { box-shadow: none; }
+.chip-stack:focus-visible .stack-chip:first-child { border-color: var(--accent, #2e7cf6); outline: 3px solid rgba(46,124,246,.12); }
+/* chart legend: always open, the same white plates as the stat chips */
+.cume-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 4px 0 2px; padding: 0; list-style: none; }
+.cume-legend .stack-chip { gap: 6px; }
+/* dashboard trade feed: header keeps its grey pill, with quiet 12px labels */
+#root#root .page.home.dc .feed-card .feed-scroll .feed-table thead th { height: 32px; padding-top: 0 !important; padding-bottom: 0 !important; border: 0 !important; color: var(--ink-faint, #98a2b3) !important; font-size: 12px !important; font-weight: 500 !important; letter-spacing: 0; }
+/* week strip: each day is a toggle. The picked day takes the darker frame (it starts on the last journaled day) */
+#root#root .page.home .hw-day.duo { display: flex; flex-direction: column; width: 100%; min-width: 0; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .16s ease, transform .16s cubic-bezier(.22,.82,.28,1); }
+#root#root .page.home .hw-day.duo.is-today:not(.is-picked) { background: var(--duo-frame, #f7f7f8) !important; }
+#root#root .page.home .hw-day.duo.is-future:not(.is-picked) { background: #fafafb !important; }
+#root#root .page.home .hw-day.duo:not(.is-picked):hover { background: #f0f1f3 !important; }
+#root#root .page.home .hw-day.duo.is-picked { background: #e9eaec !important; }
+#root#root .page.home .hw-day.duo:active { transform: scale(.985); }
+#root#root .page.home .hw-day.duo:focus-visible { outline: 2px solid var(--accent, #2e7cf6); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { #root#root .page.home .hw-day.duo { transition: none; } #root#root .page.home .hw-day.duo:active { transform: none; } }
+/* the range tag in the Top earners head: a small grey tag in line with the title */
+#root#root .page.home.dc .dc-wide .te-shell > .shell-head em { display: inline-flex; align-items: center; height: 24px; margin-left: auto; padding: 0 9px; border: 0 !important; border-radius: 7px; background: var(--fill, #f2f4f7) !important; color: var(--ink-soft, #475467) !important; font-size: 12px !important; font-style: normal; font-weight: 500 !important; line-height: 1; white-space: nowrap; }
+/* dashboard cumulative chart: lines lead, the area fills are only a faint wash under them */
+#root .page.home.dc .cume-card .cume-area { opacity: .2; }
+#root .page.home.dc .cume-card .cume-run-area { opacity: .12; }
+#root .page.home.dc .cume-card .cume-dd-area { opacity: .22; }
+/* dashboard header without a subtitle: the frame hugs the title evenly, and the page rhythm (16px) follows it */
+#root#root .page.home.dc .home-welcome { justify-content: center; min-height: 48px; margin-bottom: 16px; padding: 0 4px; }
+#root#root .page.home.dc .home-welcome h1 { padding: 0 10px; line-height: 48px; }
+#root .page.home.dc .cume-card .cume-dd-base { display: none; }
+/* stat tiles: the headline figure sits top right, level with the title, its small print right under it; the visual takes the rest */
+#root#root .page.home.dc .score-panel .stat-tile { position: relative; }
+#root#root .page.home.dc .score-panel .stat-tile .tile-main { position: absolute; top: 10px; right: 16px; z-index: 1; pointer-events: none; }
+#root#root .page.home.dc .score-panel .stat-tile .dc-fig { align-items: flex-end; gap: 2px; text-align: right; }
+#root#root .page.home.dc .score-panel .stat-tile .dc-fig strong { font-size: 22px; line-height: 26px; letter-spacing: -.035em; }
+#root#root .page.home.dc .score-panel .stat-tile > .shell-body { display: flex !important; flex-direction: column; justify-content: flex-end; padding-top: 22px !important; }
+#root#root .page.home.dc .score-panel .stat-tile :is(.dc-bleed, .tile-rows.dc-inset) { flex: 1 1 auto; height: auto; min-height: 64px; }
+#root#root .page.home.dc .score-panel .stat-tile .tile-rows.dc-inset { position: absolute; left: 16px; right: 16px; bottom: 16px; top: 66px; height: auto; }
+#root#root .page.home.dc .score-panel .stat-tile .dc-bleed { align-self: stretch; width: auto; }
+/* give the visual a little more room now that the figure no longer sits above it */
+#root#root .page.home.dc .score-panel .stat-tile :is(.dc-bleed) { min-height: 72px; }
+#root .page.home.dc .stat-tile .wb-grid { display: none; }
+/* Net P&L day bars: calmer fills, the gross track a faint tint of the same hue behind the net bar */
+.wb-day.is-pos .wb-net { fill: #22c47d; } .wb-day.is-pos .wb-gross { fill: #22c47d; fill-opacity: .16; }
+.wb-day.is-neg .wb-net { fill: #f5615a; } .wb-day.is-neg .wb-gross { fill: #f5615a; fill-opacity: .16; }
+.wb-none { fill: #eceef2; }
+.wb svg:has(.wb-day.is-active) .wb-day:not(.is-active) :is(.wb-net, .wb-gross) { opacity: .35; }
+/* stat tiles let hover cards spill past their edge instead of clipping them */
+#root#root .page.home.dc .score-panel .stat-tile, #root#root .page.home.dc .score-panel .stat-tile > .shell-body { overflow: visible !important; }
+#root#root .page.home.dc .score-panel .stat-tile:has(.tip, [class*="tooltip"], .chart-tip) { z-index: 5; }
+/* softer outcome tones for the Net P&L day bars */
+.wb-day.is-pos .wb-net { fill: #4fd497; } .wb-day.is-pos .wb-gross { fill: #4fd497; fill-opacity: .18; }
+.wb-day.is-neg .wb-net { fill: #f68a83; } .wb-day.is-neg .wb-gross { fill: #f68a83; fill-opacity: .2; }
+#root#root .page.home.dc .score-panel .stat-tile .dc-bleed { position: relative; z-index: 2; }
+/* Trades card: the Recent / Best / Worst switch sits in a footer row, matching Top earners */
+#root#root .page.home.dc .home-top .feed-card > .dc-panel-foot { height: 48px; margin-top: 0; padding: 0 12px 0 16px; border-top: 1px solid var(--line-soft, #f2f4f7); }
+#root#root .page.home.dc .home-top .feed-card > .shell-body { padding-bottom: 0 !important; }
+#root#root .page.home.dc .score-panel .stat-tile:hover { z-index: 5; }
+/* day bars shade by size: small days light, the biggest ones reach the deep tone used in Profit factor */
+.wb-day.is-pos .wb-net { fill: color-mix(in srgb, #16b871 calc(var(--depth, 0) * 160%), #8fe3bb); }
+.wb-day.is-neg .wb-net { fill: color-mix(in srgb, #f04c43 calc(var(--depth, 0) * 160%), #f9a49d); }
+/* shorter week cards: a tighter date strip and plate */
+#root#root .page.home .hw-day.duo > .hw-day-top { height: 28px !important; padding: 0 11px !important; }
+#root#root .page.home .hw-day.duo > .hw-day-top b { font-size: 12.5px; }
+#root#root .page.home .hw-day.duo .hw-day-rate { font-size: 12px; }
+#root#root .page.home .hw-day.duo > small.shell-body { padding: 6px 9px !important; font-size: 12px; line-height: 16px; }
+/* news card head: tall enough for the 15px title and the folder switch, all on one centre line */
+#root#root .page.home.dc .ns-card.duo > .ns-head { display: flex; align-items: center; gap: 10px; height: 44px !important; min-height: 0 !important; padding: 0 6px 0 14px !important; }
+#root#root .page.home.dc .ns-card.duo > .ns-head .ns-meta { line-height: 1; }
+#root#root .page.home.dc .ns-card.duo > .ns-head .ws-seg { margin-left: auto; }
+@media (max-width: 640px) {
+  #root#root .page.home.dc .ns-card.duo > .ns-head { flex-wrap: wrap; height: auto !important; row-gap: 6px; padding: 10px 6px 8px 14px !important; }
+  #root#root .page.home.dc .ns-card.duo > .ns-head .ws-seg { margin-left: 0; }
+}
+/* the news title matches the week strip's day labels (Mon 14) */
+#root#root .page.home.dc .ns-card .ns-head .card-title { font-size: 12.5px !important; font-weight: 600 !important; letter-spacing: -.01em !important; color: var(--ink, #2b2f35) !important; }
+#root#root .page.home.dc .ns-card .ns-head .ns-meta { font-size: 12px; }
+#root#root .page.home.dc .ns-card.duo > .ns-head { height: 40px !important; padding-left: 12px !important; }
+/* news head as slim as the week strip's date row: a 32px strip with a compact folder switch */
+#root#root .page.home.dc .ns-card.duo > .ns-head { height: 32px !important; padding: 0 4px 0 12px !important; }
+#root#root .page.home.dc .ns-card.duo > .ns-head .ws-seg { height: 26px !important; padding: 2px !important; }
+#root#root .page.home.dc .ns-card.duo > .ns-head .ws-seg button { height: 22px !important; padding: 0 9px !important; font-size: 12px !important; }
+@media (max-width: 640px) { #root#root .page.home.dc .ns-card.duo > .ns-head { height: auto !important; padding: 8px 4px 6px 12px !important; } }
+/* news card flipped like the week strip: the white body on top, the grey title strip underneath */
+#root#root .page.home.dc .ns-card.duo > .ns-body { order: 0; margin: 4px 4px 0 !important; }
+#root#root .page.home.dc .ns-card.duo > .ns-head { order: 1; }
+/* dashboard trade feed: tighter rows and smaller logos */
+#root#root .page.home.dc .feed-card .feed-table tbody td { height: 32px !important; padding-top: 0 !important; padding-bottom: 0 !important; font-size: 12px !important; }
+#root#root .page.home.dc .feed-card .feed-table td.ft-sym span { gap: 7px; }
+#root#root .page.home.dc .feed-card .feed-table td.ft-sym .jt-token { width: 16px !important; height: 16px !important; min-width: 16px !important; }
+#root#root .page.home.dc .feed-card .feed-table thead th { height: 28px; }

@@ -5,7 +5,6 @@
  */
 import React, { Children, isValidElement, useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Check } from 'lucide-react'
 import { useFloat } from './port/notebook-pickers'
 
 const textOf = (node) => (node == null || typeof node === 'boolean' ? '' : Array.isArray(node) ? node.map(textOf).join('') : isValidElement(node) ? textOf(node.props.children) : String(node))
@@ -129,7 +128,6 @@ export function Select({ value, onChange, children, disabled, onKeyDown, onMouse
         onMouseEnter={() => !option.disabled && setCursor(index)} onClick={() => pick(option)}
       >
         <span>{option.label || '—'}</span>
-        {option.value === current && <Check size={14} strokeWidth={2.4} aria-hidden="true"/>}
       </div>)}
     </div>, document.body)}
   </>

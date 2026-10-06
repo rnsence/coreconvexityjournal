@@ -150,7 +150,9 @@ export function Tooltip({ point, width, children, gap = 12 }) {
     // Room above the plot that still sits inside the card (its title row), so the
     // tooltip only flips when it would actually leave the card.
     const host = node.offsetParent
-    const card = host?.closest('.home-card, .module, .card, .compare-card, .win-card')
+    // measured to the nearest box that can clip it: a card's white body when it has one, else the card
+    // stat tiles let tooltips spill over their own head, so they measure to the tile itself
+    const card = host?.closest('.stat-tile') ?? host?.closest('.shell-body, .home-card, .module, .card, .compare-card, .win-card')
     const room = host && card ? Math.max(0, host.getBoundingClientRect().top - card.getBoundingClientRect().top - 6) : 0
     const next = { w: node.offsetWidth, h: node.offsetHeight, room }
     setBox((current) => (current.w === next.w && current.h === next.h && current.room === next.room ? current : next))
@@ -610,36 +612,128 @@ export function ScoreMeter({ value = 0, max = 100 }) {
 
 /** Cumulative P&L: smooth accent line, soft area, dotted drawdown bands. */
 // Designs by RNSENCE Studio
-export function CumulativeChart({ series, height: fixedHeight = 360, fill = false, privacy = false }) {
+/** Rolling window the cumulative chart uses: about an eighth of the sessions, kept between 5 and 20. */
+const rollingSpan = (series) => Math.min(20, Math.max(5, Math.round(series.length / 8)))
+
+/** The cumulative chart's headline numbers, for cards that show them outside the chart. */
+export function cumeSummary(series) {
+  if (!series.length) return null
+  const span = rollingSpan(series), last = series[series.length - 1], from = Math.max(0, series.length - span)
+  return {
+    span, net: last.cumulative,
+    peak: Math.max(...series.map((point) => point.cumulative - point.drawdown)),
+    drawdown: Math.min(0, ...series.map((point) => point.drawdown)),
+    rolling: Math.round((last.cumulative - (from > 0 ? series[from - 1].cumulative : 0)) * 100) / 100,
+  }
+}
+
+/** The cumulative chart's series key, laid out in a row for under the chart. */
+// A row of chips folded into one: the first in front, the rest stacked behind it; a click fans them out
+// (wrapping onto more lines when the row is wider than the parent).
+function ChipStack({ items, label, className = '' }) {
+  const [open, setOpen] = useState(false)
+  const [widths, setWidths] = useState([])
+  const [room, setRoom] = useState(0)
+  const mirror = useRef(null)
+  const box = useRef(null)
+  const sig = items.map((item) => item.key).join('|')
+  useLayoutEffect(() => {
+    const measure = () => { if (mirror.current) setWidths([...mirror.current.children].map((el) => el.offsetWidth)) }
+    measure()
+    document.fonts?.ready.then(measure)
+  }, [sig, items])
+  useLayoutEffect(() => {
+    const parent = box.current?.parentElement
+    if (!parent) return undefined
+    const read = () => { const cs = getComputedStyle(parent); setRoom(parent.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)) }
+    const observer = new ResizeObserver(read)
+    observer.observe(parent)
+    return () => observer.disconnect()
+  }, [])
+  useEffect(() => {
+    if (!open) return undefined
+    const key = (event) => { if (event.key === 'Escape') setOpen(false) }
+    window.addEventListener('keydown', key)
+    return () => window.removeEventListener('keydown', key)
+  }, [open])
+  const limit = room > 0 ? room : Infinity
+  let x = 0
+  let y = 0
+  let widest = 0
+  const offsets = widths.map((w) => {
+    if (x > 0 && x + w > limit) { x = 0; y += 32 }
+    const at = [x, y]
+    x += w + 6
+    widest = Math.max(widest, x - 6)
+    return at
+  })
+  return <div className={`chip-stack-wrap ${className}`} ref={box}>
+    <span ref={mirror} className="chip-mirror" aria-hidden="true">{items.map((item) => <span key={item.key} className="stack-chip">{item.content}</span>)}</span>
+    <button type="button" className={`chip-stack${open ? ' is-open' : ''}${widths.length ? '' : ' is-measuring'}`} aria-expanded={open}
+      aria-label={open ? `Collapse ${label}` : `Show ${label}: ${items.map((item) => item.key).join(', ')}`}
+      style={{ '--n': items.length, '--w0': `${widths[0] ?? 0}px`, '--wopen': `${widest}px`, '--hopen': `${y + 26}px` }} onClick={() => setOpen((value) => !value)}>
+      {items.map((item, i) => <span key={item.key} className="stack-chip" style={{ '--i': i, '--ox': `${offsets[i]?.[0] ?? 0}px`, '--oy': `${offsets[i]?.[1] ?? 0}px`, '--tw': `${widths[i] ?? 0}px`, zIndex: items.length - i }}><span>{item.content}</span></span>)}
+    </button>
+  </div>
+}
+
+// Header stats for the cumulative chart.
+export function CumeChips({ items, privacy }) {
+  return <ChipStack label="stats" className="cume-chips" items={items.map((item) => ({ key: item.label,
+    content: <><b className="sc-label">{item.label}</b><b className={`sc-value${item.tone ? ` tone-${item.tone}` : ''}`}>{money(item.value, { privacy, decimals: 0 })}</b></> }))}/>
+}
+
+export function CumeKey({ span }) {
+  return <ul className="cume-legend" aria-label="Legend">
+    <li className="stack-chip"><i className="k-net"/>Net cumulative</li>
+    <li className="stack-chip"><i className="k-run"/>Rolling {span}-session net</li>
+    <li className="stack-chip"><i className="k-dd"/>Drawdown</li>
+  </ul>
+}
+
+export function CumulativeChart({ series, height: fixedHeight = 360, fill = false, privacy = false, side = true }) {
   const [ref, size] = useSize()
   const [active, setActive] = useState(null)
   const width = size.width || 900
   // In fill mode the chart takes whatever height the card gives it.
   const height = fill ? Math.max(220, size.height || fixedHeight) : fixedHeight
-  const pad = { top: 18, right: 168, bottom: 54, left: 74 }
+  // without the side column (key and stats shown by the card instead) the plot runs the full width
+  // without the side column the card shows the key and stats, and the tooltip carries dates and values, so no axis labels
+  const pad = side ? { top: 18, right: 168, bottom: 54, left: 74 } : { top: 14, right: 0, bottom: 4, left: 0 }
   const plotWidth = Math.max(60, width - pad.left - pad.right)
   const plotHeight = Math.max(80, height - pad.top - pad.bottom)
 
   const values = series.map((point) => point.cumulative)
   const peaks = series.map((point) => point.cumulative - point.drawdown)
-  const span = Math.min(20, Math.max(5, Math.round(series.length / 8)))
+  const span = rollingSpan(series)
   const rolling = series.map((point, index) => {
     const from = Math.max(0, index - span + 1)
     return Math.round((point.cumulative - (from > 0 ? series[from - 1].cumulative : 0)) * 100) / 100
   })
 
+  // drawdown: how far below the best equity so far each session closed (0 at a new high), drawn under $0
+  const under = series.map((point) => Math.min(0, point.drawdown))
+
   const min = Math.min(0, ...values, ...rolling)
-  const max = Math.max(1, ...values, ...peaks, ...rolling)
+  const max = Math.max(1, ...values, ...rolling)
+  // the drawdown gets its own band along the foot of the plot, on its own scale, so it never squashes
+  const band = Math.round(plotHeight * .24), bandGap = 0
+  const mainHeight = plotHeight - band - bandGap
+  const deepest = Math.min(-1, ...under)
   const ticks = niceTicks(min, max, 7)
   const top = Math.max(max, ticks[ticks.length - 1] ?? max)
   const xAt = (index) => pad.left + (series.length === 1 ? plotWidth / 2 : (index / (series.length - 1)) * plotWidth)
-  const yAt = (value) => pad.top + (1 - (value - min) / ((top - min) || 1)) * plotHeight
+  const yAt = (value) => pad.top + (1 - (value - min) / ((top - min) || 1)) * mainHeight
+  const ddTop = pad.top + mainHeight + bandGap
+  const yDd = (value) => ddTop + (value / deepest) * band
 
   const netPoints = values.map((value, index) => [xAt(index), yAt(value)])
   const line = smoothPath(netPoints)
   const area = line ? `${line} L ${xAt(series.length - 1)} ${yAt(min)} L ${xAt(0)} ${yAt(min)} Z` : ''
-  const peakPath = peaks.map((value, index) => `${index ? 'L' : 'M'} ${xAt(index)} ${yAt(value)}`).join(' ')
+  const underPath = smoothPath(under.map((value, index) => [xAt(index), Math.max(ddTop, yDd(value))]))
+  const underArea = underPath ? `${underPath} L ${xAt(series.length - 1)} ${ddTop} L ${xAt(0)} ${ddTop} Z` : ''
   const runPath = smoothPath(rolling.map((value, index) => [xAt(index), yAt(value)]))
+  const runArea = runPath ? `${runPath} L ${xAt(series.length - 1)} ${yAt(min)} L ${xAt(0)} ${yAt(min)} Z` : ''
 
   const labelEvery = Math.max(1, Math.ceil(series.length / Math.max(2, Math.floor(plotWidth / 150))))
   const dateLabels = []
@@ -658,11 +752,11 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
   const point = active == null ? null : series[active]
 
   return <div className={`cume-chart${fill ? ' fill' : ''}`} ref={ref} style={fill ? undefined : { height }}>
-    <div className="cume-side">
+    {side && <div className="cume-side">
       <ul className="cume-key">
         <li><i className="k-net"/>Net cumulative</li>
-        <li><i className="k-peak"/>High-water mark</li>
         <li><i className="k-run"/>Rolling {span}-session net</li>
+        <li><i className="k-dd"/>Drawdown</li>
       </ul>
       {series.length > 0 && <dl className="cume-stats">
         <div><dt>Net</dt><dd className={`tone-${toneOf(values[lastIndex])}`}>{money(values[lastIndex], { privacy, decimals: 0 })}</dd></div>
@@ -670,37 +764,52 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
         <div><dt>Max drawdown</dt><dd className="tone-neg">{money(Math.min(0, ...series.map((point) => point.drawdown)), { privacy, decimals: 0 })}</dd></div>
         <div><dt>Rolling {span}</dt><dd className={`tone-${toneOf(rolling[lastIndex])}`}>{money(rolling[lastIndex], { privacy, decimals: 0 })}</dd></div>
       </dl>}
-    </div>
-    <svg width={width} height={height} role="img" aria-label="Daily net cumulative profit and loss with high-water mark and rolling net" onPointerMove={track} onPointerLeave={() => setActive(null)}>
+    </div>}
+    <svg width={width} height={height} role="img" aria-label="Daily net cumulative profit and loss, rolling net and drawdown" onPointerMove={track} onPointerLeave={() => setActive(null)}>
       <defs>
         <linearGradient id="cumeFill" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="var(--accent)" stopOpacity=".7" />
           <stop offset="35%" stopColor="var(--accent)" stopOpacity=".34" />
           <stop offset="100%" stopColor="var(--accent)" stopOpacity=".02" />
         </linearGradient>
+        <linearGradient id="cumeDdFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#f5615a" stopOpacity=".08" />
+          <stop offset="100%" stopColor="#f5615a" stopOpacity=".42" />
+        </linearGradient>
+        <linearGradient id="cumeRunFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#1f4fc4" stopOpacity=".55" />
+          <stop offset="100%" stopColor="#1f4fc4" stopOpacity=".04" />
+        </linearGradient>
       </defs>
 
       {ticks.map((tick) => <g key={tick}>
         <line className="cume-grid" x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)} />
-        <text className="cume-axis" x={pad.left - 12} y={yAt(tick) + 4} textAnchor="end">{compactMoney(tick, { privacy })}</text>
+        {side && <text className="cume-axis" x={pad.left - 12} y={yAt(tick) + 4} textAnchor="end">{compactMoney(tick, { privacy })}</text>}
       </g>)}
 
       {area && <path className="cume-area" d={area} />}
-      {peakPath && <path className="cume-peak" d={peakPath} vectorEffect="non-scaling-stroke" />}
+      <line className="cume-dd-base" x1={pad.left} x2={pad.left + plotWidth} y1={ddTop} y2={ddTop} />
+      {underArea && <path className="cume-dd-area" d={underArea} />}
+      {underPath && <path className="cume-dd" d={underPath} vectorEffect="non-scaling-stroke" />}
+      {runArea && <path className="cume-run-area" d={runArea} />}
       {runPath && <path className="cume-run" d={runPath} vectorEffect="non-scaling-stroke" />}
       {line && <path className="cume-line" d={line} vectorEffect="non-scaling-stroke" />}
 
-      {dateLabels.map((index) => (
-        <text key={series[index].date} className="cume-axis" x={xAt(index)} y={height - 28} textAnchor={index === 0 ? 'start' : index === lastIndex ? 'end' : 'middle'}>
-          {axisDate(series[index].date)}
+      {side && dateLabels.map((index) => (
+        <text
+          key={series[index].date} className="cume-axis" y={side ? height - 28 : height - 8}
+          x={side ? xAt(index) : Math.min(width - 10, Math.max(10, xAt(index)))}
+          textAnchor={index === 0 ? 'start' : index === lastIndex ? 'end' : 'middle'}
+        >
+          {side ? axisDate(series[index].date) : shortDate(series[index].date)}
         </text>
       ))}
-      <text className="cume-axis-title" x={pad.left + plotWidth / 2} y={height - 8} textAnchor="middle">Session</text>
-      <text className="cume-axis-title" textAnchor="middle" transform={`rotate(-90 16 ${pad.top + plotHeight / 2}) translate(0 0)`} x="16" y={pad.top + plotHeight / 2 + 4}>Cumulative P&L</text>
+      {side && <text className="cume-axis-title" x={pad.left + plotWidth / 2} y={height - 8} textAnchor="middle">Session</text>}
+      {side && <text className="cume-axis-title" textAnchor="middle" transform={`rotate(-90 16 ${pad.top + plotHeight / 2}) translate(0 0)`} x="16" y={pad.top + plotHeight / 2 + 4}>Cumulative P&L</text>}
 
       {point && <>
-        <line className="cume-cross" x1={xAt(active)} y1={pad.top} x2={xAt(active)} y2={pad.top + plotHeight} />
-        <circle className="cume-focus peak" cx={xAt(active)} cy={yAt(peaks[active])} r="4" />
+        <line className="cume-cross" x1={xAt(active)} y1={pad.top} x2={xAt(active)} y2={ddTop + band} />
+        {under[active] < 0 && <circle className="cume-focus dd" cx={xAt(active)} cy={yDd(under[active])} r="3.5" />}
         <circle className="cume-focus run" cx={xAt(active)} cy={yAt(rolling[active])} r="4" />
         <circle className="cume-focus" cx={xAt(active)} cy={yAt(point.cumulative)} r="4.5" />
       </>}
@@ -710,9 +819,8 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
         <div className="tip-title">{longDate(point.date)}</div>
         <TipRows rows={[
           { label: 'Net cumulative', value: money(point.cumulative, { privacy }), tone: toneOf(point.cumulative) },
-          { label: 'High-water mark', value: money(peaks[active], { privacy }) },
           { label: `Rolling ${span}-session`, value: money(rolling[active], { privacy, decimals: 0 }), tone: toneOf(rolling[active]) },
-          { label: 'Off peak', value: money(point.drawdown, { privacy, decimals: 0 }), tone: toneOf(point.drawdown) },
+          { label: 'Drawdown', value: under[active] < 0 ? money(under[active], { privacy, decimals: 0 }) : 'At a high', tone: under[active] < 0 ? 'neg' : undefined },
           { label: 'Session P&L', value: money(point.pnl, { privacy }), tone: toneOf(point.pnl) },
           { label: 'Trades', value: `${point.trades}` },
         ]} />
@@ -954,6 +1062,58 @@ export function ScoreRings({ items, title, subtitle, size = 156 }) {
     <ul className="sr-legend">
       {items.map((item, index) => <li key={item.label} className={active === index ? 'is-on' : ''}
         onPointerEnter={() => setActive(index)} onPointerLeave={() => setActive(null)}>
+        <i style={{ background: tones[index % tones.length] }}/>{item.label}<b>{Math.round(item.value)}</b>
+      </li>)}
+    </ul>
+  </div>
+}
+
+/**
+ * Score parts as a radial bar chart: one quarter per part, each holding a slim beam per month (oldest to latest,
+ * clockwise) whose length is that month's part score over a grey track, drawn as round-ended beams. The latest
+ * month is the strongest shade. Hovering a beam reads it out in the centre.
+ */
+export function ScoreRadial({ items, history, title, subtitle, size = 144 }) {
+  const [active, setActive] = useState(null)
+  const c = size / 2, r0 = size * .29, r1 = size / 2 - 2
+  const tones = ['#1d5fd0', '#2e7cf6', '#6ea5f8', '#8fb8fa']
+  const months = history.length
+  const sector = 360 / Math.max(1, items.length), sectorGap = 12
+  const step = (sector - sectorGap) / Math.max(1, months)
+  // beam width from the room at the inner edge, so neighbouring beams never touch; round caps take half of it each end
+  const beam = Math.max(3, Math.min(10, (2 * Math.PI * (r0 + 4) * step) / 360 - 2.5))
+  const inner = r0 + 4 + beam / 2, outer = r1 - beam / 2
+  const reach = (value) => inner + (outer - inner) * Math.max(0, Math.min(1, value / 100))
+  const polar = (r, deg) => { const a = ((deg - 90) * Math.PI) / 180; return [c + r * Math.cos(a), c + r * Math.sin(a)] }
+  const shown = active == null ? null : history[active.m].values[active.i]
+  return <div className="score-rings score-radial">
+    <div className="sr-plot" style={{ width: size, height: size }} onPointerLeave={() => setActive(null)}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`${subtitle} ${title}`}>
+        {items.map((item, i) => history.map((month, m) => {
+          const angle = i * sector + sectorGap / 2 + step * (m + .5)
+          const [x0, y0] = polar(inner, angle), [x1, y1] = polar(outer, angle)
+          const value = month.values[i]
+          const [xv, yv] = polar(reach(value ?? 0), angle)
+          const on = active && active.i === i && active.m === m
+          return <g key={`${item.label}-${month.key}`} className={`rb-bar${active && !on ? ' is-dim' : ''}`} onPointerEnter={() => setActive({ i, m })}>
+            <line x1={x0} y1={y0} x2={x1} y2={y1} strokeWidth={beam} className="rb-track"/>
+            {value != null && <line
+              x1={x0} y1={y0} x2={xv} y2={yv} strokeWidth={beam} stroke={tones[i % tones.length]} className="rb-fill"
+              style={{ opacity: .32 + (.68 * (m + 1)) / months, '--d': `${(i * months + m) * 22}ms` }}
+            />}
+            <line x1={x0} y1={y0} x2={x1} y2={y1} strokeWidth={beam + 3} stroke="transparent"/>
+          </g>
+        }))}
+        {/* the centre reads out the hovered beam over three short lines, so a long part name never reaches the beams */}
+        <g className="sr-center">
+          <text x={c} y={c - 11} textAnchor="middle" className="sr-sub">{active ? items[active.i].label : subtitle}</text>
+          <text x={c} y={c + 11} textAnchor="middle" className="sr-title">{active ? (shown == null ? '—' : Math.round(shown)) : title}</text>
+          {active && <text x={c} y={c + 25} textAnchor="middle" className="sr-sub rb-month">{history[active.m].label}</text>}
+        </g>
+      </svg>
+    </div>
+    <ul className="sr-legend">
+      {items.map((item, index) => <li key={item.label} className={active?.i === index ? 'is-on' : ''}>
         <i style={{ background: tones[index % tones.length] }}/>{item.label}<b>{Math.round(item.value)}</b>
       </li>)}
     </ul>

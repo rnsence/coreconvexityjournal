@@ -1,21 +1,23 @@
 /**
  * Accounts: trading accounts with their prop-firm rules — drawdown, daily loss, profit
- * target and payout meters, suggested status, rule editing, and a position sizer.
+ * target and payout meters, suggested status and rule editing.
  * Seeded from `propAccounts`; edits persist in localStorage.
  */
 import React, { useMemo, useState } from 'react'
-import { Archive, Calculator, ChevronDown, Landmark, Plus } from 'lucide-react'
-import { PageHead, MetricStrip, Card } from '../workspace'
-import { Sheet, Field } from '../dialogs'
+import { ChevronLeft, ChevronRight, Landmark } from 'lucide-react'
+import { FirmLogo, PageHead, MetricStrip, Card } from '../workspace'
+import { Drawer, Sheet, Field } from '../dialogs'
 import { money, toneOf } from '../viz'
 import { tradeLog } from '../data'
-import { STATUS_LABELS, accountForTrade, loadAccounts, saveAccounts, sizePosition, uid } from './trading-data'
+import { STATUS_LABELS, accountForTrade, loadAccounts, saveAccounts, uid } from './trading-data'
 import { Select } from '../select'
 import './accounts.css'
 
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`
 const num = (value) => (value == null || value === '' ? null : Number(value))
 const STATUS_CHIP = { active: 'Active', funded: 'Funded', blown: 'Blown', 'failed-eval': 'Failed eval' }
+// a prop account that's still trading toward its target is in evaluation; "active" only means something for personal accounts
+const statusLabel = (account) => (account.content.type === 'prop' && account.content.status === 'active' ? 'Evaluation' : STATUS_CHIP[account.content.status] ?? account.content.status)
 const isClosed = (account) => ['blown', 'failed-eval'].includes(account.content.status)
 const latestDay = () => tradeLog.reduce((max, trade) => (trade.date > max ? trade.date : max), '')
 
@@ -72,14 +74,14 @@ function Meter({ label, detail, value, danger }) {
 }
 
 /** §9 AccountRulesPanel. */
-function RulesPanel({ account, status, privacy, onMark }) {
+function RulesPanel({ account, status, privacy, onMark, top = true }) {
   const fmt = (value) => money(value, { privacy, sign: false, decimals: 0 })
   const [marking, setMarking] = useState(false)
   return <div className="ac-rules" aria-label={`Rules for ${account.content.name}`}>
-    <div className="ac-rules-top">
+    {top && <div className="ac-rules-top">
       <span>Balance <b>{money(status.balance, { privacy, sign: false })}</b></span>
       <small>{plural(status.trades, 'trade')} · net <em className={`tone-${toneOf(status.net)}`}>{money(status.net, { privacy })}</em></small>
-    </div>
+    </div>}
     {(status.breaches.length > 0 || status.target?.reached) && <div className="ac-badges">
       {status.breaches.map((kind) => <span key={kind} className="ac-badge neg">{kind === 'drawdown' ? 'Drawdown breached' : 'Daily loss limit hit'}</span>)}
       {status.target?.reached && <span className="ac-badge pos">Profit target reached</span>}
@@ -178,50 +180,42 @@ function EditRulesForm({ account, onSubmit, onCancel }) {
   </form>
 }
 
-function PositionSizer({ accounts, statuses, privacy }) {
-  const [form, setForm] = useState({ account: accounts.find((account) => account.content.type === 'prop')?.id ?? accounts[0]?.id ?? '', symbol: 'MNQ', entry: '21450.25', stop: '21430', mode: 'money', budget: '500' })
-  const [result, setResult] = useState(null)
-  const [pending, setPending] = useState(false)
-  const set = (key) => (event) => { setForm((current) => ({ ...current, [key]: event.target.value })); setResult(null) }
-  const balance = statuses[form.account]?.balance ?? null
-  const ready = form.entry && form.stop && form.budget && form.symbol && (form.mode === 'money' || form.account)
-  return <Card title="Position sizer" className="ac-sizer" aside={<span className="ws-hint">Risk per unit = |entry − stop| × point value</span>}>
-    <div className="ac-sizer-grid" role="group" aria-label="Position sizer">
-      <Field label="Account">
-        <Select value={form.account} onChange={set('account')}>
-          <option value="">No account</option>
-          {accounts.map((account) => <option key={account.id} value={account.id}>{account.content.name}</option>)}
-        </Select>
-      </Field>
-      <Field label="Symbol"><input value={form.symbol} onChange={set('symbol')} placeholder="MNQ"/></Field>
-      <Field label="Entry"><input inputMode="decimal" value={form.entry} onChange={set('entry')} placeholder="21450.25"/></Field>
-      <Field label="Stop"><input inputMode="decimal" value={form.stop} onChange={set('stop')} placeholder="21430"/></Field>
-      <Field label="Risk as">
-        <Select aria-label="Risk as" value={form.mode} onChange={set('mode')}>
-          <option value="money">Money</option>
-          <option value="percent" disabled={!form.account}>% of account</option>
-        </Select>
-      </Field>
-      <Field label="Risk budget"><input aria-label="Risk budget" inputMode="decimal" value={form.budget} onChange={set('budget')} placeholder={form.mode === 'money' ? '500' : '1'}/></Field>
-      <button
-        type="button" className="start-day ac-size-btn" disabled={!ready || pending}
-        onClick={() => { setPending(true); window.setTimeout(() => { setResult(sizePosition({ ...form, balance })); setPending(false) }, 260) }}
-      ><Calculator size={15}/> {pending ? 'Sizing…' : 'Size'}</button>
+/** One account in the drawer: balance, every rule meter and the payout note, then edit and archive. */
+function AccountDrawer({ account, status, index, total, privacy, onStep, onClose, onMark, onEdit, onArchive }) {
+  const prop = account.content.type === 'prop'
+  return <Drawer label={account.content.name} viewKey={account.id} width={440} onClose={onClose}>
+    <div className="trade-panel dw-trade ac-dw">
+      <div className="tp-head">
+        <div>
+          <div className="tp-title"><b>{account.content.name}</b></div>
+          <small>{account.content.firm ?? 'Self-managed'} · started at {money(status.size, { privacy, sign: false, decimals: 0 })}</small>
+        </div>
+        <div className="tp-nav">
+          <button type="button" aria-label="Previous account" disabled={index <= 0} onClick={() => onStep(-1)}><ChevronLeft size={15}/></button>
+          <button type="button" aria-label="Next account" disabled={index >= total - 1} onClick={() => onStep(1)}><ChevronRight size={15}/></button>
+        </div>
+      </div>
+      <div className="tp-result">
+        <strong>{money(status.balance, { privacy, sign: false })}</strong>
+        <span className={`ac-status s-${account.content.status}`}>{statusLabel(account)}</span>
+      </div>
+      <p className="ac-dw-sub"><b className={`tone-${toneOf(status.net)}`}>{money(status.net, { privacy })}</b> · {plural(status.trades, 'trade')}</p>
+      {prop && <RulesPanel account={account} status={status} privacy={privacy} onMark={onMark} top={false}/>}
+      <div className="dw-actions ac-dw-actions">
+        <button type="button" className="ws-outline" onClick={onArchive}>Archive</button>
+        {prop && <button type="button" className="start-day" onClick={onEdit}>Edit rules</button>}
+      </div>
     </div>
-    {result?.error && <p className="ac-error" role="alert">{result.error}</p>}
-    {result && !result.error && <div className="ac-sized" aria-live="polite">
-      <strong>{result.quantity}</strong>
-      <span>{result.unit} risk <b>{money(result.risk, { privacy, sign: false })}</b> of {money(result.budget, { privacy, sign: false })}{result.balance != null ? ` (balance ${money(result.balance, { privacy, sign: false, decimals: 0 })} USD)` : ''} · {result.perUnit} a unit at the stop, point value {result.pointValue}{result.futures ? ' from the futures table' : ''}. Rounded down.</span>
-    </div>}
-  </Card>
+  </Drawer>
 }
 
 // Designs by RNSENCE Studio
-export function AccountsPage({ privacy }) {
+export function AccountsPage({ privacy, embedded = false }) {
   const [accounts, setAccounts] = useState(loadAccounts)
   const [sheet, setSheet] = useState(null)
   const [draft] = useState(EMPTY_ACCOUNT)
   const [showClosed, setShowClosed] = useState(false)
+  const [openId, setOpenId] = useState(null)
   const today = useMemo(latestDay, [])
   const update = (next) => { setAccounts(next); saveAccounts(next) }
   const live = accounts.filter((account) => !account.archived)
@@ -235,73 +229,65 @@ export function AccountsPage({ privacy }) {
   const editing = accounts.find((account) => account.id === sheet?.id)
   const fmt0 = (value) => money(value, { privacy, sign: false, decimals: 0 })
 
+  // a card is the account at a glance: logo, name, status, balance and result; limits and rules are in the drawer
   const renderCard = (account) => {
-        const status = statuses[account.id]
-        return <article key={account.id} className={`home-card ac-card${['blown', 'failed-eval'].includes(account.content.status) ? ' is-closed' : ''}`}>
-          <header>
-            <div>
-              <h3>{account.content.name}</h3>
-              <p>{account.content.firm ?? 'Self-managed'} · {account.content.type}</p>
-            </div>
-            <span className={`ac-status s-${account.content.status}`}>{STATUS_CHIP[account.content.status] ?? account.content.status}</span>
-          </header>
-          <p className="ac-size">{money(Number(account.content.size), { privacy, sign: false })}</p>
-          {account.content.type === 'prop'
-            ? <RulesPanel
-                account={account} status={status} privacy={privacy}
-                onMark={(next) => patchContent(account.id, { ...account.content, status: next, status_date: today })}
-              />
-            : <div className="ac-rules"><div className="ac-rules-top"><span>Balance <b>{money(status.balance, { privacy, sign: false })}</b></span><small>{plural(status.trades, 'trade')} · net <em className={`tone-${toneOf(status.net)}`}>{money(status.net, { privacy })}</em></small></div></div>}
-          <div className="ac-actions">
-            {account.content.type === 'prop' && <button type="button" className="ac-btn" onClick={() => setSheet({ kind: 'rules', id: account.id })}>Edit rules</button>}
-            <button type="button" className="ac-btn" onClick={() => update(accounts.map((item) => (item.id === account.id ? { ...item, archived: true } : item)))}><Archive size={13}/> Archive</button>
-          </div>
-        </article>
-      }
-
-  return <div className="page home ws-page ac-page">
-    <PageHead
-      title="Accounts"
-      meta={`${plural(live.length, 'account')} · ${live.filter((account) => account.content.type === 'prop').length} prop · rules checked for ${today}`}
-      actions={<button className="start-day" onClick={() => setSheet({ kind: 'add' })}><Plus size={16} strokeWidth={2.2}/> Add account</button>}
-    />
-
-    <MetricStrip items={[
-      { label: 'Trading accounts', value: String(live.length), sub: `${live.filter((account) => ['active', 'funded'].includes(account.content.status)).length} open · ${live.filter((account) => ['blown', 'failed-eval'].includes(account.content.status)).length} closed out` },
-      { label: 'Starting capital', value: money(starting, { privacy, sign: false }), sub: 'Sum of starting sizes, USD' },
-      { label: 'Recorded trades', value: String(tradeLog.length), sub: 'All trades in the journal' },
-      { label: 'Trading P&L', value: money(tradingPnl, { privacy }), tone: toneOf(tradingPnl), sub: 'Net, USD' },
-    ]}/>
-
-    <Card title="Rule status" className="ac-status-card" aside={<span className="ws-hint">Measured against the limits you entered</span>}>
-      <div className="ws-table-wrap">
-        <table className="feed-table ws-table compact ledger ac-table">
-          <thead><tr><th>Account</th><th>Status</th><th>Balance</th><th>Drawdown left</th><th>Daily loss</th><th>Profit target</th><th>Payout</th></tr></thead>
-          <tbody>{sorted.map((account) => {
-            const status = statuses[account.id]
-            return <tr key={account.id} className={isClosed(account) ? 'ac-row-closed' : ''}>
-              <td><b>{account.content.name}</b><small>{account.content.firm ?? 'Self-managed'} · {account.content.type}</small></td>
-              <td><span className={`ac-status s-${account.content.status}`}>{STATUS_CHIP[account.content.status] ?? account.content.status}</span></td>
-              <td>{money(status.balance, { privacy, sign: false })}</td>
-              <td className={status.drawdown?.breached ? 'tone-neg' : ''}>{status.drawdown ? fmt0(Math.max(0, status.drawdown.remaining)) : '—'}</td>
-              <td>{status.daily ? <>{fmt0(status.daily.used)} <em className="ac-of">/ {fmt0(status.daily.limit)}</em></> : '—'}</td>
-              <td>{status.target ? (status.target.reached ? <span className="ac-badge pos">Reached</span> : `${fmt0(status.target.remaining)} to go`) : '—'}</td>
-              <td>{status.payout ? (status.payout.eligible ? <span className="ac-badge pos">Eligible</span> : `${fmt0(status.payout.remaining)} to go`) : '—'}</td>
-            </tr>
-          })}</tbody>
-        </table>
+    const status = statuses[account.id]
+    const open = () => setOpenId(account.id)
+    // inside settings each account is one slim row: logo, name, tag, balance and result
+    if (embedded) return <button key={account.id} type="button" className={`ac-row${isClosed(account) ? ' is-closed' : ''}`} aria-haspopup="dialog" onClick={open}>
+      {account.content.firm ? <FirmLogo firm={account.content.firm}/> : <span className="acct-logo ac-row-self" aria-hidden="true">{account.content.name.slice(0, 1)}</span>}
+      <span className="ac-row-id"><b>{account.content.name}</b><small>{account.content.firm ?? 'Self-managed'} · {plural(status.trades, 'trade')}</small></span>
+      {account.content.type === 'prop' && <span className={`ac-status s-${account.content.status}`}>{statusLabel(account)}</span>}
+      <span className="ac-row-fig"><b>{money(status.balance, { privacy, sign: false, decimals: 0 })}</b><em className={`tone-${toneOf(status.net)}`}>{money(status.net, { privacy, decimals: 0 })}</em></span>
+    </button>
+    return <article
+      key={account.id} className={`home-card ac-card${isClosed(account) ? ' is-closed' : ''}`} role="button" tabIndex={0} aria-haspopup="dialog"
+      onClick={open} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open() } }}
+    >
+      <header>
+        {account.content.firm && <FirmLogo firm={account.content.firm}/>}
+        <div className="ac-id">
+          <h3>{account.content.name}</h3>
+          <p>{account.content.firm ?? 'Self-managed'} · {plural(status.trades, 'trade')}</p>
+        </div>
+        {/* a personal account has no evaluation or payout stage, so it carries no tag */}
+        {account.content.type === 'prop' && <span className={`ac-status s-${account.content.status}`}>{statusLabel(account)}</span>}
+      </header>
+      <div className="ac-figure">
+        <strong>{money(status.balance, { privacy, sign: false, decimals: 0 })}</strong>
+        <em className={`tone-${toneOf(status.net)}`}>{money(status.net, { privacy, decimals: 0 })}</em>
       </div>
-    </Card>
+    </article>
+  }
 
-    <div className="ac-grid">
-      {sorted.filter((account) => !isClosed(account)).map(renderCard)}
-      {!live.length && <Card className="ac-empty"><Landmark size={18}/><p>Add a personal or prop account to start recording trades.</p></Card>}
-    </div>
+  // embedded in Settings: the section heading stands in for the page title and the stats strip is left out
+  return <div className={`page home ws-page ac-page${embedded ? ' is-embedded' : ''}`}>
+    {embedded ? <div className="embed-actions"><button className="start-day" onClick={() => setSheet({ kind: 'add' })}>Add account</button></div> : <PageHead
+      title="Accounts"
+      meta={`${plural(live.filter((account) => !isClosed(account)).length, 'open account')} · ${live.filter((account) => !isClosed(account) && account.content.type === 'prop').length} prop`}
+      actions={<button className="start-day" onClick={() => setSheet({ kind: 'add' })}>Add account</button>}
+    />}
+
+    {!embedded && <MetricStrip items={[
+      { label: 'Accounts', value: String(live.length), sub: `${live.filter((account) => !isClosed(account)).length} open · ${live.filter(isClosed).length} closed` },
+      { label: 'Starting capital', value: money(starting, { privacy, sign: false, decimals: 0 }), sub: 'All accounts' },
+      { label: 'Trades', value: String(tradeLog.length), sub: 'Across all accounts' },
+      { label: 'Net P&L', value: money(tradingPnl, { privacy, decimals: 0 }), tone: toneOf(tradingPnl), sub: 'All accounts' },
+    ]}/>}
+
+    {/* open accounts in two groups: prop firm accounts, then personal ones */}
+    {[['prop', 'Prop firms'], ['personal', 'Personal']].map(([type, label]) => {
+      const list = sorted.filter((account) => !isClosed(account) && (type === 'prop' ? account.content.type === 'prop' : account.content.type !== 'prop'))
+      return list.length > 0 && <section key={type} className="ac-section" aria-label={label}>
+        <h2 className="ac-section-label">{label}</h2>
+        <div className="ac-grid">{list.map(renderCard)}</div>
+      </section>
+    })}
+    {!live.length && <div className="ac-grid"><Card className="ac-empty"><Landmark size={18}/><p>Add a personal or prop account to start recording trades.</p></Card></div>}
     {sorted.some(isClosed) && <section className={`ac-closed${showClosed ? ' is-open' : ''}`}>
       <button type="button" className="ac-closed-head" aria-expanded={showClosed} onClick={() => setShowClosed(!showClosed)}>
-        <span className="ac-closed-title">Closed Out <em>{sorted.filter(isClosed).length}</em></span>
-        <span className="ac-closed-meta">Blown or failed evaluations keep their rules and history</span>
-        <span className="cc-caret-box"><ChevronDown size={14} strokeWidth={2.2}/></span>
+        <span className="ac-closed-title">Closed out</span>
+        <span className="ac-closed-meta">Blown or failed, kept for history</span>
       </button>
       {showClosed && <div className="ac-grid">{sorted.filter(isClosed).map(renderCard)}</div>}
     </section>}
@@ -309,7 +295,23 @@ export function AccountsPage({ privacy }) {
       {plural(archived.length, 'archived account')} · Restore
     </button>}
 
-    <PositionSizer accounts={live} statuses={statuses} privacy={privacy}/>
+    {(() => {
+      // open accounts step among themselves; closed ones among the closed
+      const opened = sorted.find((item) => item.id === openId)
+      if (!opened) return null
+      const group = sorted.filter((account) => isClosed(account) === isClosed(opened))
+      const index = group.findIndex((account) => account.id === openId)
+      if (index < 0) return null
+      const account = group[index]
+      return <AccountDrawer
+        account={account} status={statuses[account.id]} index={index} total={group.length} privacy={privacy}
+        onStep={(delta) => { const next = group[index + delta]; if (next) setOpenId(next.id) }}
+        onClose={() => setOpenId(null)}
+        onMark={(next) => patchContent(account.id, { ...account.content, status: next, status_date: today })}
+        onEdit={() => { setOpenId(null); setSheet({ kind: 'rules', id: account.id }) }}
+        onArchive={() => { setOpenId(null); update(accounts.map((item) => (item.id === account.id ? { ...item, archived: true } : item))) }}
+      />
+    })()}
 
     {sheet?.kind === 'add' && <Sheet title="Add trading account" subtitle="Set up a personal or prop trading account." onClose={() => setSheet(null)} width={560} className="ac-sheet">
       <AccountForm initial={draft} onCancel={() => setSheet(null)} onSubmit={(content) => {

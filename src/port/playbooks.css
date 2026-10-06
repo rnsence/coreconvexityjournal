@@ -247,3 +247,77 @@
 @media (max-width: 620px) { .pb-page .pb-bar .ws-seg button { flex: none; white-space: nowrap; } }
 .pb-page .pb-matrix-table td, .pb-page .pb-matrix-table th { height: 36px; }
 .pb-page .pb-matrix-table td:last-child, .pb-page .pb-review-table td .tone-pos, .pb-page .pb-review-table td .tone-neg { font-weight: 500; }
+
+/* playbook cards, simplified: name and net on top, then one plate with the description and a single stats row,
+   then a one-line footer. Three to a row so nothing wraps; editing and archiving happen in the drawer. */
+.pb-page .pb-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .pb-page .pb-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .pb-page .pb-grid { grid-template-columns: minmax(0, 1fr); } }
+.pb-page .pb-net { font-weight: 500; }
+.page.pb-page .pb-card.duo > .pb-card-body { gap: 14px !important; }
+/* one line of description; anything longer ends in an ellipsis (the full text is in the drawer) */
+.pb-page .pb-card .pb-desc { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; -webkit-line-clamp: none; }
+.pb-page .pb-card .pb-stats dl > div { border-left-color: var(--line-soft, #f2f4f7); }
+.pb-page .pb-card-foot { overflow: hidden; white-space: nowrap; }
+.pb-page .pb-card-foot > span { overflow: hidden; text-overflow: ellipsis; }
+.page.pb-page .pb-card.duo > .pb-card-head { padding-right: 14px !important; }
+/* a short last row sits centred under the full rows: a wrapping row of fixed-width cards instead of a grid */
+.pb-page .pb-grid { display: flex; flex-wrap: wrap; justify-content: center; }
+.pb-page .pb-grid > .pb-card { flex: 0 0 calc((100% - 24px) / 3); min-width: 0; }
+@media (max-width: 1100px) { .pb-page .pb-grid > .pb-card { flex-basis: calc((100% - 12px) / 2); } }
+@media (max-width: 700px) { .pb-page .pb-grid > .pb-card { flex-basis: 100%; } }
+/* reviews: ten rows on show, the rest scroll under a sticky header */
+.pb-page .pb-review-scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.pb-page .pb-review-scroll::-webkit-scrollbar { width: 0; }
+.pb-page .pb-review-scroll thead th { position: sticky; top: 0; z-index: 1; }
+.pb-page .pb-review-scroll thead { position: relative; }
+/* centring is for a short row under full ones; a single row (fewer cards than columns) starts at the left */
+.pb-page .pb-grid:not(:has(> :nth-child(4))) { justify-content: flex-start; }
+@media (max-width: 1100px) { .pb-page .pb-grid:not(:has(> :nth-child(4))) { justify-content: center; } .pb-page .pb-grid:not(:has(> :nth-child(3))) { justify-content: flex-start; } }
+/* review result in words: quiet when every rule held, ink when one broke (no colour, it isn't an outcome) */
+.pb-page .pb-follow { color: var(--ink-soft); font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.pb-page .pb-follow:not(.is-ok) { color: var(--ink); }
+
+/* ---------- review drawer: the trade on top, one row per rule with a small switch, risk, a note, save */
+.pb-review-dw { display: flex; flex-direction: column; gap: 14px; }
+.pb-review-dw .pb-dw-state { margin-left: auto; align-self: center; padding: 2px 8px; border-radius: 999px; background: var(--fill, #f2f4f7); color: var(--ink-soft); font-size: 11px; font-weight: 600; }
+.pb-review-dw .pb-dw-state.is-done { background: rgba(18,183,106,.1); color: #067647; }
+.pb-review-dw .pb-dw-state.is-stale { background: rgba(247,144,9,.12); color: #b54708; }
+.pb-review-dw .pb-rv-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pb-review-dw .pb-rv-label { color: var(--ink-faint, #98a2b3); font-size: 12px; }
+.pb-review-dw .pb-rv-row .ws-select, .pb-review-dw .pb-rv-row select { max-width: 230px; }
+.pb-review-dw .pb-rv-note { margin: -6px 0 0; color: var(--ink-faint, #98a2b3); font-size: 11.5px; }
+.pb-review-dw .pb-rv-note button { padding: 0; border: 0; background: none; color: var(--accent, #2e7cf6); font: inherit; font-weight: 600; cursor: pointer; }
+.pb-review-dw .pb-rv-rules { display: flex; flex-direction: column; gap: 6px; padding-top: 12px; border-top: 1px solid var(--line-soft, #f2f4f7); }
+.pb-review-dw .pb-rv-rules .pb-dw-label { display: flex; justify-content: space-between; color: var(--ink-faint, #98a2b3); font-size: 12px; }
+.pb-review-dw .pb-rv-rules .pb-dw-label em { font-style: normal; font-variant-numeric: tabular-nums; }
+.pb-review-dw .pb-rv-rules ol { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.pb-review-dw .pb-rv-rules li { display: flex; align-items: center; gap: 12px; min-height: 40px; padding: 6px 6px 6px 12px; border-radius: 12px; background: var(--canvas-soft, #f7f8fa); transition: background .15s ease; }
+.pb-review-dw .pb-rv-rules li > span { flex: 1; min-width: 0; color: var(--ink, #2b2f35); font-size: 12.5px; line-height: 1.4; }
+.pb-review-dw .pb-mark-seg { flex: none; height: 28px; padding: 3px; gap: 2px; border-radius: 9px; background: #eceef2; }
+.pb-review-dw .pb-mark-seg button { height: 22px; padding: 0 9px; border: 0; border-radius: 7px; background: none; color: var(--ink-soft, #475467); font: inherit; font-size: 11.5px; font-weight: 500; cursor: pointer; transition: background .13s ease, color .13s ease; }
+.pb-review-dw .pb-mark-seg button:hover { color: var(--ink, #2b2f35); }
+.pb-review-dw .pb-mark-seg button.active { background: #fff; color: var(--ink, #2b2f35); font-weight: 600; box-shadow: 0 1px 1px rgba(16,24,40,.06), 0 1px 3px -1px rgba(16,24,40,.12); }
+.pb-review-dw .pb-mark-seg button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(46,124,246,.18); }
+.pb-review-dw .pb-rv-notes { width: 100%; box-sizing: border-box; min-height: 56px; padding: 9px 11px; border: 1px solid var(--line, #eaecf0); border-radius: 10px; background: #fff; color: var(--ink, #2b2f35); font: inherit; font-size: 12.5px; resize: vertical; }
+.pb-review-dw .pb-rv-notes:focus { outline: none; border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(46,124,246,.12); }
+.pb-review-dw .pb-rv-actions { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.pb-review-dw .pb-rv-summary { margin-right: auto; color: var(--ink-faint, #98a2b3); font-size: 12px; }
+.pb-review-dw .pb-muted { margin: 0; color: var(--ink-faint, #98a2b3); font-size: 12.5px; }
+@media (max-width: 520px) { .pb-review-dw .pb-rv-rules li { flex-direction: column; align-items: stretch; gap: 8px; padding: 10px; } .pb-review-dw .pb-mark-seg { align-self: flex-start; } }
+
+/* reviews table: the whole row opens the drawer */
+.pb-page .pb-rv-tr { cursor: pointer; }
+.pb-page .pb-rv-tr > td { transition: background .13s ease; }
+.pb-page .pb-rv-tr:hover > td, .pb-page .pb-rv-tr.is-selected > td { background: var(--fill, #f2f4f7); }
+
+
+/* review drawer controls: the same 34px pill buttons as the playbook drawer, and a quiet 32px playbook select */
+.pb-review-dw .dw-actions > * { flex: none; }
+.dw-trade.pb-review-dw .dw-actions > .ws-outline, .dw-trade.pb-review-dw .dw-actions > .start-day { height: 34px; display: inline-flex; align-items: center; padding: 0 14px; border: 0; border-radius: 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .13s ease, box-shadow .13s ease, opacity .13s ease; }
+.dw-trade.pb-review-dw .dw-actions > .ws-outline { background: #fff; color: var(--ink); box-shadow: var(--shadow-tight), inset 0 0 0 1px rgba(16,24,40,.06); }
+.dw-trade.pb-review-dw .dw-actions > .start-day:disabled { opacity: .35; cursor: default; }
+.pb-review-dw .dw-actions button:active:not(:disabled) { transform: translateY(1px); }
+.pb-review-dw .pb-rv-row select { height: 32px; min-width: 180px; padding: 0 12px; -webkit-appearance: none; appearance: none; border: 1px solid var(--line); border-radius: 9px; background: #fff; color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 500; text-align: left; cursor: pointer; transition: border-color .13s ease, box-shadow .13s ease; }
+.pb-review-dw .pb-rv-row select:hover { border-color: #d0d5dd; }
+.pb-review-dw .pb-rv-row select:focus-visible { outline: none; border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(46,124,246,.12); }

@@ -3,7 +3,7 @@
  * missed trades) over that day's trade metrics. Saving makes a new revision.
  */
 import React, { useId, useMemo, useState } from 'react'
-import { ArrowUpRight, NotebookPen, Plus, X } from 'lucide-react'
+import { ArrowUpRight, Plus, X } from 'lucide-react'
 import { Choice, Sheet } from '../dialogs'
 import { SETUP_CODES } from '../analytics'
 import { tradeLog } from '../data'
@@ -139,5 +139,5 @@ export function DaySheet({ date, privacy, onClose, onSaved, openJournal }) {
 }
 
 export function TodayJournalButton({ onClick }) {
-  return <button type="button" className="ws-outline cal-today-journal" onClick={onClick}><NotebookPen size={14} strokeWidth={2}/> Today's journal</button>
+  return <button type="button" className="ws-outline cal-today-journal" onClick={onClick} aria-label="Open today's journal">Journal</button>
 }

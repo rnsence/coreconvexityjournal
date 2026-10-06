@@ -36,14 +36,21 @@ function seriesOver(list, dates) {
   })
 }
 
-const VIEWS = [
-  ['equity', 'Equity', (m) => m?.net_pnl],
-  ['drawdown', 'Drawdown', (m) => m?.max_drawdown],
-  ['daily', 'Per day', (m) => m?.average_day],
-]
+const VIEWS = [['equity', 'Equity'], ['drawdown', 'Drawdown'], ['daily', 'Daily P&L']]
+// the two compared sets: iris and cyan — distinct in hue and lightness, clear of the P&L green/red
+const A_INK = '#5b5bd6', B_BLUE = '#0797b9'
 
-/** Ref 06: metric tabs above the chart; the selected tab drives both series. */
-export function DuelChart({ listA, listB, ma, mb, privacy }) {
+export const RANGES = [['1M', 31], ['3M', 92], ['6M', 183], ['YTD', 'ytd'], ['All', null]]
+/** First date included by a range, counted back from the latest trade date (null = everything). */
+export function rangeStart(range, lastDate) {
+  const spec = RANGES.find(([key]) => key === range)?.[1]
+  if (!spec || !lastDate) return null
+  return spec === 'ytd' ? `${lastDate.slice(0, 4)}-01-01` : new Date(Date.parse(`${lastDate}T12:00:00Z`) - spec * 864e5).toISOString().slice(0, 10)
+}
+
+/** One timeline, both sets, in a terminal-style chart: thin lines, right-hand axis with each set's latest value
+ *  tagged on it, a view switch (equity / drawdown / daily) and a range control. A summary row closes it. */
+export function DuelChart({ listA, listB, privacy, range, setRange }) {
   const [view, setView] = useState('equity')
   const dates = useMemo(() => [...new Set([...listA, ...listB].map((trade) => trade.date))].sort(), [listA, listB])
   const a = useMemo(() => seriesOver(listA, dates), [listA, dates])
@@ -51,44 +58,72 @@ export function DuelChart({ listA, listB, ma, mb, privacy }) {
   const tip = (value) => (value == null ? '—' : money(value, { privacy }))
   const axisMoney = (value) => (privacy ? '••' : compactMoney(value))
   const pick = view === 'equity' ? 'cum' : view === 'drawdown' ? 'dd' : 'day'
-  const empty = !listA.length && !listB.length
-  return <div className="rv-duel">
-    <div className="rv-tabs" role="tablist" aria-label="Compare chart">
-      {VIEWS.map(([key, label, read]) => <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? 'on' : ''} onClick={() => setView(key)}>
-        <span>{label}</span>
-        <span className="rv-tab-vals">
-          <b><i className="rv-dot a"/>{read(ma) == null ? '—' : money(read(ma), { privacy, decimals: 0 })}</b>
-          <b><i className="rv-dot b"/>{read(mb) == null ? '—' : money(read(mb), { privacy, decimals: 0 })}</b>
-        </span>
-      </button>)}
+  const story = useMemo(() => {
+    let leadA = 0, leadB = 0, crosses = 0, prev = 0, gap = { size: 0, date: null, who: null }
+    dates.forEach((date, i) => {
+      const x = a[i]?.cum, y = b[i]?.cum
+      if (x == null || y == null) return
+      const diff = y - x
+      if (diff > 0) leadB += 1; else if (diff < 0) leadA += 1
+      if (prev && diff && Math.sign(diff) !== Math.sign(prev)) crosses += 1
+      if (diff) prev = diff
+      if (Math.abs(diff) > gap.size) gap = { size: Math.abs(diff), date, who: diff > 0 ? 'B' : 'A' }
+    })
+    return { leadA, leadB, total: leadA + leadB || 1, crosses, gap }
+  }, [a, b, dates])
+  if (!listA.length && !listB.length) return <ChartState state="empty" detail="Neither set has trades."/>
+  const last = (series) => [...series].reverse().find((point) => point[pick] != null)?.[pick]
+  const leader = story.leadB > story.leadA ? 'B' : 'A'
+  const leadShare = Math.round((Math.max(story.leadA, story.leadB) / story.total) * 100)
+  const endA = last(a), endB = last(b)
+  return <div className="rv-duel3">
+    <div className="rv-duel-bar">
+      <div className="rv-switch" role="tablist" aria-label="Chart">
+        {VIEWS.map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? 'on' : ''} onClick={() => setView(key)}>{label}</button>)}
+      </div>
+      <div className="rv-range" role="group" aria-label="Range">
+        {RANGES.map(([key]) => <button key={key} type="button" aria-pressed={range === key} className={range === key ? 'on' : ''} onClick={() => setRange(key)}>{key}</button>)}
+      </div>
+    </div>
+    <div className="rv-duel-legend">
+      <span><i className="rv-swatch a"/>Set A<b>{endA == null ? '—' : privacy ? '••••' : money(endA, { decimals: 0 })}</b></span>
+      <span><i className="rv-swatch b"/>Set B<b>{endB == null ? '—' : privacy ? '••••' : money(endB, { decimals: 0 })}</b></span>
+      <small>{view === 'equity' ? 'Cumulative net P&L' : view === 'drawdown' ? 'Distance below each set\'s peak' : 'Net P&L per session'} · {dates.length} sessions</small>
     </div>
     <div className="rv-duel-chart">
-      {empty ? <ChartState state="empty" detail="Neither set has trades."/> : <ThemeProvider theme={theme}>
+      <ThemeProvider theme={theme}>
         {view === 'daily'
           ? <BarChart
-              height={240} {...cartesian} borderRadius={3}
-              xAxis={[{ scaleType: 'band', data: dates, valueFormatter: axisDate, tickInterval: everyNth(dates, 7), categoryGapRatio: 0.3, barGapRatio: 0.15 }]}
-              yAxis={[{ valueFormatter: axisMoney, width: 54, tickNumber: 4 }]}
+              height={280} {...cartesian} margin={{ ...cartesian.margin, left: 8 }} borderRadius={2}
+              xAxis={[{ scaleType: 'band', data: dates, valueFormatter: axisDate, tickInterval: everyNth(dates, 7), categoryGapRatio: 0.3, barGapRatio: 0.1 }]}
+              yAxis={[{ valueFormatter: axisMoney, width: 58, tickNumber: 5, position: 'right' }]}
               series={[
-                { id: 'a', data: a.map((point) => point.day), color: INK, label: 'Set A', valueFormatter: tip },
-                { id: 'b', data: b.map((point) => point.day), color: ACCENT, label: 'Set B', valueFormatter: tip },
+                { id: 'a', data: a.map((point) => point.day), color: A_INK, label: 'Set A', valueFormatter: tip },
+                { id: 'b', data: b.map((point) => point.day), color: B_BLUE, label: 'Set B', valueFormatter: tip },
               ]}
               hideLegend
-            ><ChartsReferenceLine y={0} lineStyle={{ stroke: 'rgba(16,24,40,.16)' }}/></BarChart>
+            ><ChartsReferenceLine y={0} lineStyle={{ stroke: 'rgba(16,24,40,.22)' }}/></BarChart>
           : <LineChart
-              height={240} {...cartesian}
+              height={280} {...cartesian} margin={{ ...cartesian.margin, left: 8 }}
               xAxis={[{ scaleType: 'point', data: dates, valueFormatter: axisDate, tickInterval: everyNth(dates, 7) }]}
-              yAxis={[{ valueFormatter: axisMoney, width: 54, tickNumber: 4 }]}
+              yAxis={[{ valueFormatter: axisMoney, width: 58, tickNumber: 5, position: 'right' }]}
               series={[
-                { id: 'a', data: a.map((point) => point[pick]), showMark: false, curve: 'monotoneX', color: INK, label: 'Set A', valueFormatter: tip, connectNulls: false, area: view === 'drawdown' },
-                { id: 'b', data: b.map((point) => point[pick]), showMark: false, curve: 'monotoneX', color: ACCENT, label: 'Set B', valueFormatter: tip, connectNulls: false, area: view === 'drawdown' },
+                { id: 'a', data: a.map((point) => point[pick]), showMark: false, curve: 'linear', color: A_INK, label: 'Set A', valueFormatter: tip, connectNulls: false },
+                { id: 'b', data: b.map((point) => point[pick]), showMark: false, curve: 'linear', color: B_BLUE, label: 'Set B', valueFormatter: tip, connectNulls: false },
               ]}
               hideLegend
-              sx={{ '& .MuiLineChart-area': { opacity: 0.08 } }}
-            ><ChartsReferenceLine y={0} lineStyle={{ stroke: 'rgba(16,24,40,.16)' }}/></LineChart>}
-      </ThemeProvider>}
+              sx={{ '& .MuiLineChart-line': { strokeWidth: 1.75 } }}
+            >
+              <ChartsReferenceLine y={0} lineStyle={{ stroke: 'rgba(16,24,40,.22)' }}/>
+            </LineChart>}
+      </ThemeProvider>
     </div>
-    <div className="rv-legend"><span><i className="rv-dot a"/>Set A</span><span><i className="rv-dot b"/>Set B</span><small>{dates.length} sessions</small></div>
+    <dl className="rv-summary">
+      <div><dt>Leader</dt><dd><b className={`lead-${leader.toLowerCase()}`}>Set {leader}</b> on {leadShare}% of sessions</dd></div>
+      <div><dt>Crossovers</dt><dd>{story.crosses}</dd></div>
+      <div><dt>Widest gap</dt><dd>{story.gap.date ? <>{privacy ? '••••' : money(story.gap.size, { decimals: 0, sign: false })} to {story.gap.who} · {axisDate(story.gap.date)}</> : '—'}</dd></div>
+      <div><dt>Range</dt><dd>{dates.length ? `${axisDate(dates[0])} – ${axisDate(dates.at(-1))}` : '—'}</dd></div>
+    </dl>
   </div>
 }
 
@@ -124,19 +159,16 @@ export function ReportCover({ report, privacy }) {
     ['Win', m.win_rate == null ? '—' : `${Math.round(m.win_rate * 100)}%`],
     ['PF', m.profit_factor == null ? '—' : m.profit_factor.toFixed(2)],
   ] : []
-  return <div className="rv-cover" aria-hidden="true">
-    <div className="rv-page">
-      <b className="rv-page-title">{report.title}</b>
-      <span className="rv-page-sub">{days.length ? `${axisDate(days[0].date)} – ${axisDate(days.at(-1).date)}` : 'No sessions'}</span>
-      {m && <div className="rv-page-kpis">{kpis.map(([label, value, tone]) => <span key={label}><small>{label}</small><b className={tone ? `tone-${tone}` : ''}>{value}</b></span>)}</div>}
-      {days.length > 0 && <div className="rv-heat" style={{ '--cols': Math.min(40, days.length) }}>
-        {days.slice(-80).map((day) => <i key={day.date} className={day.net >= 0 ? 'p' : 'n'} style={{ '--a': (0.25 + 0.75 * Math.min(1, Math.abs(day.net) / peak)).toFixed(2) }}/>)}
-      </div>}
-      {setups.length > 0 && <div className="rv-page-bars">
-        {setups.map((row) => <span key={row.key}><small>{row.label}</small><i className={row.net_pnl >= 0 ? 'p' : 'n'} style={{ '--w': `${Math.max(6, (Math.abs(row.net_pnl) / setupPeak) * 100)}%` }}/></span>)}
-      </div>}
-    </div>
-  </div>
+  // a window onto the report: a white page peeking up out of a grey panel, holding the headline figures, the days and the top setups
+  return <div className="rv-cover" aria-hidden="true"><div className="rv-q-page">
+    {m && <div className="rv-q-kpis">{kpis.map(([label, value, tone]) => <span key={label}><small>{label}</small><b className={tone ? `tone-${tone}` : ''}>{value}</b></span>)}</div>}
+    {days.length > 0 && <div className="rv-q-days">
+      {days.slice(-36).map((day) => <i key={day.date} className={day.net >= 0 ? 'p' : 'n'} style={{ '--a': (0.3 + 0.7 * Math.min(1, Math.abs(day.net) / peak)).toFixed(2) }}/>)}
+    </div>}
+    {setups.length > 0 && <div className="rv-q-bars">
+      {setups.slice(0, 2).map((row) => <span key={row.key}><small>{row.label}</small><em><i className={row.net_pnl >= 0 ? 'p' : 'n'} style={{ '--w': `${Math.max(6, (Math.abs(row.net_pnl) / setupPeak) * 100)}%` }}/></em></span>)}
+    </div>}
+  </div></div>
 }
 
 const MIX = ['#0e9f6e', '#22c47d', '#5fd49e', '#97e2bd', '#c6efda']

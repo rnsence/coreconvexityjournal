@@ -91,8 +91,6 @@ function leak(options) {
   const hours = byHour(trades).filter((bucket) => bucket.trades).sort((a, b) => a.pnl - b.pnl)
   const days = byWeekday(trades).filter((bucket) => bucket.trades).sort((a, b) => a.pnl - b.pnl)
   const worst = setups[0]
-  const cGrade = trades.filter((trade) => trade.grade === 'C' || trade.grade === 'D')
-  const cPnl = cGrade.reduce((total, trade) => total + trade.pnl, 0)
   return {
     tools: ['journal_get_metrics', 'journal_list_trades'],
     text: `In **${monthName(month)}** you took ${stats.trades} trades for ${m(stats.netPnl)} net (win rate ${percent(stats.winRate)}, profit factor ${ratio(stats.profitFactor)}).
@@ -102,9 +100,8 @@ Your biggest leak is **${worst.key}**: ${worst.trades} trades, ${m(worst.pnl)} n
 Other drags:
 - Worst hour: **${hours[0].label}** at ${m(hours[0].pnl)} over ${hours[0].trades} trades
 - Worst weekday: **${days[0].label}** at ${m(days[0].pnl)}
-- C and D grade trades: ${cGrade.length} trades, ${m(cPnl)} net
 
-Without ${worst.key} the month would have been ${m(stats.netPnl - worst.pnl)}. A simple next step: only take it with an A-grade checklist, or pause it for two weeks and compare.`,
+Without ${worst.key} the month would have been ${m(stats.netPnl - worst.pnl)}. A simple next step: only take it when every checklist rule is met, or pause it for two weeks and compare.`,
   }
 }
 

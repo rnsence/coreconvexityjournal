@@ -292,8 +292,8 @@ export function exportCSV(kind) {
     try {
       const sorted = [...tradeLog].sort((a, b) => a.timestamp - b.timestamp)
       const rows = kind === 'trades'
-        ? [['date', 'opened', 'closed', 'symbol', 'side', 'setup', 'grade', 'quantity', 'entry', 'exit', 'fees', 'net_pnl'],
-          ...sorted.map((t) => [t.date, t.time, t.closed, t.symbol, t.side, t.setup, t.grade, t.qty, t.entry, t.exit, t.fees ?? 0, t.pnl])]
+        ? [['date', 'opened', 'closed', 'symbol', 'side', 'setup', 'quantity', 'entry', 'exit', 'fees', 'net_pnl'],
+          ...sorted.map((t) => [t.date, t.time, t.closed, t.symbol, t.side, t.setup, t.qty, t.entry, t.exit, t.fees ?? 0, t.pnl])]
         : [['date', 'time', 'symbol', 'action', 'quantity', 'price', 'fee', 'file', 'row'],
           ...sorted.flatMap((t, index) => [
             [t.date, t.time, t.symbol, t.side === 'Long' ? 'Buy' : 'Sell', t.qty, t.entry, ((t.fees ?? 0) / 2).toFixed(2), 'journal-fills.csv', index * 2 + 2],

@@ -71,7 +71,7 @@ Did I follow my plan? Yes — entry, size and stop were all written in the pre-m
 
 Emotions and focus: calm. Took the partial at 1R and let the rest run to VWAP.
 
-> Result: +$1,034.74, graded A+.`,
+> Result: +$1,034.74, every rule followed.`,
     attachments: [{ name: 'spy-failed-breakout.png', seed: 18 }, { name: 'cpi-notes.txt', text: 'CPI 0.2% m/m vs 0.3% est. Core 0.3% in line.\nYields −6bp on the print.\n' }],
   },
   {
@@ -87,10 +87,10 @@ Lesson and next action: hard stop in the order ticket, not a mental one. **Follo
   },
   {
     id: 'n-0905', date: '2026-09-05', tags: ['plan', 'es', 'thesis'], symbols: ['ES'], revisions: 1,
-    title: 'September plan: fewer trades, higher grade',
+    title: 'September plan: fewer trades, cleaner process',
     body: `Goals for the month:
 1. Max **4 trades a day**. The numbers say trades 5+ are net negative.
-2. Only A and A+ setups after 11:00.
+2. Only setups that meet every checklist rule after 11:00.
 3. Journal every session before 16:30.
 
 Risk: $500 daily loss limit on the 50K eval, $250 per trade.

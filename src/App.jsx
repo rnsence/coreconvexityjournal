@@ -5,12 +5,10 @@ import { TradesPage, PropFirmsPage } from './workspace'
 import { LogTradeDialog, QuickJump } from './dialogs'
 import { NotebookPage } from './port/notebook'
 import { AssistantPage } from './port/assistant'
-import { ImportPage } from './port/import'
-import { AccountsPage } from './port/accounts'
 import { ProgressPage } from './port/progress'
 import { PlaybooksPage } from './port/playbooks'
 import { ReportsPage } from './port/reports'
-import { SettingsPage } from './port/settings'
+import { SettingsDialog } from './port/settings'
 import { tradingDays } from './data'
 
 const primaryPages = ['Dashboard', 'Calendar', 'Daily journal', 'Trades', 'Prop firms', 'Reports', 'Notebook', 'Playbooks', 'Progress', 'Assistant', 'Import', 'Accounts', 'Settings', 'Profile', 'Privacy', 'Terms', 'Disclaimer', 'Support']
@@ -19,7 +17,10 @@ const latestDay = () => tradingDays().at(-1)
 // Designs by RNSENCE Studio
 export default function App() {
   const initial = decodeURIComponent(location.hash.slice(1))
-  const [page, setPageState] = useState(primaryPages.includes(initial) ? initial : 'Dashboard')
+  // Settings is a pop-up over the current page rather than a page of its own; Import and Accounts live inside it
+  const IN_SETTINGS = ['Settings', 'Import', 'Accounts']
+  const [page, setPageState] = useState(primaryPages.includes(initial) && !IN_SETTINGS.includes(initial) ? initial : 'Dashboard')
+  const [settingsOpen, setSettingsOpen] = useState(IN_SETTINGS.includes(initial) ? (initial === 'Settings' ? true : initial) : false)
   const [privacy, setPrivacy] = useState(false)
   const [range, setRange] = useState('All')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -30,7 +31,10 @@ export default function App() {
   const [jumpOpen, setJumpOpen] = useState(false)
   const [dataVersion, setDataVersion] = useState(0)
 
-  const setPage = (next) => { setPageState(next); history.replaceState(null, '', `#${encodeURIComponent(next)}`); window.scrollTo(0, 0) }
+  const setPage = (next) => {
+    if (IN_SETTINGS.includes(next)) { setSettingsOpen(next === 'Settings' ? true : next); return }
+    setPageState(next); history.replaceState(null, '', `#${encodeURIComponent(next)}`); window.scrollTo(0, 0)
+  }
   const openJournal = (date) => { setJournalDate(date); setPage('Daily journal') }
   const openTrades = (query = '') => { setTradeQuery(query); setPage('Trades') }
   const openLog = () => setLogOpen(true)
@@ -57,9 +61,6 @@ export default function App() {
     if (page === 'Playbooks') return <PlaybooksPage privacy={privacy} {...nav}/>
     if (page === 'Progress') return <ProgressPage privacy={privacy} {...nav}/>
     if (page === 'Assistant') return <AssistantPage privacy={privacy} {...nav}/>
-    if (page === 'Import') return <ImportPage privacy={privacy} {...nav}/>
-    if (page === 'Accounts') return <AccountsPage privacy={privacy} {...nav}/>
-    if (page === 'Settings') return <SettingsPage privacy={privacy} {...nav}/>
     return <EmptyPage page={page}/>
   }, [page, privacy, range, journalDate, tradeQuery, dataVersion])
 
@@ -72,5 +73,7 @@ export default function App() {
     </div>
     {logOpen && <LogTradeDialog defaultDate={page === 'Daily journal' ? journalDate : undefined} onClose={() => setLogOpen(false)} onSaved={(trade) => { setLogOpen(false); openJournal(trade.date) }}/>}
     {jumpOpen && <QuickJump onClose={() => setJumpOpen(false)} {...nav}/>}
+    {settingsOpen && <SettingsDialog key={String(settingsOpen)} privacy={privacy} initialTab={settingsOpen === true ? null : settingsOpen}
+      onClose={() => { setSettingsOpen(false); if (IN_SETTINGS.includes(decodeURIComponent(location.hash.slice(1)))) history.replaceState(null, '', `#${encodeURIComponent(page)}`) }}/>}
   </div>
 }

@@ -1,0 +1,95 @@
+/* Top earners heatmap (src/port/earners-heat.jsx) */
+.eh { display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; padding: 2px 2px 0; }
+.eh-key { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-faint); font-size: 11px; }
+.eh-scale { display: inline-flex; gap: 3px; }
+.eh-scale i { width: 16px; height: 6px; border-radius: 2px; }
+
+/* label + count columns, then one equal column per month */
+/* symbol rows share the plate's height; the total and month rows keep their own */
+.eh-grid { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: 48px 38px repeat(var(--months), minmax(0, 1fr)); grid-template-rows: repeat(var(--rows), minmax(26px, 1fr)) minmax(26px, 1fr) auto; row-gap: 4px; column-gap: 4px; }
+.eh-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: stretch; min-height: 26px; padding: 0; border: 0; border-radius: 7px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+button.eh-row:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(46,124,246,.16) !important; }
+.eh-row.is-total { cursor: default; margin-top: 4px; }
+.eh-row.is-axis { min-height: 14px; cursor: default; }
+.eh-sym { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.eh-sym > :first-child { flex: none; }
+/* each symbol's logo sits in a white circle with a hairline ring, so light marks still read on the white plate */
+.eh-logo { box-sizing: border-box; width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid var(--line, #eaecf0); border-radius: 50%; background: #fff; transition: border-color .14s ease; }
+.eh-logo > * { width: 25px !important; height: 25px !important; min-width: 25px !important; }
+button.eh-row:hover .eh-logo { border-color: #d0d5dd; }
+.eh-sym, .eh-count, .eh-month { align-self: center; }
+.eh-sym b { overflow: hidden; color: var(--ink); font-size: 12px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; transition: color .14s ease; }
+.eh-row.is-total .eh-sym b { color: var(--ink); font-weight: 650; }
+.eh-count { display: inline-flex; align-items: center; justify-content: flex-end; gap: 3px; color: var(--ink-faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+.eh-trades-icon { flex: none; color: #c4cad4; }
+.eh-month { color: var(--ink-faint); font-size: 10.5px; text-align: center; }
+
+.eh-cell { display: grid; place-items: center; min-height: 26px; min-width: 0; border-radius: 5px; font-size: 10px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; transition: transform .12s ease; }
+.eh-cell:not(.is-empty):hover { transform: scale(1.06); }
+.eh-cell.is-empty { background: #f4f5f7; }
+.eh-cell.is-pos.lv-1, .eh-key .is-pos.lv-1 { background: #ddf6e8; color: #067647; } .eh-cell.is-pos.lv-2, .eh-key .is-pos.lv-2 { background: #b4ebd0; color: #067647; }
+.eh-cell.is-pos.lv-3 { background: #6fdba4; color: #05603a; } .eh-cell.is-pos.lv-4, .eh-key .is-pos.lv-4 { background: #22c47d; color: #fff; }
+.eh-cell.is-neg.lv-1 { background: #fdeceb; color: #b42318; } .eh-cell.is-neg.lv-2, .eh-key .is-neg.lv-2 { background: #fcd3cf; color: #b42318; }
+.eh-cell.is-neg.lv-3 { background: #f9a49d; color: #912018; } .eh-cell.is-neg.lv-4, .eh-key .is-neg.lv-4 { background: #f04c43; color: #fff; }
+@media (prefers-reduced-motion: reduce) { .eh-cell { transition: none; } }
+@media (max-width: 640px) { .eh-cell { font-size: 9px; letter-spacing: -.02em; } .eh-grid { column-gap: 3px; } }
+/* the all-symbols row: three logos overlapping left to right, each further back and fainter */
+.eh-stack { gap: 0; }
+.eh-stack .eh-logo + .eh-logo { margin-left: -16px; }
+.eh-stack .eh-logo:nth-child(1) { position: relative; z-index: 3; }
+.eh-stack .eh-logo:nth-child(2) { position: relative; z-index: 2; opacity: .6; }
+.eh-stack .eh-logo:nth-child(3) { position: relative; z-index: 1; opacity: .3; }
+/* the token's own inner padding is dropped here, so the mark itself fills the circle */
+.eh-logo > * { padding: 0 !important; overflow: hidden; border-radius: 50%; }
+.eh-logo > * > :is(img, svg) { width: 100% !important; height: 100% !important; object-fit: cover; }
+/* logos stand on their own: no holding circle, a touch smaller */
+.eh-logo { width: 20px; height: 20px; border: 0; background: none; }
+.eh-logo > * { width: 20px !important; height: 20px !important; min-width: 20px !important; }
+/* in the stack each logo keeps a thin white edge, which only shows where it overlaps the one behind */
+.eh-stack .eh-logo { width: 22px; height: 22px; border: 2px solid #fff; border-radius: 50%; background: #fff; box-sizing: border-box; }
+.eh-stack .eh-logo > * { width: 18px !important; height: 18px !important; min-width: 18px !important; }
+.eh-stack .eh-logo + .eh-logo { margin-left: -9px; }
+/* logos and the all-symbols stack share one centre line in their column */
+.eh-sym { justify-self: center; justify-content: center; }
+@media (max-width: 640px) { .eh-cell { font-size: 8.5px; letter-spacing: -.03em; } }
+.eh-stack .eh-logo + .eh-logo { margin-left: -13px; }
+/* shorter cells: rows cap at 28px and the grid sits centred in whatever height the card has */
+.eh-grid { grid-template-rows: repeat(var(--rows), minmax(24px, 28px)) minmax(24px, 28px) auto; align-content: center; }
+.eh-row, .eh-cell { min-height: 24px; }
+
+/* flipped: symbols across the top, months down the side; rows share the card's height so nothing sits empty */
+.eh-grid.is-flipped { display: grid; grid-template-columns: 30px repeat(var(--cols), minmax(0, 1fr)); grid-template-rows: auto repeat(var(--months), minmax(24px, 1fr)); align-content: stretch; gap: 4px; }
+.eh-grid.is-flipped .eh-corner { display: block; }
+.eh-grid.is-flipped .eh-head { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 0 0 4px; border: 0; background: none; font: inherit; cursor: pointer; }
+.eh-grid.is-flipped .eh-head.is-total { cursor: default; }
+.eh-grid.is-flipped .eh-head .eh-count { justify-content: center; }
+.eh-grid.is-flipped .eh-head:hover .eh-logo { transform: translateY(-1px); }
+.eh-grid.is-flipped .eh-head:focus-visible { outline: none; border-radius: 8px; box-shadow: 0 0 0 3px rgba(46,124,246,.16) !important; }
+.eh-grid.is-flipped .eh-logo { transition: transform .14s ease; }
+.eh-grid.is-flipped .eh-month { align-self: center; text-align: left; }
+.eh-grid.is-flipped .eh-cell { min-height: 0; height: 100%; }
+/* the key sits under the grid, at the right: label then swatches */
+.eh-key { order: 2; justify-content: flex-end; gap: 10px; }
+.eh-grid { order: 1; }
+/* the strongest step keeps dark text like the others: a deeper tint, not white on saturated colour */
+.eh-cell.is-pos.lv-4, .eh-key .is-pos.lv-4 { background: #4fd497; color: #054d30; }
+.eh-cell.is-neg.lv-4, .eh-key .is-neg.lv-4 { background: #f68a83; color: #7a1a12; }
+
+/* quiet cells: no figures, one hue per outcome mixed into white by size, a faint inner edge for definition */
+.eh-grid.is-flipped { gap: 5px; }
+.eh-cell, .eh-key .eh-scale i { --hue: #22c47d; background: color-mix(in srgb, var(--hue) calc(10% + var(--a, 0) * 72%), #fff) !important; color: transparent !important; }
+.eh-cell.is-neg, .eh-key .eh-scale i.is-neg { --hue: #f5615a; }
+.eh-cell { position: relative; border-radius: 6px; outline: 1.5px solid transparent; outline-offset: 1.5px; transition: outline-color .14s ease, transform .18s cubic-bezier(.22,.82,.28,1); }
+.eh-cell::after { content: ''; position: absolute; inset: 0; border-radius: inherit; border: 1px solid rgba(16,24,40,.04); pointer-events: none; }
+.eh-cell.is-empty { background: #f5f6f8 !important; }
+.eh-cell.is-empty::after { border-color: transparent; }
+.eh-cell:not(.is-empty):hover, .eh-cell.is-active { transform: none; outline-color: var(--ink, #2b2f35); }
+.eh-grid.is-flipped .eh-head { gap: 0; padding: 0 0 6px; }
+.eh-grid.is-flipped .eh-logo { width: 22px; height: 22px; }
+.eh-grid.is-flipped .eh-logo > * { width: 22px !important; height: 22px !important; min-width: 22px !important; }
+.eh-all { display: grid; place-items: center; height: 22px; color: var(--ink-faint, #98a2b3); font-size: 11.5px; font-weight: 500; }
+.eh-grid.is-flipped .eh-month { color: var(--ink-faint, #98a2b3); font-size: 11.5px; }
+.eh-key .eh-scale { gap: 3px; }
+.eh-key .eh-scale i { width: 10px; height: 10px; border-radius: 3px; }
+@media (prefers-reduced-motion: reduce) { .eh-cell { transition: none; } }
+@media (max-width: 520px) { .eh-key > span:first-child { display: none; } }

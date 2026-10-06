@@ -40,68 +40,38 @@ export function Dialog({ title, subtitle, onClose, children, footer, width = 520
  * Side panel: floats in from the right on a spring. Closes on Escape, a backdrop click or a swipe to the right,
  * and animates out whichever way it closes: on unmount it leaves a still copy of itself that slides away.
  */
+/**
+ * A form or detail view in the springy Drawer: title and subtitle pinned on top, the content scrolling beneath,
+ * actions pinned at the bottom. The old side-panel class names stay on the inner wrapper so each feature's
+ * palette and layout rules (cal-sheet, nb-sheet, tx-sheet...) keep applying.
+ */
 export function Sheet({ title, subtitle, onClose, children, footer, width = 480, className = '' }) {
-  const panelRef = useRef(null)
-  const backdropRef = useRef(null)
-  const closeRef = useRef(onClose)
-  closeRef.current = onClose
-  const drag = useRef(null)
-  const [dx, setDx] = useState(0)
-  useEffect(() => {
-    const onKey = (event) => { if (event.key === 'Escape') closeRef.current() }
-    const previous = document.activeElement
-    document.addEventListener('keydown', onKey)
-    document.body.classList.add('dlg-open')
-    panelRef.current?.querySelector('input, select, textarea, button')?.focus({ preventScroll: true })
-    return () => { document.removeEventListener('keydown', onKey); document.body.classList.remove('dlg-open'); previous?.focus?.() }
-  }, [])
-  // exit: however the parent removes the sheet, a still copy slides out in its place
+  const innerRef = useRef(null)
+  // A form that closes itself (Save, Close) unmounts the drawer outright; a still copy drops away in its place.
   useLayoutEffect(() => {
-    const node = backdropRef.current
+    const scrim = innerRef.current?.closest('.dw-scrim')
     return () => {
-      if (!node || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
-      const ghost = node.cloneNode(true)
-      const body = node.querySelector('.sheet-body')
-      ghost.classList.add('is-leaving')
-      ghost.setAttribute('aria-hidden', 'true')
-      ghost.inert = true
+      if (!scrim || scrim.classList.contains('is-leaving') || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
+      const ghost = scrim.cloneNode(true)
+      const view = scrim.querySelector('.dw-view.is-in')
+      ghost.classList.remove('is-open'); ghost.classList.add('is-leaving')
+      ghost.querySelector('.dw-panel')?.classList.replace('is-open', 'is-leaving')
+      ghost.setAttribute('aria-hidden', 'true'); ghost.inert = true
       document.body.appendChild(ghost)
-      const ghostBody = ghost.querySelector('.sheet-body')
-      if (body && ghostBody) ghostBody.scrollTop = body.scrollTop
+      const ghostView = ghost.querySelector('.dw-view.is-in')
+      if (view && ghostView) ghostView.scrollTop = view.scrollTop
       window.setTimeout(() => ghost.remove(), 380)
     }
   }, [])
-  const start = (event) => {
-    if (event.target.closest('button, a, input, textarea, select, label, [contenteditable="true"]')) return
-    drag.current = { x: event.clientX, y: event.clientY, at: performance.now(), locked: null }
-  }
-  const move = (event) => {
-    const d = drag.current; if (!d) return
-    const x = event.clientX - d.x, y = event.clientY - d.y
-    if (d.locked == null && Math.abs(x) + Math.abs(y) > 8) d.locked = x > 0 && Math.abs(x) > Math.abs(y)
-    if (d.locked) setDx(Math.max(0, x))
-  }
-  const end = (event) => {
-    const d = drag.current; drag.current = null
-    if (!d?.locked) { setDx(0); return }
-    const x = event.clientX - d.x, speed = x / Math.max(1, performance.now() - d.at)
-    setDx(0)
-    if (x > 110 || speed > 0.7) closeRef.current()
-  }
-  return createPortal(<div ref={backdropRef} className="sheet-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-    <aside
-      className={`sheet ${className}${dx ? ' is-dragging' : ''}`} role="dialog" aria-modal="true" aria-label={title}
-      style={{ '--sheet-width': `${width}px`, '--sheet-drag': `${dx}px` }} ref={panelRef}
-      onPointerDown={start} onPointerMove={move} onPointerUp={end} onPointerCancel={end}
-    >
-      <span className="sheet-grip" aria-hidden="true"/>
+  return <Drawer label={title} onClose={onClose} width={width}>
+    <div ref={innerRef} className={`sheet dw-sheet ${className}`}>
       <header className="dlg-head">
         <div><h2>{titleCase(title)}</h2>{subtitle && <p>{subtitle}</p>}</div>
       </header>
       <div className="sheet-body">{children}</div>
       {footer && <footer className="dlg-foot sheet-foot">{footer}</footer>}
-    </aside>
-  </div>, document.body)
+    </div>
+  </Drawer>
 }
 
 const DrawerContext = React.createContext(null)
@@ -126,6 +96,7 @@ export function Drawer({ label, onClose, children, views, viewKey, defaultView =
   const [trail, setTrail] = useState([])
   const [fading, setFading] = useState(null)
   const bodyRef = useRef(null)
+  const scrimRef = useRef(null)
   const dragRef = useRef(null)
   const closeRef = useRef(onClose)
   closeRef.current = onClose
@@ -148,14 +119,21 @@ export function Drawer({ label, onClose, children, views, viewKey, defaultView =
 
   useEffect(() => {
     const frame = requestAnimationFrame(() => setShown(true))
-    const onKey = (event) => { if (event.key === 'Escape') dismiss() }
+    // with drawers stacked (a form opened from the trade drawer), Escape closes only the top one
+    const onKey = (event) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      const open = [...document.querySelectorAll('.dw-scrim:not(.is-leaving)')]
+      if (open.length && open.at(-1) !== scrimRef.current) return
+      event.preventDefault()
+      dismiss()
+    }
     const previous = document.activeElement
     document.addEventListener('keydown', onKey)
     document.body.classList.add('dlg-open')
     return () => {
       cancelAnimationFrame(frame)
       document.removeEventListener('keydown', onKey)
-      document.body.classList.remove('dlg-open')
+      if (!document.querySelector('.dw-scrim:not(.is-leaving)')) document.body.classList.remove('dlg-open')
       previous?.focus?.()
     }
   }, [])
@@ -209,6 +187,7 @@ export function Drawer({ label, onClose, children, views, viewKey, defaultView =
   return createPortal(
     <DrawerContext.Provider value={api}>
       <div
+        ref={scrimRef}
         className={`dw-scrim ${state}`}
         onMouseDown={(event) => { if (event.target === event.currentTarget) dismiss() }}
       >
@@ -432,7 +411,6 @@ export function LogTradeDialog({ defaultDate, onClose, onSaved }) {
         </div>
         <Field label="Entry price" error={show('entry')}><input inputMode="decimal" value={form.entry} onChange={set('entry')} placeholder="0.00" aria-invalid={!!show('entry')}/></Field>
         <Field label="Exit price" error={show('exit')}><input inputMode="decimal" value={form.exit} onChange={set('exit')} placeholder="0.00" aria-invalid={!!show('exit')}/></Field>
-        <Field label="Grade" wide><Choice label="Grade" options={['A+', 'A', 'B', 'C', 'D']} value={form.grade} onChange={set('grade')} tones={{ 'A+': 'g-ap', A: 'g-a', B: 'g-b', C: 'g-c', D: 'g-d' }}/></Field>
       </div>
       <div className="dlg-foot">
         <span className="dlg-preview">Net P&L <b className={preview == null ? '' : `tone-${toneOf(preview)}`}>{preview == null ? '—' : money(preview)}</b></span>

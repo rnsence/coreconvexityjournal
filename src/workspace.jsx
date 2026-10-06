@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDownRight, ArrowUpRight, Check, ChevronDown, ChevronLeft, Download, ChevronRight, ChevronsUpDown, HandCoins, Import, Plus,
+  ArrowDownRight, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Import, Plus,
   Search, Star, X,
 } from 'lucide-react'
 import {
@@ -56,11 +56,13 @@ export function PageHead({ title, meta, actions }) {
   return <header className="home-header ws-header">
     <div className="home-greeting">
       <div className="greeting-plate">
-        <h1>{titleCase(title)}</h1>
+        <div className="ws-title-row">
+          <h1>{titleCase(title)}</h1>
+          {actions && <div className="home-actions ws-plate-actions">{actions}</div>}
+        </div>
         {meta && <p className="ws-meta">{meta}</p>}
       </div>
     </div>
-    {actions && <div className="home-actions">{actions}</div>}
   </header>
 }
 
@@ -225,7 +227,8 @@ export function GroupedColumns({ data, height = 240, privacy, series, netLoss = 
   const [ref, size] = useSize()
   const [active, setActive] = useState(null)
   const width = size.width || 520
-  const pad = { top: 12, right: 6, bottom: 26, left: 50 }
+  // no money axis: the gridlines give scale and the tooltip gives exact figures, so the bars take the full width
+  const pad = { top: 12, right: 2, bottom: 26, left: 2 }
   const plotWidth = Math.max(40, width - pad.left - pad.right)
   const plotHeight = Math.max(60, height - pad.top - pad.bottom)
   const peak = Math.max(1, ...data.flatMap((item) => [...series.map((entry) => item[entry.key]), netLoss && item.net < 0 ? -item.net : 0]))
@@ -239,7 +242,6 @@ export function GroupedColumns({ data, height = 240, privacy, series, netLoss = 
     <svg width={width} height={height} role="img">
       {ticks.map((tick) => <g key={tick}>
         <line className="cume-grid" x1={pad.left} y1={yAt(tick)} x2={pad.left + plotWidth} y2={yAt(tick)}/>
-        <text className="cume-axis" x={pad.left - 10} y={yAt(tick) + 4} textAnchor="end">{compactMoney(tick, { privacy })}</text>
       </g>)}
       {data.map((item, index) => {
         const center = pad.left + index * band + band / 2
@@ -535,7 +537,7 @@ export function TradesPage({ privacy, range = 'All', initialQuery = '', openLog 
     setSelectedId(null)
   }
   const exportCsv = () => {
-    const columns = ['date', 'time', 'closed', 'symbol', 'side', 'setup', 'qty', 'entry', 'exit', 'fees', 'pnl', 'grade']
+    const columns = ['date', 'time', 'closed', 'symbol', 'side', 'setup', 'qty', 'entry', 'exit', 'fees', 'pnl']
     const escape = (value) => (/[",\n]/.test(String(value ?? '')) ? `"${String(value).replace(/"/g, '""')}"` : String(value ?? ''))
     const rows = [columns.join(','), ...filtered.map((trade) => columns.map((column) => escape(trade[column])).join(','))]
     const link = document.createElement('a')
@@ -555,8 +557,8 @@ export function TradesPage({ privacy, range = 'All', initialQuery = '', openLog 
       title="Trades"
       meta={`${plural(scoped.length, 'closed trade')} · ${money(summarize(scoped).netPnl, { privacy })} net`}
       actions={<>
-        <button className="ws-outline" onClick={exportCsv} disabled={!filtered.length}><Download size={15}/> Export CSV</button>
-        <button className="start-day" onClick={openLog}><Plus size={16} strokeWidth={2.2}/> Log a trade</button>
+        <button className="ws-outline" onClick={exportCsv} disabled={!filtered.length}>Export CSV</button>
+        <button className="start-day" onClick={openLog}>Log a trade</button>
       </>}
     />
 
@@ -960,8 +962,32 @@ function MonthlyWaterfall({ months, height = 280, privacy = false }) {
   </div>
 }
 
+/**
+ * Tick track: a row of thin ticks, as many as fit the width, coloured left to right by `parts` ({ value, tone }) on a
+ * shared `scale`; the rest stay grey. Any part above zero shows at least one tick, so small amounts never vanish.
+ */
+function TickTrack({ parts, scale }) {
+  const ref = useRef(null)
+  const [count, setCount] = useState(60)
+  useEffect(() => {
+    const el = ref.current; if (!el) return
+    const fit = () => setCount(Math.max(12, Math.floor((el.clientWidth + 2) / 5)))
+    fit(); const observer = new ResizeObserver(fit); observer.observe(el); return () => observer.disconnect()
+  }, [])
+  const tones = []
+  parts.forEach(({ value, tone }) => {
+    if (!(value > 0) || !scale) return
+    const ticks = Math.max(1, Math.round((value / scale) * count))
+    for (let i = 0; i < ticks && tones.length < count; i += 1) tones.push(tone)
+  })
+  return <span ref={ref} className="fn-ticks" aria-hidden="true">
+    {Array.from({ length: count }, (_, i) => <i key={i} className={tones[i] ?? ''}/>)}
+  </span>
+}
+
 function FirmNetList({ rows, format }) {
-  const peak = Math.max(1, ...rows.map((row) => Math.abs(row.value)))
+  // one scale for the whole list: the biggest amount any firm paid out or cost
+  const scale = Math.max(1, ...rows.map((row) => Math.max(row.paid ?? 0, row.spent ?? 0)))
   return <ul className="firm-net">
     {rows.map((row) => <li key={row.label}>
       <div className="fn-head">
@@ -969,9 +995,8 @@ function FirmNetList({ rows, format }) {
         <span className="fn-name">{row.label}<small>{row.meta}</small></span>
         <span className={`fn-value tone-${toneOf(row.value)}`}>{format(row.value)}</span>
       </div>
-      <span className="fn-track" aria-hidden="true">
-        <i className={toneOf(row.value)} style={{ width: `${row.value < 0 ? 100 : Math.max(2, (Math.abs(row.value) / peak) * 100)}%` }}/>
-      </span>
+      {/* green = profit, then red = fees; a firm still short shows what it's paid back in grey before the red */}
+      <TickTrack scale={scale} parts={row.paid >= row.spent ? [{ value: row.paid - row.spent, tone: 'pos' }, { value: row.spent, tone: 'neg' }] : [{ value: row.paid, tone: 'paid' }, { value: row.spent - row.paid, tone: 'neg' }]}/>
     </li>)}
   </ul>
 }
@@ -1033,18 +1058,19 @@ function PayoutCaps({ accounts, payouts, privacy }) {
   return <ul className="firm-net caps-net">
     {rows.map(({ account, drawn, rules }) => {
       const cap = (value) => money(value, { privacy, sign: false, decimals: 0 })
-      return <li key={account.id}>
+      // one answer per row: what's still available this month; the payout rules sit in the hover title
+      const left = Math.max(0, rules.monthly - drawn)
+      return <li key={account.id} title={`${cap(rules.perPayout)} per payout · ${rules.taken} of ${rules.runway} payouts taken`}>
         <div className="fn-head">
           <FirmLogo firm={account.firm}/>
           <span className="fn-name">
-            <span className="caps-name">{account.firm} · {account.size / 1000}K<span className={`caps-state ${rules.state.split(' ')[0].toLowerCase()}`}>{rules.state}</span></span>
-            <small>{cap(rules.perPayout)} per payout · {rules.taken} of {rules.runway} taken</small>
+            <span className="caps-name">{account.firm} {account.size / 1000}K<span className={`caps-state ${rules.state.split(' ')[0].toLowerCase()}`}>{rules.state}</span></span>
+            <small>{cap(drawn)} of {cap(rules.monthly)} this month</small>
           </span>
-          <span className="fn-value caps-used"><b className={`caps-drawn${drawn > 0 ? ' is-drawn' : ''}`}>{cap(drawn)}</b> / {cap(rules.monthly)}</span>
+          <span className={`fn-value caps-left${left === 0 ? ' is-maxed' : ''}`}>{left === 0 ? 'Maxed' : <>{cap(left)} <em>left</em></>}</span>
         </div>
-        <span className="fn-track" aria-hidden="true">
-          {drawn > 0 && <i className="accent" style={{ width: `${Math.max(2, Math.min(100, (drawn / rules.monthly) * 100))}%` }}/>}
-        </span>
+        {/* the whole track is this month's cap; the fill is what's drawn so far */}
+        <TickTrack scale={rules.monthly} parts={[{ value: drawn, tone: 'drawn' }]}/>
       </li>
     })}
   </ul>
@@ -1121,21 +1147,92 @@ function LedgerDetail({ entry, index, total, onStep, onPick, privacy, dir = 'pic
   </div>
 }
 
+/** What a prop account card and its drawer show: P&L, the room left before the floor, and progress to target. */
+function accountFigures(account) {
+  const pnl = account.balance - account.start
+  const buffer = Math.max(0, account.balance - account.floor)
+  const bufferShare = Math.min(1, buffer / account.maxDrawdown)
+  const bufferTone = account.status === 'Breached' ? 'neg' : bufferShare > 0.6 ? 'pos' : bufferShare > 0.3 ? 'warn' : 'neg'
+  const progress = account.target ? Math.max(0, Math.min(1, pnl / (account.target - account.start))) : null
+  const statusLabel = account.status === 'Breached' ? 'Breached' : account.status === 'Passed' ? 'Passed' : account.phase
+  const goal = account.target ?? Math.round(account.size * 1.06)
+  return { pnl, buffer, bufferShare, bufferTone, progress, statusLabel, goal }
+}
+
+/** Drawer for one prop account: balance, its rules as meters, and every ledger entry on it. */
+function AccountDetail({ account, index, total, onStep, onEntry, privacy, dir = 'pick' }) {
+  const { pnl, buffer, bufferShare, bufferTone, progress, statusLabel, goal } = accountFigures(account)
+  const history = propTransactions.filter((item) => item.account === account.id).sort((a, b) => b.date.localeCompare(a.date))
+  const fmt = (value, options = {}) => money(value, { privacy, ...options })
+  const swap = `lg-swap ${dir}`
+  return <div className="trade-panel dw-trade dw-ledger dw-account">
+    <div className="tp-head">
+      <div key={`head-${account.id}`} className={swap}>
+        <div className="tp-title"><FirmLogo firm={account.firm}/><b>{account.firm} {account.size / 1000}K</b></div>
+        <small className="lg-mono">{account.id}</small>
+      </div>
+      <div className="tp-nav">
+        <button type="button" aria-label="Previous account" disabled={index <= 0} onClick={() => onStep(-1)}><ChevronLeft size={15}/></button>
+        <button type="button" aria-label="Next account" disabled={index >= total - 1} onClick={() => onStep(1)}><ChevronRight size={15}/></button>
+      </div>
+    </div>
+
+    <div key={`body-${account.id}`} className={`lg-body ${swap}`}>
+    <div className="tp-result">
+      <strong>{fmt(account.balance, { sign: false, decimals: 0 })}</strong>
+      <span className={`acct-status ${statusLabel.toLowerCase()}`}>{statusLabel}</span>
+    </div>
+
+    <dl className="tp-figures">
+      <div><dt>P&L</dt><dd className={`tone-${toneOf(pnl)}`}>{fmt(pnl, { decimals: 0 })}</dd></div>
+      <div><dt>Started at</dt><dd>{fmt(account.start, { sign: false, decimals: 0 })}</dd></div>
+      <div><dt>{account.target ? 'Target' : 'Goal'}</dt><dd>{fmt(goal, { sign: false, decimals: 0 })}</dd></div>
+      <div><dt>Floor</dt><dd>{fmt(account.floor, { sign: false, decimals: 0 })}</dd></div>
+    </dl>
+
+    <div className="acct-meters">
+      {progress != null
+        ? <div className="acct-meter">
+            <div className="acct-meter-head"><span>Profit target</span><b>{fmt(Math.max(0, pnl), { sign: false, decimals: 0 })} <em>/ {fmt(account.target - account.start, { sign: false, decimals: 0 })}</em></b></div>
+            <div className="acct-bar"><i className="accent" style={{ width: `${progress * 100}%` }}/></div>
+          </div>
+        : <div className="acct-meter">
+            <div className="acct-meter-head"><span>Payout window</span><b className={account.payoutEligible ? 'tone-pos' : undefined}>{account.payoutEligible ? 'Eligible now' : 'Not yet'}</b></div>
+            <div className="acct-bar"><i className="pos" style={{ width: account.payoutEligible ? '100%' : '40%' }}/></div>
+          </div>}
+      <div className="acct-meter">
+        <div className="acct-meter-head"><span>Drawdown room</span><b>{fmt(buffer, { sign: false, decimals: 0 })} <em>/ {fmt(account.maxDrawdown, { sign: false, decimals: 0 })}</em></b></div>
+        <div className="acct-bar"><i className={bufferTone} style={{ width: `${bufferShare * 100}%` }}/></div>
+      </div>
+    </div>
+
+    {history.length > 0 && <section className="lg-history">
+      <span className="lg-label">Ledger</span>
+      <ul>
+        {history.map((item) => <li key={ledgerKey(item)}>
+          <button type="button" onClick={() => onEntry(item)}>
+            <span className="lg-when">{shortDay(item.date)}</span>
+            <span className="lg-type">{item.type}</span>
+            <span className={`lg-amt tone-${toneOf(item.amount)}`}>{fmt(item.amount, { decimals: 0 })}</span>
+          </button>
+        </li>)}
+      </ul>
+    </section>}
+    </div>
+  </div>
+}
+
 export function PropFirmsPage({ privacy }) {
   const easternToday = useEasternToday()
   const [dialog, setDialog] = useState(null)
   const [ledgerView, setLedgerView] = useState('All')
   const [boneyardOpen, setBoneyardOpen] = useState(false)
-  const [showAll, setShowAll] = useState(false)
+  const [ledgerEnd, setLedgerEnd] = useState(false)
   const [entryKey, setEntryKey] = useState(null)
   const [entryDir, setEntryDir] = useState('pick')
   const ledgerRef = useRef(null)
-  const [openAccounts, setOpenAccounts] = useState(() => new Set())
-  const toggleAccount = (id) => setOpenAccounts((prev) => {
-    const next = new Set(prev)
-    next.has(id) ? next.delete(id) : next.add(id)
-    return next
-  })
+  const [accountId, setAccountId] = useState(null)
+  const [accountDir, setAccountDir] = useState('pick')
 
   const totals = useMemo(() => {
     const spent = propTransactions.filter((item) => item.amount < 0).reduce((sum, item) => sum - item.amount, 0)
@@ -1186,7 +1283,7 @@ export function PropFirmsPage({ privacy }) {
       const rows = propTransactions.filter((item) => item.firm === firm)
       const spent = rows.filter((item) => item.amount < 0).reduce((sum, item) => sum - item.amount, 0)
       const paid = rows.filter((item) => item.type === 'Payout').reduce((sum, item) => sum + item.amount, 0)
-      return { label: firm, value: paid - spent, meta: `${money(spent, { privacy, sign: false, decimals: 0 })} in · ${money(paid, { privacy, sign: false, decimals: 0 })} out` }
+      return { label: firm, value: paid - spent, paid, spent, meta: `${paid ? `${money(paid, { privacy, sign: false, decimals: 0 })} paid` : 'No payouts yet'} · ${money(spent, { privacy, sign: false, decimals: 0 })} spent` }
     }).sort((a, b) => b.value - a.value)
   }, [privacy])
 
@@ -1196,13 +1293,14 @@ export function PropFirmsPage({ privacy }) {
   useEffect(() => {
     if (!entryKey) return
     const at = ledger.findIndex((item) => ledgerKey(item) === entryKey)
-    if (at >= 8 && !showAll) setShowAll(true)
     const row = ledgerRef.current?.querySelectorAll('tbody tr')[at]
     const wrap = ledgerRef.current
     if (!row || !wrap) return
     const top = row.offsetTop - wrap.querySelector('thead').offsetHeight - 4
     if (top < wrap.scrollTop || row.offsetTop + row.offsetHeight > wrap.scrollTop + wrap.clientHeight) wrap.scrollTo({ top: Math.max(0, top - 40), behavior: 'smooth' })
-  }, [entryKey, showAll])
+  }, [entryKey])
+  // a new view starts from the top, with the fade back on if it runs past eight rows
+  useEffect(() => { setLedgerEnd(false); ledgerRef.current?.scrollTo({ top: 0 }) }, [ledgerView])
   const active = propAccounts.filter((account) => account.status === 'Active' || account.status === 'Passed').length
 
   // payouts less fees, per day, so the calendar reflects prop accounts only
@@ -1245,20 +1343,13 @@ export function PropFirmsPage({ privacy }) {
   const graveyardFees = graveyard.reduce((total, account) => total + (account.fee ?? 0), 0)
 
   const renderAccount = (account) => {
-      const pnl = account.balance - account.start
-      const buffer = Math.max(0, account.balance - account.floor)
-      const bufferShare = Math.min(1, buffer / account.maxDrawdown)
-      const bufferTone = account.status === 'Breached' ? 'neg' : bufferShare > 0.6 ? 'pos' : bufferShare > 0.3 ? 'warn' : 'neg'
-      const progress = account.target ? Math.max(0, Math.min(1, pnl / (account.target - account.start))) : null
-      const statusLabel = account.status === 'Breached' ? 'Breached' : account.status === 'Passed' ? 'Passed' : account.phase
-      const goal = account.target ?? Math.round(account.size * 1.06)
-      const open = openAccounts.has(account.id)
-      const drawerId = `acct-meters-${account.id}`
+      const { statusLabel, goal } = accountFigures(account)
+      const openAccount = () => { setAccountDir('pick'); setAccountId(account.id) }
       return <article
-        key={account.id} className={`acct-card${account.status === 'Breached' ? ' is-breached' : ''}${open ? ' is-open' : ''}`}
-        role="button" tabIndex={0} aria-expanded={open} aria-controls={drawerId}
-        onClick={() => toggleAccount(account.id)}
-        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleAccount(account.id) } }}
+        key={account.id} className={`acct-card${account.status === 'Breached' ? ' is-breached' : ''}`}
+        role="button" tabIndex={0} aria-haspopup="dialog" aria-label={`${account.firm} ${account.size / 1000}K account details`}
+        onClick={openAccount}
+        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openAccount() } }}
       >
         <header>
           <FirmLogo firm={account.firm}/>
@@ -1273,21 +1364,6 @@ export function PropFirmsPage({ privacy }) {
             <strong>{money(account.balance, { privacy, sign: false, decimals: 0 })}<em className="acct-goal">/{money(goal, { privacy, sign: false, decimals: 0 })}</em></strong>
           </div>
         </header>
-        <div className="acct-drawer" id={drawerId} inert={!open}><div className="acct-meters">
-          {progress != null
-            ? <div className="acct-meter">
-                <div className="acct-meter-head"><span>Profit target</span><b>{money(Math.max(0, pnl), { privacy, sign: false, decimals: 0 })} <em>/ {money(account.target - account.start, { privacy, sign: false, decimals: 0 })}</em></b></div>
-                <div className="acct-bar"><i className="accent" style={{ width: `${progress * 100}%` }}/></div>
-              </div>
-            : <div className="acct-meter">
-                <div className="acct-meter-head"><span>Payout window</span><b className={account.payoutEligible ? 'tone-pos' : undefined}>{account.payoutEligible ? 'Eligible now' : 'Not yet'}</b></div>
-                <div className="acct-bar"><i className="pos" style={{ width: account.payoutEligible ? '100%' : '40%' }}/></div>
-              </div>}
-          <div className="acct-meter">
-            <div className="acct-meter-head"><span>Drawdown room</span><b>{money(buffer, { privacy, sign: false, decimals: 0 })} <em>/ {money(account.maxDrawdown, { privacy, sign: false, decimals: 0 })}</em></b></div>
-            <div className="acct-bar"><i className={bufferTone} style={{ width: `${bufferShare * 100}%` }}/></div>
-          </div>
-        </div></div>
       </article>
   }
 
@@ -1296,8 +1372,8 @@ export function PropFirmsPage({ privacy }) {
       title="Prop firms"
       meta={`${plural(propAccounts.length, 'account')} · ${active} active · ${money(totals.fundedCapital, { privacy, sign: false, decimals: 0 })} funded capital`}
       actions={<>
-        <button className="ws-outline" onClick={() => setDialog('entry')}><HandCoins size={15}/> Record payout</button>
-        <button className="start-day" onClick={() => setDialog('account')}><Plus size={16} strokeWidth={2.2}/> Add account</button>
+        <button className="ws-outline" onClick={() => setDialog('entry')}>Record payout</button>
+        <button className="start-day" onClick={() => setDialog('account')}>Add account</button>
       </>}
     />
 
@@ -1328,6 +1404,20 @@ export function PropFirmsPage({ privacy }) {
     <div className="acct-grid">
       {liveAccounts.map((account) => renderAccount(account))}
     </div>
+    {(() => {
+      // live and breached accounts step within their own group
+      const group = liveAccounts.some((account) => account.id === accountId) ? liveAccounts : propAccounts.filter((account) => account.status === 'Breached')
+      const index = group.findIndex((account) => account.id === accountId)
+      if (index < 0) return null
+      const account = group[index]
+      return <Drawer label={`${account.firm} ${account.size / 1000}K account`} viewKey="account" width={420} onClose={() => setAccountId(null)}>
+        <AccountDetail
+          account={account} index={index} total={group.length} privacy={privacy} dir={accountDir}
+          onStep={(delta) => { const next = group[index + delta]; if (next) { setAccountDir(delta > 0 ? 'next' : 'prev'); setAccountId(next.id) } }}
+          onEntry={(item) => { setAccountId(null); setLedgerView('All'); setEntryDir('pick'); setEntryKey(ledgerKey(item)) }}
+        />
+      </Drawer>
+    })()}
 
 
 
@@ -1345,10 +1435,8 @@ export function PropFirmsPage({ privacy }) {
             <div className="flow-lead">
               <span>Return on fees</span>
               <strong>{flow.multiple == null ? '—' : `${flow.multiple.toFixed(1)}×`}</strong>
-              <div className="flow-split" aria-hidden="true">
-                <i className="spent" style={{ flex: flow.spent || 1 }}/>
-                <i className="paid" style={{ flex: flow.paid || 0.0001 }}/>
-              </div>
+              {/* the same tick track as the firm rows: fees in (grey), then payouts out (blue) */}
+              <TickTrack scale={flow.spent + flow.paid} parts={[{ value: flow.spent, tone: 'paid' }, { value: flow.paid, tone: 'drawn' }]}/>
               <small>{money(flow.spent, { privacy, sign: false, decimals: 0 })} in · {money(flow.paid, { privacy, sign: false, decimals: 0 })} out</small>
             </div>
             <dl className="flow-stats">
@@ -1374,7 +1462,10 @@ export function PropFirmsPage({ privacy }) {
 
     <div className="ws-grid halves ledger-row">
     <Card shell title="Ledger" aside={<Segmented options={['All', 'Payouts', 'Expenses']} value={ledgerView} onChange={setLedgerView} label="Ledger view" className="cal-match"/>}>
-      <div className={`ws-table-wrap lg-scroll${showAll ? ' is-open' : ''}`} ref={ledgerRef}>
+      <div
+        className={`ws-table-wrap lg-scroll${ledger.length > 8 && !ledgerEnd ? ' has-more' : ''}`} ref={ledgerRef}
+        onScroll={(event) => { const el = event.currentTarget; setLedgerEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 2) }}
+      >
         <table className="feed-table ws-table compact ledger">
           <thead><tr><th>Date</th><th>Firm</th><th>Account</th><th>Type</th><th>Status</th><th>Amount</th></tr></thead>
           <tbody>{ledger.map((item, index) => <tr
@@ -1395,12 +1486,6 @@ export function PropFirmsPage({ privacy }) {
           </tr>)}</tbody>
         </table>
       </div>
-      {ledger.length > 8 && <button type="button" className="ws-more" aria-expanded={showAll} onClick={() => {
-        if (showAll) ledgerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-        setShowAll(!showAll)
-      }}>
-        {showAll ? 'Show fewer' : `Show all ${ledger.length} entries`}
-      </button>}
     </Card>
     {(() => {
       const index = ledger.findIndex((item) => ledgerKey(item) === entryKey)
@@ -1417,9 +1502,16 @@ export function PropFirmsPage({ privacy }) {
 
     <Card
       shell title="Payout calendar" className="prop-cal-card"
-      aside={<div className="pc-legend">
-        <span><i className="pos"/>Payout</span>
-        <span><i className="neg"/>Fee</span>
+      aside={<div className="pc-tools">
+        <div className="pc-legend">
+          <span><i className="pos"/>Payout</span>
+          <span><i className="neg"/>Fee</span>
+        </div>
+        <div className="pc-month">
+          <button type="button" aria-label="Previous month" onClick={() => shiftPropMonth(-1)}><ChevronLeft size={15}/></button>
+          <span>{MONTH_NAMES[propMonth.month].slice(0, 3)} {propMonth.year}</span>
+          <button type="button" aria-label="Next month" onClick={() => shiftPropMonth(1)}><ChevronRight size={15}/></button>
+        </div>
       </div>}
     >
       <div className="prop-cal-summary">
@@ -1431,11 +1523,6 @@ export function PropFirmsPage({ privacy }) {
       </div>
       <PayoutCalendar
         grid={propGrid} privacy={privacy} today={easternToday.iso}
-        footer={<div className="prop-cal-nav">
-          <button type="button" aria-label="Previous month" onClick={() => shiftPropMonth(-1)}><ChevronLeft size={15}/></button>
-          <span>{MONTH_NAMES[propMonth.month]} {propMonth.year}</span>
-          <button type="button" aria-label="Next month" onClick={() => shiftPropMonth(1)}><ChevronRight size={15}/></button>
-        </div>}
       />
     </Card>
     </div>

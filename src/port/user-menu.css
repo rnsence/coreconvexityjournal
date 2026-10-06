@@ -1,0 +1,66 @@
+/* Account menu (src/port/user-menu.jsx): one grey frame that grows up out of the profile row and holds a white plate of actions. */
+.um-anchor { --um-ink: #2b2f35; --um-soft: #475467; --um-faint: #98a2b3; --um-line: #eceef1; --um-fill: #f2f4f7; --um-frame: #f8f8f6; --um-row: 38px; --um-bezel: 3px;
+  position: relative; flex: 1; min-width: 0; display: flex; }
+.um-anchor > .profile-button { position: relative; z-index: 2; flex: 1; min-width: 0; }
+/* hover opens the menu, so the row never takes a hover fill of its own (it would flash off as the menu opens);
+   while the frame is on screen, opening or closing, the row sits on it without a fill */
+.um-anchor > .profile-button, .um-anchor > .profile-button:hover { background: var(--um-frame) !important; transition: none !important; }
+.um-anchor.has-frame > .profile-button { background: transparent !important; }
+.um-anchor > .profile-button:focus-visible { box-shadow: 0 0 0 3px rgba(46,124,246,.16) !important; }
+/* rows ignore the pointer while the plate glides, so nothing lights up as it slides under a still cursor */
+.um-frame.is-gliding .um-plate { pointer-events: none; }
+
+.um-frame {
+  position: absolute; z-index: 1; left: calc(var(--um-bezel) * -1); right: calc(var(--um-bezel) * -1); bottom: calc(var(--um-bezel) * -1);
+  box-sizing: border-box; padding: var(--um-bezel) var(--um-bezel) calc(var(--um-row) + var(--um-bezel) * 2);
+  border: 0; border-radius: 15px; background: var(--um-frame); color: var(--um-ink);
+}
+.um-plate { overflow: hidden; border: 0; border-radius: 12px; background: #fff; }
+
+/* the open/close glide is driven from user-menu.jsx (Web Animations API); leaving frames ignore the pointer */
+.um-frame.is-leaving { pointer-events: none; }
+
+.um-who { display: flex; align-items: center; gap: 10px; padding: 10px 10px 9px; }
+.um-who .avatar-chip { --avatar-size: 32px; flex: none; }
+.um-id { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.um-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.um-name b { overflow: hidden; font-size: 13.5px; font-weight: 600; letter-spacing: -.01em; white-space: nowrap; text-overflow: ellipsis; }
+.um-name em { flex: none; height: 17px; padding: 0 6px; border-radius: 5px; background: var(--um-fill); color: var(--um-soft); font-size: 10.5px; font-style: normal; font-weight: 600; line-height: 17px; }
+.um-id small { overflow: hidden; color: var(--um-faint); font-size: 11.5px; white-space: nowrap; text-overflow: ellipsis; }
+
+.um-group { padding: 4px; border-top: 1px solid var(--um-line); }
+.um-item { width: 100%; height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 8px; border: 0; border-radius: 8px; background: none; color: var(--um-ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; transition: background .14s ease; }
+.um-item svg { flex: none; color: var(--um-soft); }
+button.um-item:hover, button.um-item:focus-visible { outline: 0; background: var(--um-fill); }
+button.um-item:active { transform: translateY(1px); }
+.um-item kbd { margin-left: auto; color: var(--um-faint); font: inherit; font-size: 11px; letter-spacing: .04em; }
+.um-theme { cursor: default; }
+
+.um-seg { margin-left: auto; display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--um-frame); }
+.um-seg button { width: 26px; height: 22px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 7px; background: none; color: var(--um-faint); cursor: pointer; transition: background .14s ease, color .14s ease; }
+.um-seg button:hover { color: var(--um-ink); }
+.um-seg button.active { background: #fff; color: var(--um-ink); }
+.um-seg button:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(46,124,246,.16) !important; }
+
+/* the row's caret points up to where the menu opens, and turns down once it is open */
+.um-anchor .profile-button .profile-caret { flex: none; width: auto; margin-left: auto; color: var(--um-faint, #98a2b3); transform: rotate(180deg); transition: transform .32s cubic-bezier(.22,.82,.28,1); }
+.um-anchor.is-open .profile-button .profile-caret { transform: rotate(0deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .um-anchor .profile-button .profile-caret { transition: none; }
+}
+
+/* Legal: a click unfolds Privacy, Terms and Disclaimer underneath */
+.um-legal-caret { margin-left: auto; color: var(--um-faint, #98a2b3); transition: transform .24s cubic-bezier(.22,.82,.28,1); }
+.um-legal-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s cubic-bezier(.22,.82,.28,1); }
+.um-legal-body > div { min-height: 0; overflow: hidden; opacity: 0; transition: opacity .2s ease; }
+.um-legal.is-open .um-legal-body { grid-template-rows: 1fr; }
+.um-legal.is-open .um-legal-body > div { opacity: 1; }
+.um-legal.is-open .um-legal-caret { transform: rotate(90deg); }
+.um-legal.is-open .um-legal-head { background: var(--um-fill); }
+.um-item.um-sub { height: 30px; padding-left: 34px; color: var(--um-soft, #475467); font-size: 12.5px; }
+@media (prefers-reduced-motion: reduce) { .um-legal-body, .um-legal-body > div, .um-legal-caret { transition: none; } }
+/* text-only items: sub-pages indent a step under Legal */
+.um-item.um-sub { padding-left: 18px; }
+/* without the name header, the first group needs no divider above it */
+.um-plate > .um-group:first-child { border-top: 0; }

@@ -39,8 +39,8 @@ function Thumbnail({ file }) {
     const image = new Image()
     image.onload = () => setState('ready')
     image.onerror = () => setState('error')
-    const timer = setTimeout(() => { image.src = file.src }, 160)
-    return () => clearTimeout(timer)
+    image.src = file.src
+    return () => { image.onload = null; image.onerror = null }
   }, [file.src])
   if (state === 'ready') {
     return <span className="nb-thumb">

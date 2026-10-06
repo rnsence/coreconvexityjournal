@@ -101,6 +101,84 @@ export function AreaLine({ values: raw, tone = 'pos', density = 7 }) {
   </div>
 }
 
+/**
+ * Edge-to-edge chart for the foot of a stat tile: one or more smooth lines on a shared scale, each over a fill that
+ * fades to nothing, with an optional dotted reference (e.g. 50% win rate). Drawn at real pixel size; fills its box.
+ */
+export function BleedArea({ lines, baseline, density = 4 }) {
+  const [ref, size] = useSize()
+  const id = useId().replace(/:/g, '')
+  const W = size.width || 300, H = size.height || 56
+  const count = Math.max(8, Math.round(W / density))
+  const sets = lines.map((line) => ({ ...line, values: resample(line.values, count) }))
+  const all = sets.flatMap((line) => line.values).concat(baseline ?? [])
+  const lo = Math.min(...all), hi = Math.max(...all), top = 4, bottom = H - 2
+  const y = (v) => top + (1 - (v - lo) / ((hi - lo) || 1)) * (bottom - top)
+  const paths = sets.map((line) => curvePath(line.values.map((v, k) => [(k / Math.max(1, line.values.length - 1)) * W, y(v)]), top, bottom))
+  return <div className="ba" ref={ref} aria-hidden="true">
+    {size.width > 0 && <svg width={W} height={H}>
+      <defs>{sets.map((line, i) => <linearGradient key={i} id={`${id}-f${i}`} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stopColor={line.color} stopOpacity={line.fill ?? .16}/><stop offset="1" stopColor={line.color} stopOpacity="0"/>
+      </linearGradient>)}
+        {/* the reference line only shows where it runs under the first line's fill */}
+        {baseline != null && <clipPath id={`${id}-under`}><path d={`${paths[0]}L${W},${H}L0,${H}Z`}/></clipPath>}
+      </defs>
+      {baseline != null && <line x1="0" x2={W} y1={y(baseline)} y2={y(baseline)} className="ba-base" clipPath={`url(#${id}-under)`}/>}
+      {sets.map((line, i) => {
+        const path = paths[i]
+        return <g key={i}>
+          <path d={`${path}L${W},${H}L0,${H}Z`} fill={`url(#${id}-f${i})`}/>
+          <path d={path} className="ba-line" stroke={line.color} pathLength="1"/>
+        </g>
+      })}
+    </svg>}
+  </div>
+}
+
+/** Edge-to-edge columns for the foot of a stat tile: one soft bar per session, rising from the bottom, coloured by sign. */
+export function BleedBars({ values: raw }) {
+  const [ref, size] = useSize()
+  const W = size.width || 300, H = size.height || 56
+  const step = 6, fit = Math.max(4, Math.floor(W / step))
+  const values = raw.slice(-fit)
+  const peak = Math.max(1, ...values.map(Math.abs)), band = W / values.length
+  return <div className="ba" ref={ref} aria-hidden="true">
+    {size.width > 0 && <svg width={W} height={H}>
+      {values.map((v, i) => {
+        const h = Math.max(3, (Math.abs(v) / peak) * (H - 6))
+        return <rect key={i} x={i * band + band * .18} y={H - h} width={Math.max(2, band * .64)} height={h} rx="1" className={`ba-bar ${v >= 0 ? 'pos' : 'neg'}`}/>
+      })}
+    </svg>}
+  </div>
+}
+
+/**
+ * Edge-to-edge mirrored columns: per session, gross profit rises above a hairline and gross loss hangs below it,
+ * so the balance that profit factor measures reads at a glance. The axis sits where the two extremes meet.
+ */
+export function BleedMirror({ pairs: raw }) {
+  const [ref, size] = useSize()
+  const W = size.width || 300, H = size.height || 56
+  const fit = Math.max(4, Math.floor(W / 7))
+  const pairs = raw.slice(-fit)
+  const upPeak = Math.max(1, ...pairs.map((p) => p.won)), downPeak = Math.max(1, ...pairs.map((p) => p.lost))
+  const pad = 3, axis = pad + (H - pad * 2) * (upPeak / (upPeak + downPeak))
+  const band = W / pairs.length, bar = Math.max(2, band * .58)
+  return <div className="ba" ref={ref} aria-hidden="true">
+    {size.width > 0 && <svg width={W} height={H}>
+      {pairs.map((p, i) => {
+        const x = i * band + (band - bar) / 2
+        const up = (p.won / upPeak) * (axis - pad), down = (p.lost / downPeak) * (H - pad - axis)
+        return <g key={i}>
+          {p.won > 0 && <rect x={x} y={axis - up} width={bar} height={Math.max(1.5, up)} rx="1" className="ba-bar pos"/>}
+          {p.lost > 0 && <rect x={x} y={axis} width={bar} height={Math.max(1.5, down)} rx="1" className="ba-bar neg"/>}
+        </g>
+      })}
+      <line x1="0" x2={W} y1={axis} y2={axis} className="ba-axis"/>
+    </svg>}
+  </div>
+}
+
 /** Running total by day, in the app's line style, marked where it ends. */
 export function Spark({ values, plain = false }) {
   const run = values.reduce((acc, value) => [...acc, (acc.at(-1) ?? 0) + value], [0])
@@ -119,11 +197,12 @@ export function Meter({ share }) {
 
 /** Money won against money lost as one split bar. */
 export function Split({ won, lost }) {
-  const total = (won + lost) || 1, gap = 3, wW = Math.max(4, (won / total) * (W - gap)), y = H / 2 - 3
-  return <svg {...box}>
-    <rect className="sv-grow-x" x="0" y={y} width={wW} height="6" rx="3" fill={POS}/>
-    <rect className="sv-grow-x" x={wW + gap} y={y} width={Math.max(4, W - wW - gap)} height="6" rx="3" fill={NEG}/>
-  </svg>
+  // drawn as two flex bars rather than a stretched SVG, so the round ends stay round at any width
+  const total = (won + lost) || 1
+  return <span className="sv-split" aria-hidden="true">
+    <i className="pos" style={{ flexGrow: Math.max(0.03, won / total) }}/>
+    <i className="neg" style={{ flexGrow: Math.max(0.03, lost / total) }}/>
+  </span>
 }
 
 /** A track filled from the middle: right for positive, left for negative. */

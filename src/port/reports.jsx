@@ -21,9 +21,10 @@ import {
   readStore, scatterPoints, shareActive, shareURL, snapshot, storePublished, storeSavedReports, writeStore,
 } from './reports-data'
 import { TradeFilter } from './reports-filter'
-import { DuelChart, EdgeMap, ProfitMix, ReportCover, Tornado } from './reports-visuals'
+import { DuelChart, EdgeMap, ProfitMix, ReportCover, rangeStart } from './reports-visuals'
 import { EquityDrawdown, HourBars, OutcomeHistogram } from './reports-insight-charts'
 import { Select } from '../select'
+import { TagStack } from './notebook'
 import './reports.css'
 
 const TABS = ['Insights', 'Compare', 'Publish']
@@ -300,18 +301,104 @@ const COMPARE_FIELDS = {
   'Max drawdown': 'max_drawdown', 'Edge score': 'edge_score', 'Average hold': 'average_hold_seconds', Fees: 'fees',
 }
 
-/** One side's identity in the head-to-head card: badge, result, and the filters that define it. */
+/** One side of the comparison as a raised plate: identity + filters, the result, and four supporting figures. */
 function SetSide({ id, value, setValue, m, privacy, trades, setups, current, onOpen }) {
-  return <div className={`rp-side side-${id.toLowerCase()}${current ? ' is-current' : ''}`}>
-    <button type="button" className="rp-side-head" disabled={!m} onClick={onOpen} aria-label={`Set ${id}: open its trades`}>
+  const stats = m ? [
+    ['Trades', `${m.trades}`],
+    ['Win %', winPct(m.win_rate)],
+    ['PF', m.profit_factor == null ? '—' : m.profit_factor.toFixed(2)],
+    ['Exp.', money(m.expectancy, { privacy, decimals: 0 }), toneOf(m.expectancy)],
+  ] : []
+  return <div className={`rp-side2 side-${id.toLowerCase()}${current ? ' is-current' : ''}`}>
+    <div className="rp-side2-top">
       <span className={`rp-set-chip set-${id.toLowerCase()}`}>{id}</span>
-      <span className="rp-side-copy">
-        <strong className={`tone-${toneOf(m?.net_pnl ?? 0)}`}>{m ? money(m.net_pnl, { privacy }) : '—'}</strong>
-        <small>{m ? `${plural(m.trades, 'trade')} · ${winPct(m.win_rate)} won` : 'No trades match'}</small>
-      </span>
-      {m && <ChevronRight size={14} className="rp-side-go" aria-hidden="true"/>}
-    </button>
-    <TradeFilter trades={trades} value={value} onChange={setValue} setups={setups} label="Filters"/>
+      <span className="rp-side2-name">Set {id}</span>
+      <TradeFilter trades={trades} value={value} onChange={setValue} setups={setups} label="Filters"/>
+    </div>
+    <div className="rp-side2-row">
+      <button type="button" className="rp-side2-main" disabled={!m} onClick={onOpen} aria-label={`Set ${id}: open its trades`} title="Open its trades">
+        <strong className={`tone-${toneOf(m?.net_pnl ?? 0)}`}>{m ? money(m.net_pnl, { privacy }) : 'No trades'}</strong>
+        {m && <ChevronRight size={14} className="rp-side2-go" aria-hidden="true"/>}
+      </button>
+      {m && <dl className="rp-side2-stats">{stats.map(([label, val, tone]) => <div key={label}><dt>{label}</dt><dd className={tone ? `tone-${tone}` : ''}>{val}</dd></div>)}</dl>}
+    </div>
+  </div>
+}
+
+/** B against A on the headline numbers, in the neutral middle tile. */
+function SpreadTile({ ma, mb, privacy }) {
+  if (!ma || !mb) return <div className="rp-spread"><span className="rp-spread-label">Spread</span><b>—</b></div>
+  const net = mb.net_pnl - ma.net_pnl
+  const per = (mb.expectancy ?? 0) - (ma.expectancy ?? 0)
+  const win = ((mb.win_rate ?? 0) - (ma.win_rate ?? 0)) * 100
+  const lead = net > 0 ? 'B' : net < 0 ? 'A' : null
+  const signed = (v, fmt) => `${v > 0 ? '+' : v < 0 ? MINUS : '±'}${fmt(Math.abs(v))}`
+  return <div className="rp-spread">
+    <span className="rp-spread-label">Spread <em>B − A</em></span>
+    <b className={`tone-${toneOf(net)}`}>{privacy ? '••••' : signed(net, (v) => `$${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`)}</b>
+    <dl>
+      <div><dt>Per trade</dt><dd className={`tone-${toneOf(per)}`}>{privacy ? '••••' : signed(per, (v) => `$${v.toFixed(0)}`)}</dd></div>
+      <div><dt>Win rate</dt><dd className={`tone-${toneOf(win)}`}>{signed(win, (v) => `${v.toFixed(1)} pts`)}</dd></div>
+    </dl>
+    {lead && <span className={`rp-spread-lead lead-${lead.toLowerCase()}`} title="Higher net P&L">{lead} leads net</span>}
+  </div>
+}
+
+const signedText = (delta, kind, privacy) => {
+  if (delta == null) return null
+  const sign = delta > 0 ? '+' : delta < 0 ? MINUS : '±'
+  const size = Math.abs(delta)
+  if (kind === 'money') return privacy ? '••••' : `${sign}$${size.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  if (kind === 'pct') return `${sign}${(size * 100).toFixed(1)} pts`
+  if (kind === 'int') return `${sign}${Math.round(size)}`
+  if (kind === 'secs') return `${sign}${duration(size)}`
+  return `${sign}${size.toFixed(2)}`
+}
+const cellText = (value, kind, privacy) => {
+  if (value == null) return '—'
+  if (kind === 'money') return money(value, { privacy })
+  if (kind === 'pct') return `${(value * 100).toFixed(2)}%`
+  if (kind === 'int') return `${Math.round(value)}`
+  if (kind === 'secs') return duration(value)
+  return value.toFixed(2)
+}
+// [label, field, kind, better: 'high' | 'low' | null]
+const TEARSHEET = [
+  ['Performance', [['Net P&L', 'net_pnl', 'money', 'high'], ['Expectancy', 'expectancy', 'money', 'high'], ['Average R', 'average_r', 'num', 'high'], ['Profit factor', 'profit_factor', 'num', 'high'], ['Average trading day', 'average_day', 'money', 'high']]],
+  ['Risk', [['Max drawdown', 'max_drawdown', 'money', 'high'], ['Largest loss', 'largest_loss', 'money', 'high'], ['Sharpe ratio', 'sharpe', 'num', 'high'], ['Sortino ratio', 'sortino', 'num', 'high'], ['Recovery factor', 'recovery_factor', 'num', 'high']]],
+  ['Win profile', [['Win rate', 'win_rate', 'pct', 'high'], ['Average win', 'average_win', 'money', 'high'], ['Average loss', 'average_loss', 'money', 'high'], ['Payoff ratio', 'payoff_ratio', 'num', 'high']]],
+  ['Activity', [['Trades', 'trades', 'int', null], ['Trading days', 'trading_days', 'int', null], ['Average hold', 'average_hold_seconds', 'secs', null], ['Fees', 'fees', 'money', 'low']]],
+]
+
+/** The comparison as a tearsheet: grouped statistics, both sets, the difference and which side has the edge. */
+function Tearsheet({ ma, mb, privacy }) {
+  let edgeA = 0, edgeB = 0
+  const groups = TEARSHEET.map(([title, rows]) => [title, rows.map(([label, field, kind, better]) => {
+    const raw = (m) => (m?.[field] == null ? null : field === 'fees' ? -m[field] : m[field])
+    const a = raw(ma), b = raw(mb)
+    const delta = a != null && b != null ? b - a : null
+    let edge = null
+    if (better && delta) edge = (better === 'high' ? delta > 0 : delta < 0) ? 'b' : 'a'
+    if (field === 'fees' && delta) edge = delta > 0 ? 'b' : 'a'
+    if (edge === 'a') edgeA += 1; if (edge === 'b') edgeB += 1
+    return { label, a, b, kind, delta, edge, toned: !!better }
+  })])
+  return <div className="rp-sheet-wrap">
+    <p className="rp-sheet-lede"><b className="lead-b">Set B</b> has the edge on <b>{edgeB}</b> of {edgeA + edgeB} measures, <b className="lead-a">Set A</b> on <b>{edgeA}</b>.</p>
+    <table className="rp-sheet">
+      <colgroup><col/><col className="c-a"/><col className="c-b"/><col/><col className="c-edge"/></colgroup>
+      <thead><tr><th scope="col">Statistic</th><th scope="col"><span className="rp-set-chip set-a">A</span></th><th scope="col"><span className="rp-set-chip set-b">B</span></th><th scope="col">B − A</th><th scope="col">Edge</th></tr></thead>
+      {groups.map(([title, rows]) => <tbody key={title}>
+        <tr className="rp-sheet-group"><th colSpan={5} scope="rowgroup">{title}</th></tr>
+        {rows.map((row) => <tr key={row.label}>
+          <th scope="row">{row.label}</th>
+          <td className={row.edge === 'a' ? 'is-edge' : ''}>{cellText(row.a, row.kind, privacy)}</td>
+          <td className={row.edge === 'b' ? 'is-edge' : ''}>{cellText(row.b, row.kind, privacy)}</td>
+          <td className={row.toned && row.delta ? `tone-${(row.edge === 'b') ? 'pos' : 'neg'}` : 'muted'}>{signedText(row.delta, row.kind, privacy) ?? '—'}</td>
+          <td>{row.edge ? <span className={`rp-edge-tag edge-${row.edge}`}>{row.edge.toUpperCase()}</span> : <span className="rp-edge-none">—</span>}</td>
+        </tr>)}
+      </tbody>)}
+    </table>
   </div>
 }
 
@@ -319,49 +406,36 @@ function CompareTab({ trades, privacy, setups, drill }) {
   const [a, setA] = useState(() => readStore('rp-compare-a', { direction: 'long' }))
   const [b, setB] = useState(() => readStore('rp-compare-b', { direction: 'short' }))
   useEffect(() => { writeStore('rp-compare-a', a); writeStore('rp-compare-b', b) }, [a, b])
-  const listA = useMemo(() => applyFilter(trades, a), [trades, a])
-  const listB = useMemo(() => applyFilter(trades, b), [trades, b])
+  // one range governs the whole comparison: tiles, spread, chart and statistics
+  const [range, setRange] = useState('All')
+  const lastDate = useMemo(() => trades.reduce((max, trade) => (trade.date > max ? trade.date : max), ''), [trades])
+  const from = rangeStart(range, lastDate)
+  const listA = useMemo(() => applyFilter(trades, a).filter((trade) => !from || trade.date >= from), [trades, a, from])
+  const listB = useMemo(() => applyFilter(trades, b).filter((trade) => !from || trade.date >= from), [trades, b, from])
   const ma = useMemo(() => computeMetrics(listA), [listA])
   const mb = useMemo(() => computeMetrics(listB), [listB])
-  const rowsA = metricRows(ma, { privacy, only: COMPARE_ROWS })
-  const rowsB = metricRows(mb, { privacy, only: COMPARE_ROWS })
   const groups = () => [group('set-a', summary(a), 'Set A', listA), group('set-b', summary(b), 'Set B', listB)]
-  const net = difference('Net P&L', rowsA[0], rowsB[0], privacy)
   const openId = drill.drill?.groups[drill.drill.index]?.id
   const shared = { privacy, trades, setups }
-  const tornado = COMPARE_ROWS.map((label, index) => {
-    const delta = difference(label, rowsA[index], rowsB[index], privacy)
-    const field = COMPARE_FIELDS[label]
-    const raw = (m) => (m?.[field] == null ? null : label === 'Fees' ? -m[field] : m[field])
-    return {
-      label, a: raw(ma), b: raw(mb), textA: rowsA[index]?.value ?? '—', textB: rowsB[index]?.value ?? '—',
-      basisA: rowsA[index]?.basis, basisB: rowsB[index]?.basis, delta,
-      ahead: delta?.tone === 'pos' ? 'b' : delta?.tone === 'neg' ? 'a' : null,
-    }
-  })
   return <>
     <Lede>Put two sets of trades side by side: one setup against another, longs against shorts, or a mistake against the rest.</Lede>
     <section className="home-card ws-card duo rp-h2h" aria-label="Head to head">
       <header className="shell-head rp-setcard-head">
         <h2>Head to Head</h2>
-        <span className="rp-net-delta"><span>B − A</span><b className={net ? `tone-${net.tone}` : ''}>{net?.text ?? '—'}</b></span>
         <button type="button" className="rp-setcard-open rp-swap" onClick={() => { setA(b); setB(a) }}><ArrowLeftRight size={13}/> Swap</button>
       </header>
       <div className="shell-body rp-h2h-body">
-        <div className="rp-sides">
+        <div className="rp-sides3">
           <SetSide id="A" value={a} setValue={setA} m={ma} current={openId === 'set-a'} onOpen={() => drill.open(groups(), 0)} {...shared}/>
-          <span className="rp-vs-mark" aria-hidden="true">vs</span>
           <SetSide id="B" value={b} setValue={setB} m={mb} current={openId === 'set-b'} onOpen={() => drill.open(groups(), 1)} {...shared}/>
+          <SpreadTile ma={ma} mb={mb} privacy={privacy}/>
         </div>
-        <DuelChart listA={listA} listB={listB} ma={ma} mb={mb} privacy={privacy}/>
+        <DuelChart listA={listA} listB={listB} privacy={privacy} range={range} setRange={setRange}/>
       </div>
     </section>
 
-    <Card shell title="Every metric" className="rp-compare" aside={<span className="ws-hint">Solid side is ahead</span>}>
-      {!ma && !mb ? <Empty title="Neither set has trades" detail="Loosen a filter on either side."/> : <>
-        <div className="rv-t-head" aria-hidden="true"><span className="rp-set-chip set-a">A</span><span/><span>Metric</span><span/><span className="rp-set-chip set-b">B</span><span>B − A</span></div>
-        <Tornado rows={tornado}/>
-      </>}
+    <Card shell title="Statistics" className="rp-compare rp-stats-card" aside={<span className="ws-hint">{range === 'All' ? 'All dates' : range} · same definitions as the Trades page</span>}>
+      {!ma && !mb ? <Empty title="Neither set has trades" detail="Loosen a filter on either side."/> : <Tearsheet ma={ma} mb={mb} privacy={privacy}/>}
     </Card>
   </>
 }
@@ -454,7 +528,7 @@ function BuilderTab({ trades, privacy, setups, drill, filter, setFilter }) {
     const average = mixGroups.reduce((sum, row) => sum + row.net, 0) / mixGroups.length
     const reach = Math.max(...mixGroups.map((row) => Math.abs(row.net)), 1)
     return [
-      { label: `Profitable ${noun}s`, value: `${positive}/${mixGroups.length}`, sub: `${mixGroups.length - positive} losing`, line: { type: 'dashes', share: positive / mixGroups.length, total: Math.min(14, mixGroups.length) } },
+      { label: `Profitable ${noun}s`, value: `${positive}/${mixGroups.length}`, sub: mixGroups.length - positive > 0 ? <span className="tone-neg">{mixGroups.length - positive} losing</span> : '0 losing', line: { type: 'dashes', share: positive / mixGroups.length, total: Math.min(14, mixGroups.length) } },
       sharpest && { label: 'Best win rate', value: percent(sharpest.winRate * 100), sub: sharpest.label, line: gauge(sharpest.winRate, { mark: 0.5 }) },
       { label: 'Most traded', value: `${busiest.trades}`, sub: `${busiest.label} · ${Math.round((busiest.trades / totalTrades) * 100)}% of trades`, line: gauge(busiest.trades / totalTrades) },
       { label: `Average per ${noun}`, value: money(average, { privacy, decimals: 0 }), tone: toneOf(average), sub: `${mixGroups.length} ${noun}s`, line: centre(average, reach) },
@@ -603,6 +677,22 @@ const pointValue = (field, value, privacy) => {
 
 const periodOf = (filter = {}) => (filter.from && filter.to ? `${filter.from} to ${filter.to}` : filter.from ? `from ${filter.from}` : filter.to ? `until ${filter.to}` : 'all dates')
 
+/** A date range as few words as it needs: "Aug 2026" for a whole month, "Aug 3 – 17", "Aug 1 – Sep 15", else with years. */
+const shortPeriod = (filter = {}) => {
+  const { from, to } = filter
+  const at = (iso) => new Date(`${iso}T12:00:00Z`)
+  const fmt = (iso, options) => at(iso).toLocaleDateString('en-US', { timeZone: 'UTC', ...options })
+  if (!from && !to) return 'All dates'
+  if (!from) return `Until ${fmt(to, { month: 'short', day: 'numeric', year: 'numeric' })}`
+  if (!to) return `Since ${fmt(from, { month: 'short', day: 'numeric', year: 'numeric' })}`
+  const sameYear = from.slice(0, 4) === to.slice(0, 4), sameMonth = from.slice(0, 7) === to.slice(0, 7)
+  const monthEnd = new Date(Date.UTC(+to.slice(0, 4), +to.slice(5, 7), 0)).getUTCDate()
+  if (sameMonth && from.slice(8) === '01' && +to.slice(8) === monthEnd) return fmt(from, { month: 'short', year: 'numeric' })
+  if (sameMonth) return `${fmt(from, { month: 'short', day: 'numeric' })} – ${+to.slice(8)}`
+  if (sameYear) return `${fmt(from, { month: 'short', day: 'numeric' })} – ${fmt(to, { month: 'short', day: 'numeric' })}`
+  return `${fmt(from, { month: 'short', day: 'numeric', year: 'numeric' })} – ${fmt(to, { month: 'short', day: 'numeric', year: 'numeric' })}`
+}
+
 const DURATIONS = [['1', '1 day'], ['7', '7 days'], ['30', '30 days'], ['90', '90 days']]
 const topOf = (report, n = 2) => [...(report.content?.breakdowns?.symbol ?? [])].sort((x, y) => y.trades - x.trades).slice(0, n).map((row) => row.key)
 
@@ -610,9 +700,8 @@ const topOf = (report, n = 2) => [...(report.content?.breakdowns?.symbol ?? [])]
 function ReportCard({ report, privacy, onOpen, onShare, fresh, index }) {
   const m = report.content?.metrics
   const symbols = topOf(report)
-  const live = (report.shares ?? []).filter(shareActive).length
   const f = report.definition?.filter ?? {}
-  const chips = [periodOf(f), f.setup, f.direction && (f.direction === 'long' ? 'Long' : 'Short'), f.symbol, report.definition?.include_trades && 'Trades', report.definition?.include_notes && 'Notes'].filter(Boolean)
+  const chips = [shortPeriod(f), f.setup, f.direction && (f.direction === 'long' ? 'Long' : 'Short'), f.symbol, report.definition?.include_trades && 'Trades', report.definition?.include_notes && 'Notes'].filter(Boolean)
   return <article className={`home-card ws-card duo rp-rcard${fresh ? ' is-fresh' : ''}`} style={{ '--i': index }}>
     <header className="shell-head rp-rcard-head">
       <span className="card-title"><CalendarBlank size={13} weight="duotone"/>{dateOnly(report.created_at)}</span>
@@ -626,15 +715,15 @@ function ReportCard({ report, privacy, onOpen, onShare, fresh, index }) {
         <h2><button type="button" className="rp-rcard-link" onClick={onOpen}>{report.title}</button></h2>
         <strong className={m ? `tone-${toneOf(m.net_pnl)}` : ''}>{m ? money(m.net_pnl, { privacy }) : '—'}</strong>
       </div>
-      <div className="rp-rcard-chips">{chips.map((chip) => <span key={chip} className="rp-tag">{chip}</span>)}</div>
+      {/* scope tags on the left, the two actions on the same row at the right */}
+      <div className="rp-rcard-row">
+        <div className="rp-rcard-chips">{chips.length > 2 ? <TagStack tags={chips} prefix=""/> : chips.map((chip) => <span key={chip} className="rp-tag">{chip}</span>)}</div>
+        <span className="rp-rcard-acts">
+          <button type="button" className="rp-setcard-open" onClick={onShare}><Link2 size={13}/> Share</button>
+          <button type="button" className="rp-setcard-open" onClick={onOpen}>Open</button>
+        </span>
+      </div>
     </div>
-    <footer className="rp-setcard-foot rp-rcard-foot">
-      <span className={`rp-live${live ? ' is-on' : ''}`}><i/>{live ? `${plural(live, 'live link')}` : 'Private to you'}</span>
-      <span className="rp-rcard-acts">
-        <button type="button" className="rp-setcard-open" onClick={onShare}><Link2 size={13}/> Share</button>
-        <button type="button" className="rp-setcard-open" onClick={onOpen}>Open <ChevronRight size={13}/></button>
-      </span>
-    </footer>
   </article>
 }
 
@@ -689,7 +778,9 @@ function SharePane({ report, onChange }) {
   </div>
 }
 
-function PublishTab({ trades, privacy, published, setPublished, openReport, filter }) {
+function PublishTab({ trades, privacy, setups, published, setPublished, openReport, filter: shared }) {
+  const [own, setOwn] = useState({})
+  const filter = shared ?? own
   const [title, setTitle] = useState('')
   const [includeTrades, setIncludeTrades] = useState(true)
   const [notes, setNotes] = useState(false)
@@ -725,7 +816,8 @@ function PublishTab({ trades, privacy, published, setPublished, openReport, filt
         <input className="rp-compose-title" aria-label="Report title" maxLength={120} placeholder="Name it, e.g. September review" value={title}
           onChange={(event) => setTitle(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') publish() }}/>
         <div className="rp-compose-row">
-          <span className="rp-compose-scope">{filterCount(filter) ? `Freezes the ${plural(matched, 'trade')} filtered above` : `Freezes all ${plural(matched, 'trade')}`}{hasPeriod ? '' : ' · set dates above to include notes'}</span>
+          {shared ? <span className="rp-compose-scope">{filterCount(filter) ? `Freezes the ${plural(matched, 'trade')} filtered above` : `Freezes all ${plural(matched, 'trade')}`}{hasPeriod ? '' : ' · set dates above to include notes'}</span>
+            : <><TradeFilter trades={trades} value={own} onChange={setOwn} setups={setups} label="Limit trades"/><span className="rp-compose-scope">{plural(matched, 'trade')}{hasPeriod ? '' : ' · set dates to include notes'}</span></>}
           <span className="rp-compose-gap"/>
           <span className="rp-toggles" role="group" aria-label="Include">
             <button type="button" aria-pressed={includeTrades} className={includeTrades ? 'on' : ''} onClick={() => setIncludeTrades(!includeTrades)}>{includeTrades && <Check size={11} strokeWidth={3}/>}Trades</button>
@@ -868,9 +960,9 @@ export function ReportsPage({ privacy, range = 'All' }) {
       {tab === 'Insights' && <InsightsTab {...props}/>}
       {tab === 'Compare' && <CompareTab {...props}/>}
       {tab === 'Publish' && <>
-        <Lede>Build any view of your trades, then freeze it as a report: print it, save a PDF, or share a read-only link that expires.</Lede>
+        <PublishTab {...props} published={published} setPublished={setPublished} openReport={openReport}/>
+        <Lede>Any metric by any breakdown, two breakdowns as a heatmap, and any two trade fields as a scatter. Click a row, cell or dot to see its trades.</Lede>
         <BuilderTab {...props} filter={buildFilter} setFilter={setBuildFilter}/>
-        <PublishTab {...props} filter={buildFilter} published={published} setPublished={setPublished} openReport={openReport}/>
       </>}
     </div>
     <DrillLayer drill={drill.drill} step={drill.step} close={drill.close} privacy={privacy}/>

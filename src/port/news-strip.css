@@ -1,0 +1,58 @@
+/* High-impact news strip (src/port/news-strip.jsx): a two-tone card holding one scrolling row of event plates. */
+.ns-card { margin-top: 16px; padding: 0 0 var(--duo-bezel, 4px); border-radius: 14px; background: var(--duo-frame, #f7f7f8); }
+.ns-head { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 6px 0 12px; }
+.ns-head .card-title { color: var(--ink); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.ns-meta { overflow: hidden; color: var(--ink-faint); font-size: 11.5px; white-space: nowrap; text-overflow: ellipsis; }
+.ns-folders { margin-left: auto; transform: scale(.94); transform-origin: right center; }
+.ns-folders button { display: inline-flex; align-items: center; gap: 5px; }
+
+.ns-body { margin: 0 var(--duo-bezel, 4px); padding: 6px; border-radius: var(--duo-inner-radius, 10px); background: #fff; }
+/* five trading days as columns; a day without a red folder is just its date */
+.ns-days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.ns-day { display: flex; flex-direction: column; gap: 6px; min-width: 0; min-height: 64px; padding: 8px 10px 10px; border-radius: 8px; background: var(--duo-frame, #f7f7f8); }
+.ns-day-head { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.ns-day-head b { color: var(--ink); font-size: 12.5px; font-weight: 600; }
+.ns-day-head span { color: var(--ink-faint); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.ns-day.is-today { background: #e9eaec; }
+.ns-day.is-past .ns-day-head b { color: var(--ink-soft); }
+.ns-events { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+/* a day shows one release; the rest scroll inside the column, with a hairline fade until the last one */
+.ns-events.is-long { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; border-radius: 6px; -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 6px), transparent); mask-image: linear-gradient(180deg, #000 calc(100% - 6px), transparent); }
+.ns-events.is-long::-webkit-scrollbar { display: none; }
+.ns-events.is-long.at-end { -webkit-mask-image: none; mask-image: none; }
+/* time and currency on top, the full release name under it (wrapping, never cut) */
+.ns-event { display: grid; grid-template-columns: auto auto 1fr; align-items: center; column-gap: 8px; row-gap: 2px; min-width: 0; padding: 6px 8px 7px; border-radius: 6px; background: #fff; font-size: 12px; }
+.ns-time { color: var(--ink-soft); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* red folders: Forex Factory's own impact colour, kept to the small folder mark so red still reads as P&L everywhere else */
+.ns-ccy { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-soft); font-size: 10.5px; font-style: normal; font-weight: 700; letter-spacing: .02em; }
+.ns-folder { flex: none; }
+.ns-folder.red { color: #e0453c; } .ns-folder.orange { color: #f2850f; } .ns-folder.yellow { color: #f2c200; } .ns-folder.grey { color: #b4bac5; }
+.ns-name { grid-column: 1 / -1; color: var(--ink); font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+.ns-event.is-past { opacity: .5; }
+/* the next release carries a small clock at the end of its time row instead of an outline */
+.ns-next { justify-self: end; display: grid; place-items: center; color: var(--ink-faint); }
+
+.ns-day.is-skeleton i { display: block; height: 9px; border-radius: 4px; background: #eceef1; animation: ns-pulse 1.2s ease-in-out infinite; }
+.ns-day.is-skeleton i:nth-child(1) { width: 40%; } .ns-day.is-skeleton i:nth-child(2) { width: 80%; }
+@keyframes ns-pulse { 50% { opacity: .5; } }
+
+.ns-empty { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 64px; color: var(--ink-faint); font-size: 12.5px; }
+.ns-empty button { padding: 0; border: 0; background: none; color: var(--accent, #2e7cf6); font: inherit; font-weight: 600; cursor: pointer; }
+
+@media (max-width: 900px) { .ns-days { grid-template-columns: repeat(5, minmax(150px, 1fr)); overflow-x: auto; scrollbar-width: none; } }
+@media (max-width: 640px) { .ns-meta { display: none; } }
+
+/* how many releases the day holds, beside its name, when there's more than the one on show */
+.ns-more { margin-left: 6px; padding: 0 5px; border-radius: 5px; background: #fff; color: var(--ink-soft); font-size: 10.5px; font-style: normal; font-weight: 600; line-height: 16px; display: inline-block; }
+.ns-day-head b { display: inline-flex; align-items: center; }
+
+/* title strip matches the dashboard's other cards: 28px, 12px title, details on the same line */
+#root .ns-card > .ns-head { height: 28px !important; min-height: 28px !important; margin: 0 !important; padding: 0 10px !important; gap: 10px; }
+#root .ns-card > .ns-head .card-title { margin: 0 !important; font-size: 12px !important; line-height: 1; }
+#root .ns-card > .ns-head .ns-meta { line-height: 1; }
+/* phones: the folder switcher takes its own row under the title instead of pushing past the edge */
+@media (max-width: 640px) {
+  #root .ns-card > .ns-head { height: auto !important; flex-wrap: wrap; row-gap: 4px; padding: 6px 8px !important; }
+  #root .ns-card > .ns-head .ns-folders { margin-left: 0; transform: none; flex: 1 1 100%; display: flex; }
+  #root .ns-card > .ns-head .ns-folders button { flex: 1; justify-content: center; padding: 0 4px; }
+}

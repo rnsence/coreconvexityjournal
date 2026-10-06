@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AArrowDown, AArrowUp, Copy, X, ArrowDownRight, Bold, Italic, List, ArrowUpRight, Bot, Settings2, Trash2, Check, ChevronDown, ChevronLeft, ChevronRight, Download, FileImage, Info, Rocket, Scaling, Sigma, TrendingDown,
+  AArrowDown, AArrowUp, Copy, X, ArrowDownRight, Bold, Italic, List, ArrowUpRight, Bot, Settings2, Trash2, Check, ChevronLeft, ChevronRight, Download, FileImage, Info, Rocket, Scaling, Sigma, TrendingDown,
   GripVertical, Image as ImageIcon, Maximize2, MoreHorizontal, MoveRight, Pencil, Plus, Scale, Search, Send, SlidersHorizontal, Sparkles, Star, Target, TrendingUp, Wallet,
 } from 'lucide-react'
 import SettingsSolidIcon from '@iconify-react/basil/settings-solid'
@@ -8,21 +8,23 @@ import { Card, Metric, PageHeading, Pill } from './components'
 import { BarsStaggeredIcon, ChartPieSliceIcon, PercentIcon, TargetArrowIcon } from './icons'
 import { LineChart, BarChart } from './charts'
 import {
-  BulletBars, ChartState, ColumnPlot, SymbolToken, CumulativeChart, DailyColumns, EquityPlot, HeatCalendar, Module, IntradayChart, RollingPlot, RowPlot, ScoreMeter, ScoreRings, DailyPulse, MiniBars, MiniLine, MiniRing, easternLabel, scoreBand, useEasternToday, useMarketSession, SessionLine, WinDonut, WinLines, WinPairBars, compactMoney, money, percent, ratio, shortDate, toneOf, titleCase,
+  BulletBars, ChartState, ColumnPlot, SymbolToken, CumulativeChart, CumeChips, CumeKey, cumeSummary, DailyColumns, EquityPlot, HeatCalendar, Module, IntradayChart, RollingPlot, RowPlot, ScoreMeter, ScoreRadial, ScoreRings, DailyPulse, MiniBars, MiniLine, MiniRing, easternLabel, scoreBand, useEasternToday, useMarketSession, SessionLine, WinDonut, WinLines, WinPairBars, compactMoney, money, percent, ratio, shortDate, toneOf, titleCase,
 } from './viz'
 import {
-  bySetup, byGrade, byHour, byWeekday, calendarGrid, consistencyScore, edgeScore,
+  bySetup, byHour, byWeekday, calendarGrid, consistencyScore, edgeScore,
   equitySeries, rollingWinRate, summarize, winBuckets, winWindow,
 } from './analytics'
-import { accounts, activity, avgLine, calendarDays, dayEntries, profile, trades, tradeLog, tradingDays, trendLine } from './data'
+import { accounts, activity, avgLine, calendarDays, dayEntries, trades, tradeLog, tradingDays, trendLine } from './data'
 import { symbolClassSlug } from './symbols'
 import { FirmLogo, TradeDrawer, firmOf } from './workspace'
-import { AreaLine, Spark, Split } from './port/tile-viz'
+import { AreaLine, Spark } from './port/tile-viz'
+import { DayHeat, FactorColumns, ThresholdArea, WeekBars, WinMosaic } from './port/tile-charts'
+import { NewsStrip } from './port/news-strip'
+import { EarnersHeat } from './port/earners-heat'
 import { Drawer, DrawerHeader } from './dialogs'
 import { accountForTrade } from './port/trading-data'
 import { DaySheet, TodayJournalButton } from './port/calendar-day'
 import { MonthSummary } from './port/calendar-routine'
-import { Select } from './select'
 
 function SectionTitle({ title, subtitle, action }) {
   return <div className="section-title"><div><h2>{titleCase(title)}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>
@@ -38,6 +40,8 @@ const RANGES = [
 const WIN_PERIODS = ['Year', 'Month', 'Week', 'Day']
 
 const WIN_TITLES = { donut: 'Win rate', bars: 'Wins vs losses', lines: 'Win-rate trend' }
+const SHOW_WIN_ROW = false
+const SHOW_DAILY_ROW = false
 
 function WinRatioCard({ trades, variant }) {
   const [period, setPeriod] = useState('Month')
@@ -86,7 +90,7 @@ function WinRatioCard({ trades, variant }) {
 }
 
 const SCORE_TIPS = {
-  'Win%': 'Tighten entry criteria — skip setups that are not A-grade.',
+  'Win%': 'Tighten entry criteria — skip setups that miss a checklist rule.',
   'Profit factor': 'Cut losing trades sooner so gross losses shrink.',
   'Avg win/loss': 'Let winners run to target instead of taking early profits.',
   'Max drawdown': 'Size down after two consecutive losses to cap drawdown.',
@@ -97,7 +101,7 @@ const SCORE_TIPS = {
 /** Parts of the score the card doesn't show; the headline score still counts them. */
 const HIDDEN_SCORE_AXES = ['Profit factor', 'Recovery']
 
-function OverallScoreCard({ edge, priorEdge, axes, enough }) {
+function OverallScoreCard({ edge, priorEdge, axes, enough, monthly = [], switcher = null }) {
   const [view, setView] = useState('Rings')
   const rows = edge.components.map((component, index) => ({
     label: axes[index],
@@ -106,15 +110,17 @@ function OverallScoreCard({ edge, priorEdge, axes, enough }) {
     target: component.target,
     prior: priorEdge?.components[index]?.value ?? null,
   })).filter((row) => !HIDDEN_SCORE_AXES.includes(row.label))
+  // each month's value for the parts on show, in the same order as the rows
+  const shownIndex = axes.map((label, index) => (HIDDEN_SCORE_AXES.includes(label) ? null : index)).filter((index) => index != null)
+  const radialHistory = monthly.map((month) => ({ key: month.key, label: month.label, values: shownIndex.map((index) => month.components[index]?.value ?? null) }))
   const ranked = [...rows].sort((a, b) => b.value - a.value)
   const strongest = ranked[0]
   const focus = ranked[ranked.length - 1]
   const delta = priorEdge?.score != null && edge.score != null ? edge.score - priorEdge.score : null
 
-  return <section className="home-card radar-card">
-    <div className="radar-main">
+  return <section className="home-card radar-card dc-duo">
     <div className="score-card-head">
-      <div className="card-title">Overall Score</div>
+      <div className="card-title">{switcher ? 'Score' : 'Overall Score'}</div>
       {enough && <div className="ws-seg compact" role="tablist" aria-label="Score view">
         {['Rings', 'Breakdown'].map((option) => <button
           key={option} type="button" role="tab" aria-selected={view === option}
@@ -122,11 +128,14 @@ function OverallScoreCard({ edge, priorEdge, axes, enough }) {
         >{option}</button>)}
       </div>}
     </div>
+    <div className="radar-main">
 
     {!enough
       ? <ChartState state="insufficient" minData={5}/>
       : <div className={`score-body view-${view.toLowerCase()}`}>
-        <ScoreRings items={rows} title={edge.score ?? '—'} subtitle="Trading score"/>
+        {monthly.length > 1
+          ? <ScoreRadial items={rows} history={radialHistory} title={edge.score ?? "—"} subtitle="Trading score" size={200}/>
+          : <ScoreRings items={rows} title={edge.score ?? '—'} subtitle="Trading score"/>}
         {view === 'Breakdown' && <ul className="score-breakdown">
             {rows.map((row) => {
               const change = row.prior == null ? null : Math.round(row.value - row.prior)
@@ -147,21 +156,28 @@ function OverallScoreCard({ edge, priorEdge, axes, enough }) {
           </ul>}</div>}
     </div>
 
-    {enough && <footer className="score-foot sf-meter">
-      <div className="score-head">
-        <div className="score-line">
-          <strong className="score-value">{edge.score == null ? '—' : Math.round(edge.score)}<small>/100</small></strong>
-          <span className="panel-caption">Trading score <em>All-time</em></span>
-        </div>
+    {/* with a switcher the meter rides in the footer row beside it */}
+    {!switcher && enough && <footer className="score-foot sf-meter sf-tidy">
+      <ScoreMeter value={edge.score ?? 0}/>
+      <div className="sf-bottom">
+        <p className="sf-caption">{delta != null ? 'vs first half' : 'Trading score · all-time'}</p>
         {delta != null
-          ? <span className={`score-shift ${delta >= 0 ? 'pos' : 'neg'}`}>
-              {delta >= 0 ? <ArrowUpRight size={13} strokeWidth={2.4}/> : <ArrowDownRight size={13} strokeWidth={2.4}/>}
-              {Math.abs(Math.round(delta))} pts <em>vs first half</em>
+          ? <span className={`sf-shift ${delta >= 0 ? 'pos' : 'neg'}`}>
+              {delta >= 0 ? <ArrowUpRight size={12} strokeWidth={2.4}/> : <ArrowDownRight size={12} strokeWidth={2.4}/>}
+              {Math.abs(Math.round(delta))} pts
             </span>
           : edge.score != null && <span className="score-band">{scoreBand(edge.score)}</span>}
       </div>
-      <ScoreMeter value={edge.score ?? 0}/>
     </footer>}
+    {switcher && <div className="dc-panel-foot">{switcher}{enough && <div className="sf-inline sf-tidy" title={delta != null ? 'vs first half' : 'Trading score · all-time'}>
+      <ScoreMeter value={edge.score ?? 0}/>
+      {delta != null
+        ? <span className={`sf-shift ${delta >= 0 ? 'pos' : 'neg'}`} aria-label={`${delta >= 0 ? 'Up' : 'Down'} ${Math.abs(Math.round(delta))} points vs first half`}>
+            {delta >= 0 ? <ArrowUpRight size={12} strokeWidth={2.4}/> : <ArrowDownRight size={12} strokeWidth={2.4}/>}
+            {Math.abs(Math.round(delta))} pts
+          </span>
+        : edge.score != null && <span className="score-band">{scoreBand(edge.score)}</span>}
+    </div>}</div>}
   </section>
 }
 
@@ -169,9 +185,48 @@ function OverallScoreCard({ edge, priorEdge, axes, enough }) {
 
 /** Bottom-anchored trend for a comparison cell: fine line over a rising haze. */
 
+/* ------------------------------------------------------------ this week */
+
+const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const shiftDay = (iso, days) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + days); return d.toISOString().slice(0, 10) }
+
+/** Monday to Sunday of the latest traded week (the week the Daily journal opens on): each day's win rate,
+ *  trade count and P&L. The latest trading day carries the black chip, as the journal marks its selected day. */
+function WeekStrip({ trades, privacy }) {
+  const today = useEasternToday().iso
+  const anchor = tradingDays().at(-1) ?? today
+  const monday = shiftDay(anchor, -((new Date(`${anchor}T12:00:00Z`).getUTCDay() + 6) % 7))
+  const days = DAY_NAMES.map((name, index) => {
+    const date = shiftDay(monday, index)
+    const list = trades.filter((trade) => trade.date === date)
+    const wins = list.filter((trade) => trade.pnl > 0).length
+    const net = list.reduce((sum, trade) => sum + trade.pnl, 0)
+    return { name, date, count: list.length, rate: list.length ? Math.round((wins / list.length) * 100) : 0, net, state: date === anchor ? 'today' : date > today || (!list.length && date > anchor) ? 'future' : 'past' }
+  })
+  // one day at a time can be picked; it starts on the last journaled day, and a second click clears it
+  const [picked, setPicked] = useState(anchor)
+  return <section className="hw-week" aria-label="This week">
+    {days.map((day) => <button key={day.date} type="button" aria-pressed={picked === day.date}
+      className={`hw-day duo is-${day.state}${day.count ? ' has-trades' : ''}${picked === day.date ? ' is-picked' : ''}`}
+      title={day.state === 'today' ? 'Last journaled day' : undefined} onClick={() => setPicked((current) => (current === day.date ? null : day.date))}>
+      <div className="hw-day-top shell-head">
+        <b>{day.name} {day.date.slice(8).replace(/^0/, '')}</b>
+        <span className="hw-day-rate">{day.count ? `${day.rate}%` : '—'}</span>
+      </div>
+      <small className="shell-body">
+        <span>{day.count ? `${day.count} ${day.count === 1 ? 'trade' : 'trades'}` : 'No trades'}</span>
+        {day.count > 0 && <em className={`tone-${toneOf(day.net)}`}>{money(day.net, { privacy, decimals: 0 })}</em>}
+      </small>
+    </button>)}
+  </section>
+}
+
 export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTrades, openLog }) {
   const [feedEnd, setFeedEnd] = useState(false)
   const [feedTab, setFeedTab] = useState('Recent')
+  const [panelView, setPanelView] = useState('Top earners')
+  const [tileInfo, setTileInfo] = useState(() => new Set())
+  const toggleTileInfo = (label) => setTileInfo((prev) => { const next = new Set(prev); next.has(label) ? next.delete(label) : next.add(label); return next })
 
   const probe = typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('dataset')
   const source = useMemo(() => {
@@ -193,6 +248,7 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
   }, [range, source])
 
   const series = useMemo(() => equitySeries(scoped), [scoped])
+  const cume = useMemo(() => cumeSummary(series), [series])
   const stats = useMemo(() => ({ ...summarize(scoped), consistency: consistencyScore(series) }), [scoped, series])
   const edge = useMemo(() => edgeScore(stats), [stats])
 
@@ -254,11 +310,45 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
   const avgSession = stats.netPnl / Math.max(1, series.length)
   const breakeven = Math.max(0, stats.trades - stats.wins - stats.losses)
   const greenDays = series.filter((day) => day.pnl > 0).length
+  // win rate over the 20 trades up to each trade, for the trade win% chart
+  const rollingWin = useMemo(() => {
+    const ordered = [...scoped].sort((a, b) => (a.date === b.date ? a.time.localeCompare(b.time) : a.date.localeCompare(b.date)))
+    // zoomed to the latest 120 trades, so the line reads as a trend rather than every wiggle
+    const points = ordered.map((trade, index) => { const window = ordered.slice(Math.max(0, index - 19), index + 1); return { date: trade.date, value: (window.filter((item) => item.pnl > 0).length / window.length) * 100 } }).slice(10).slice(-120)
+    return { values: points.map((point) => point.value), dates: points.map((point) => point.date) }
+  }, [scoped])
+  // each session's net with its gross profit and gross loss, for the net P&L week bars
+  const dayGross = useMemo(() => {
+    const byDay = new Map()
+    scoped.forEach((trade) => { const day = byDay.get(trade.date) ?? { date: trade.date, pnl: 0, won: 0, lost: 0 }; day.pnl += trade.pnl; if (trade.pnl > 0) day.won += trade.pnl; else day.lost += -trade.pnl; byDay.set(trade.date, day) })
+    return [...byDay.values()].sort((a, b) => a.date.localeCompare(b.date))
+  }, [scoped])
+  // wins, losses and breakevens per calendar month, for the trade win% mosaic
+  const monthWins = useMemo(() => {
+    const byMonth = new Map()
+    scoped.forEach((trade) => { const key = trade.date.slice(0, 7); const m = byMonth.get(key) ?? { key, trades: 0, wins: 0, losses: 0, even: 0 }; m.trades += 1; if (trade.pnl > 0) m.wins += 1; else if (trade.pnl < 0) m.losses += 1; else m.even += 1; byMonth.set(key, m) })
+    return [...byMonth.values()].sort((a, b) => a.key.localeCompare(b.key)).map((m) => ({ ...m, label: new Date(`${m.key}-15T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }) }))
+  }, [scoped])
+  // gross profit, gross loss and profit factor per calendar month, for the profit factor columns
+  const monthFactor = useMemo(() => {
+    const byMonth = new Map()
+    scoped.forEach((trade) => { const key = trade.date.slice(0, 7); const m = byMonth.get(key) ?? { key, won: 0, lost: 0 }; if (trade.pnl > 0) m.won += trade.pnl; else m.lost += -trade.pnl; byMonth.set(key, m) })
+    return [...byMonth.values()].sort((a, b) => a.key.localeCompare(b.key)).map((m) => ({ ...m, factor: m.lost ? m.won / m.lost : m.won ? Infinity : null, label: new Date(`${m.key}-15T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }) }))
+  }, [scoped])
+  // profit factor over the last 20 sessions at each session (capped so a loss-free stretch doesn't flatten the line)
+  const rollingFactor = useMemo(() => {
+    const byDay = new Map()
+    scoped.forEach((trade) => { const day = byDay.get(trade.date) ?? { won: 0, lost: 0 }; if (trade.pnl > 0) day.won += trade.pnl; else day.lost += -trade.pnl; byDay.set(trade.date, day) })
+    const days = [...byDay.entries()].sort(([a], [b]) => a.localeCompare(b))
+    const points = days.map(([date], index) => { const window = days.slice(Math.max(0, index - 19), index + 1); const won = window.reduce((sum, [, day]) => sum + day.won, 0), lost = window.reduce((sum, [, day]) => sum + day.lost, 0); return { date, value: lost ? Math.min(4, won / lost) : 4 } }).slice(9)
+    return { values: points.map((point) => point.value), dates: points.map((point) => point.date) }
+  }, [scoped])
   const redDays = series.filter((day) => day.pnl < 0).length
   const tiles = [
     {
       label: 'Net P&L', value: money(stats.netPnl, { privacy, decimals: 0 }), tone: toneOf(stats.netPnl),
-      chart: <Split won={series.reduce((sum, day) => sum + Math.max(0, day.pnl), 0)} lost={series.reduce((sum, day) => sum + Math.max(0, -day.pnl), 0)}/>,
+      sub: plural(series.length, 'session'),
+      chart: <WeekBars days={dayGross} format={(value) => money(value, { privacy, decimals: 0 })}/>,
       foot: [
         { label: 'Avg / session', value: money(avgSession, { privacy, decimals: 0 }), tone: toneOf(avgSession) },
         { label: 'Best session', value: money(bestSession, { privacy, decimals: 0 }), tone: 'pos' },
@@ -266,8 +356,9 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
       ],
     },
     {
-      label: 'Trade win%', value: percent(stats.winRate, { decimals: 1 }),
-      chart: <Split won={stats.wins} lost={stats.losses}/>,
+      label: 'Win rate', value: percent(stats.winRate, { decimals: 1 }),
+      sub: `${stats.wins} of ${stats.trades} trades`,
+      chart: <WinMosaic months={monthWins}/>,
       foot: [
         { label: 'Winning', value: `${stats.wins}`, tone: 'pos' },
         { label: 'Breakeven', value: `${breakeven}` },
@@ -275,8 +366,9 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
       ],
     },
     {
-      label: 'Day win%', value: percent(stats.dayWinRate, { decimals: 1 }),
-      chart: <Split won={greenDays} lost={redDays}/>,
+      label: 'Day ratio', value: percent(stats.dayWinRate, { decimals: 1 }),
+      sub: `${greenDays} of ${series.length} days`,
+      chart: <DayHeat days={series} format={(value) => money(value, { privacy, decimals: 0 })}/>,
       foot: [
         { label: 'Green days', value: `${greenDays}`, tone: 'pos' },
         { label: 'Red days', value: `${redDays}`, tone: 'neg' },
@@ -284,7 +376,8 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
     },
     {
       label: 'Profit factor', value: ratio(stats.profitFactor),
-      chart: <Split won={stats.grossProfit} lost={stats.grossLoss}/>,
+      sub: 'Profit per $1 lost',
+      chart: <FactorColumns months={monthFactor} format={(value) => money(value, { privacy, decimals: 0 })}/>,
       foot: [
         { label: 'Gross profit', value: money(stats.grossProfit, { privacy, decimals: 0, sign: false }), tone: 'pos' },
         { label: 'Gross loss', value: money(stats.grossLoss, { privacy, decimals: 0, sign: false }), tone: 'neg' },
@@ -314,48 +407,98 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
 
   const scoreShift = priorEdge?.score != null && edge.score != null ? edge.score - priorEdge.score : null
   const radarAxes = ['Win%', 'Profit factor', 'Avg win/loss', 'Max drawdown', 'Recovery', 'Consistency']
+  // the score's parts for each of the last six traded months, for the radial bars
+  const monthlyEdge = useMemo(() => {
+    const byMonth = new Map()
+    scoped.forEach((trade) => { const key = trade.date.slice(0, 7); if (!byMonth.has(key)) byMonth.set(key, []); byMonth.get(key).push(trade) })
+    return [...byMonth.entries()].sort(([a], [b]) => a.localeCompare(b)).slice(-6).filter(([, list]) => list.length >= 5).map(([key, list]) => ({
+      key, label: new Date(`${key}-15T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }),
+      components: edgeScore({ ...summarize(list), consistency: consistencyScore(equitySeries(list)) }).components,
+    }))
+  }, [scoped])
 
-  return <div className="page home">
-    <header className="home-header dashboard-overview">
-      <div className="home-greeting">
-        <div className="greeting-plate">
-          <h1 className="welcome-title"><span className="welcome-muted">Welcome back,</span> {profile.name}</h1>
-          <p className="page-lede">{series.length
-            ? `${plural(series.length, 'session')} journaled · last trade ${shortDate(series[series.length - 1].date)}`
-            : 'No sessions journaled yet — log your first trade to get started.'}</p>
-        </div>
-      </div>
-    </header>
+  const panelSwitch = <div className="ws-seg compact dc-panel-switch" role="tablist" aria-label="Panel">
+    {['Top earners', 'Score'].map((option) => <button
+      key={option} type="button" role="tab" aria-selected={panelView === option}
+      className={panelView === option ? 'active' : ''} onClick={() => setPanelView(option)}
+    >{option}</button>)}
+  </div>
+
+  return <div className="page home dc">
+    <div className="home-welcome">
+      <h1>Dashboard</h1>
+    </div>
+
+    <WeekStrip trades={tradeLog} privacy={privacy}/>
 
     <div className="home-top">
-      <OverallScoreCard edge={edge} priorEdge={priorEdge} axes={radarAxes} enough={scoped.length >= 5}/>
       <div className="compare-row">
-        <section className="compare-card shell te-shell">
-          <div className="shell-head">Top Earners<em>{range === 'All' ? 'All time' : range}</em></div>
-          <div className="te-list" onScroll={(event) => { const el = event.currentTarget; el.classList.toggle('at-end', el.scrollTop + el.clientHeight >= el.scrollHeight - 2) }}>
-            {earners.map((item) => <button
-              key={item.symbol} type="button" className="te-card" onClick={() => openTrades?.(item.symbol)}
-              aria-label={`${item.symbol}: ${money(item.net, { privacy })} net over ${item.trades} trades, ${item.avgReturn >= 0 ? '+' : '−'}${Math.abs(item.avgReturn).toFixed(2)}% average return. Open trades`}
-            >
-              <span className="te-id"><SymbolToken symbol={item.symbol}/><b>{item.symbol}</b></span>
-              <strong className="te-value">{item.net < 0 && '−'}{money(Math.abs(item.net), { privacy, sign: false })}</strong>
-              <small className={`te-chg ${item.avgReturn >= 0 ? 'pos' : 'neg'}`} title="Average return per trade">{privacy ? '••••' : `${item.avgReturn >= 0 ? '+' : '−'}${Math.abs(item.avgReturn).toFixed(2)}%`}</small>
-              <span className="te-chart"><AreaLine values={item.run} tone={item.tone} density={5}/></span>
-            </button>)}
-            {!earners.length && <p className="te-empty">No trades in this range yet.</p>}
+        <section className="home-card feed-card shell chart-shell">
+          <div className="shell-head">
+            <span>Trades</span>
+          </div>
+          <div className="shell-body">
+          {recent.length
+            ? <div key={feedTab} ref={(el) => { if (el && !feedEnd && el.scrollHeight <= el.clientHeight + 2) setFeedEnd(true) }} className={`feed-scroll${feedEnd ? ' at-end' : ''}`} onScroll={(event) => {
+                const el = event.currentTarget
+                setFeedEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 2)
+              }}>
+              <table className="feed-table" aria-label={`${feedTab} trades: date, symbol and net P&L`}>
+                <tbody>
+                  {recent.map((trade) => <tr key={trade.id} onClick={() => openJournal(trade.date)}>
+                    <td className="ft-date">{shortDate(trade.date)}</td>
+                    <td className="ft-sym"><span><SymbolToken symbol={trade.symbol}/>{trade.symbol}</span></td>
+                    <td className={`tone-${toneOf(trade.pnl)}`}>{money(trade.pnl, { privacy, decimals: 2 })}</td>
+                  </tr>)}
+                </tbody>
+              </table>
+            </div>
+            : <ChartState state="empty"/>}
+          </div>
+          <div className="dc-panel-foot">
+            <div className="ws-seg compact dc-panel-switch" role="tablist" aria-label="Trade feed">
+              {['Recent', 'Best', 'Worst'].map((tab) => <button
+                key={tab} type="button" role="tab" aria-selected={feedTab === tab}
+                className={feedTab === tab ? 'active' : ''} onClick={() => { setFeedTab(tab); setFeedEnd(false) }}
+              >{tab}</button>)}
+            </div>
           </div>
         </section>
       </div>
+      <section className="home-card cume-card shell chart-shell">
+        <div className="shell-head">
+          <span>Daily Net Cumulative P&L</span>
+          {cume && <CumeChips privacy={privacy} items={[
+            { label: 'Net', value: cume.net, tone: toneOf(cume.net) },
+            { label: 'Peak', value: cume.peak },
+            { label: 'Max drawdown', value: cume.drawdown, tone: 'neg' },
+            { label: `Rolling ${cume.span}`, value: cume.rolling, tone: toneOf(cume.rolling) },
+          ]}/>}
+        </div>
+        <div className="shell-body">
+          {dataState === 'ready'
+            ? <><CumulativeChart series={series} height={320} fill privacy={privacy} side={false}/><CumeKey span={cume.span}/></>
+            : <ChartState state={dataState}/>}
+        </div>
+      </section>
+    </div>
+
+    <div className="home-wide dc-wide home-top">
       <section className="score-panel">
         <div className="tile-grid">
-          {tiles.map((tile) => <div className="stat-tile dash-tile shell" key={tile.label}>
-            <div className="shell-head">{tile.label}</div>
+          {tiles.map((tile) => <div className={`stat-tile dash-tile shell${tile.foot ? ' is-flip' : ''}${tileInfo.has(tile.label) ? ' info-on' : ''}`} key={tile.label}
+            {...(tile.foot ? { role: 'button', tabIndex: 0, 'aria-pressed': tileInfo.has(tile.label), 'aria-label': `${tile.label}: ${tileInfo.has(tile.label) ? 'show chart' : 'show details'}`,
+              onClick: () => toggleTileInfo(tile.label), onKeyDown: (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleTileInfo(tile.label) } } } : {})}>
+            <div className="shell-head"><span>{tile.label}</span></div>
             <div className="shell-body">
             <div className="tile-main">
-              <strong className={tile.tone ? `tone-${tile.tone}` : undefined}>{tile.value}</strong>
+              <span className="dc-fig">
+                <strong className={tile.tone ? `tone-${tile.tone}` : undefined}>{tile.value}</strong>
+                {tile.sub && <small>{tile.sub}</small>}
+              </span>
               {tile.aside}
+              {tile.visual && <span className="dc-viz">{tile.visual}</span>}
             </div>
-            {tile.chart && <span className="tile-chart">{tile.chart}</span>}
             {tile.rows && <dl className="tile-rows ruled">
               {tile.rows.map((row) => <div key={row.label}>
                 <dt>{row.label}</dt>
@@ -363,28 +506,28 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
                 <span className="tr-bar"><i className={row.tone} style={{ width: `${Math.max(2, Math.min(100, (row.share ?? 0) * 100))}%` }}/></span>
               </div>)}
             </dl>}
-            {tile.foot && <dl className="tile-rows">
+            {tile.foot && <dl className="tile-rows dc-inset" aria-hidden={!tileInfo.has(tile.label)}>
               {tile.foot.map((row) => <div key={row.label}><dt>{row.label}</dt><dd className={row.tone ? `tone-${row.tone}` : undefined}>{row.value}</dd></div>)}
             </dl>}
+            {tile.chart && <div className="dc-bleed">{tile.chart}</div>}
             </div>
           </div>)}
         </div>
       </section>
-
+      {/* Top earners and the overall score share one slot; the switch sits in both heads */}
+      {panelView === 'Score'
+        ? <OverallScoreCard edge={edge} priorEdge={priorEdge} axes={radarAxes} enough={scoped.length >= 5} monthly={monthlyEdge} switcher={panelSwitch}/>
+        : <section className="compare-card shell te-shell">
+          <div className="shell-head"><span>Top earners</span><em>{range === 'All' ? 'All time' : range}</em></div>
+          <div className="shell-body te-heat"><EarnersHeat trades={scoped} privacy={privacy} openTrades={openTrades}/></div>
+          <div className="dc-panel-foot">{panelSwitch}</div>
+        </section>}
     </div>
 
-    <div className="home-wide">
-      <section className="home-card cume-card shell chart-shell">
-        <div className="shell-head">Daily Net Cumulative P&L</div>
-        <div className="shell-body">
-          {dataState === 'ready'
-            ? <CumulativeChart series={series} height={320} fill privacy={privacy}/>
-            : <ChartState state={dataState}/>}
-        </div>
-      </section>
-    </div>
+    <NewsStrip/>
 
-    <div className="home-bottom">
+    {/* parked: Net Daily P&L is hidden until asked to "unhide net daily" */}
+    {SHOW_DAILY_ROW && <div className="home-bottom">
       <div className="pulse-col">
         <section className="home-card shell chart-shell pulse-shell">
           <div className="shell-head">
@@ -407,59 +550,28 @@ export function Dashboard({ privacy, setPage, range = 'All', openJournal, openTr
                 <span className="pulse-note">Avg {money(pulseNet / Math.max(1, pulseDays.length), { privacy, decimals: 0 })} / day</span>
               </div>
               <DailyPulse series={pulseDays} privacy={privacy}/>
+              <dl className="pulse-stats dc-inset">
+                <div><dt>Best day</dt><dd className={`tone-${toneOf(pulseBest)}`}>{money(pulseBest, { privacy, decimals: 0 })}</dd></div>
+                <div><dt>Worst day</dt><dd className={`tone-${toneOf(pulseWorst)}`}>{money(pulseWorst, { privacy, decimals: 0 })}</dd></div>
+                <div><dt>Avg green</dt><dd className="tone-pos">{pulseGreen.length ? money(pulseGreen.reduce((t, d) => t + d.pnl, 0) / pulseGreen.length, { privacy, decimals: 0 }) : '—'}</dd></div>
+                <div><dt>Green days</dt><dd>{pulseGreen.length}<small>/{pulseDays.length}</small></dd></div>
+              </dl>
             </>
           : <ChartState state={dataState}/>}
           </div>
         </section>
 
-        {dataState === 'ready' && <section className="home-card pulse-summary">
-          <dl className="pulse-stats">
-            <div><dt>Best day</dt><dd className={`tone-${toneOf(pulseBest)}`}>{money(pulseBest, { privacy, decimals: 0 })}</dd></div>
-            <div><dt>Worst day</dt><dd className={`tone-${toneOf(pulseWorst)}`}>{money(pulseWorst, { privacy, decimals: 0 })}</dd></div>
-            <div><dt>Avg green</dt><dd className="tone-pos">{pulseGreen.length ? money(pulseGreen.reduce((t, d) => t + d.pnl, 0) / pulseGreen.length, { privacy, decimals: 0 }) : '—'}</dd></div>
-            <div><dt>Green days</dt><dd>{pulseGreen.length}<small>/{pulseDays.length}</small></dd></div>
-          </dl>
-        </section>}
       </div>
 
 
-      <section className="home-card feed-card shell chart-shell">
-        <div className="shell-head">
-          <span>Trades</span>
-          <div className="ws-seg compact" role="tablist" aria-label="Trade feed">
-            {['Recent', 'Best', 'Worst'].map((tab) => <button
-              key={tab} type="button" role="tab" aria-selected={feedTab === tab}
-              className={feedTab === tab ? 'active' : ''} onClick={() => { setFeedTab(tab); setFeedEnd(false) }}
-            >{tab}</button>)}
-          </div>
-        </div>
-        <div className="shell-body">
-        {recent.length
-          ? <div key={feedTab} ref={(el) => { if (el && !feedEnd && el.scrollHeight <= el.clientHeight + 2) setFeedEnd(true) }} className={`feed-scroll${feedEnd ? ' at-end' : ''}`} onScroll={(event) => {
-              const el = event.currentTarget
-              setFeedEnd(el.scrollTop + el.clientHeight >= el.scrollHeight - 2)
-            }}>
-            <table className="feed-table">
-              <thead><tr><th>Date</th><th>Symbol</th><th>Net P&L</th></tr></thead>
-              <tbody>
-                {recent.map((trade) => <tr key={trade.id} onClick={() => openJournal(trade.date)}>
-                  <td className="ft-date">{shortDate(trade.date)}</td>
-                  <td className="ft-sym"><span><SymbolToken symbol={trade.symbol}/>{trade.symbol}</span></td>
-                  <td className={`tone-${toneOf(trade.pnl)}`}>{money(trade.pnl, { privacy, decimals: 2 })}</td>
-                </tr>)}
-              </tbody>
-            </table>
-          </div>
-          : <ChartState state="empty"/>}
-        </div>
-      </section>
-    </div>
+    </div>}
 
-    <div className="win-row">
+    {/* parked: the three win-rate cards are hidden until asked to "unhide bottom 3" */}
+    {SHOW_WIN_ROW && <div className="win-row">
       <WinRatioCard trades={scoped} variant="donut"/>
       <WinRatioCard trades={scoped} variant="bars"/>
       <WinRatioCard trades={scoped} variant="lines"/>
-    </div>
+    </div>}
   </div>
 }
 
@@ -541,7 +653,8 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
   const anchorMonth = Number(latest.slice(5, 7)) - 1
   const [monthOffset, setMonthOffset] = useState(0)
   const [weekIndex, setWeekIndex] = useState(null)
-  const [view, setView] = useState('Month')
+  // the board shows whole months; the week layout stays in place behind this constant
+  const view = 'Month'
   const [filter, setFilter] = useState('All trades')
   const [query, setQuery] = useState('')
   const filters = ['All trades', 'Wins', 'Losses', 'Journaled']
@@ -715,15 +828,8 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
             <button className="board-today" onClick={resetMonth}>Today</button>
             <button aria-label={view === 'Week' ? 'Next week' : 'Next month'} onClick={() => step(1)}><ChevronRight size={16} strokeWidth={2}/></button>
           </div>
-          <label className="board-select">
-            <Select value={view} aria-label="Calendar view" onChange={(event) => { setView(event.target.value); setWeekIndex(null) }}>
-              <option value="Month">Month view</option>
-              <option value="Week">Week view</option>
-            </Select>
-            <ChevronDown size={14}/>
-          </label>
           <TodayJournalButton onClick={() => setOpenDay(todayIso)}/>
-          <button className="board-primary" onClick={openLog}><Plus size={14} strokeWidth={2.4}/> Log trade</button>
+          <button className="board-primary" onClick={openLog}>Log trade</button>
         </div>
       </div>
 
@@ -1054,6 +1160,7 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
   const visibleFills = useMemo(() => sessionFills.filter((fill) =>
     tradeFilter === 'Wins' ? fill.pnl > 0 : tradeFilter === 'Losses' ? fill.pnl < 0 : true), [sessionFills, tradeFilter])
   const [timelineView, setTimelineView] = useState('Packed')
+  const [sessionView, setSessionView] = useState('Timeline')
   const NOTE_KEY = `journal-note-${date}`
   const noteRef = useRef(null)
   const [noteHtml, setNoteHtml] = useState(() => {
@@ -1160,9 +1267,6 @@ export function JournalPage({ privacy, date = REVIEWED_DAY, setDate, openLog }) 
   const path = ordered.reduce((acc, fill) => [...acc, (acc[acc.length - 1] ?? 0) + fill.pnl], [])
   const intraday = { high: Math.max(0, ...path), low: Math.min(0, ...path), close: path[path.length - 1] ?? 0 }
   const pnlPeak = Math.max(1, ...sessionFills.map((fill) => Math.abs(fill.pnl)))
-  const GRADE_POINTS = { 'A+': 4.3, A: 4, 'A-': 3.7, B: 3, C: 2, D: 1 }
-  const gradeAverage = sessionFills.reduce((sum, fill) => sum + (GRADE_POINTS[fill.grade] ?? 0), 0) / sessionFills.length
-  const gradeLetter = gradeAverage >= 4.15 ? 'A+' : gradeAverage >= 3.85 ? 'A' : gradeAverage >= 3.5 ? 'A−' : gradeAverage >= 3.15 ? 'B+' : gradeAverage >= 2.85 ? 'B' : gradeAverage >= 2 ? 'C' : 'D'
   const toMinutes = (time) => { const [hours, minutes] = time.split(':').map(Number); return hours * 60 + minutes }
   const times = sessionFills.map((fill) => toMinutes(fill.time))
   const lastExit = sessionFills.reduce((last, fill) => ((fill.closed ?? fill.time) > last ? (fill.closed ?? fill.time) : last), sessionFills[0]?.time ?? '09:30')
@@ -1248,33 +1352,6 @@ const LABEL_MINUTES = 36
           : `${day.net >= 0 ? 'Green' : 'Red'} session · ${plural(sessionFills.length, 'trade')} · ${breakdown.largestWin ? `best ${breakdown.largestWin.symbol} ${money(breakdown.largestWin.pnl, { privacy, decimals: 0 })}` : 'no winners'}`}</p>
         </div>
       </div>
-      <div className="jr-bar duo">
-        <div className="jr-nav shell-head">
-          <button type="button" aria-label="Previous trading day" disabled={!previousDay} onClick={() => setDate?.(previousDay)}><ChevronLeft size={16} strokeWidth={2}/></button>
-          <span className="jr-date" aria-live="polite">{new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</span>
-          <button type="button" aria-label="Next trading day" disabled={!nextDay} onClick={() => setDate?.(nextDay)}><ChevronRight size={16} strokeWidth={2}/></button>
-        </div>
-        <div className="shell-body">
-      <div className="jr-week" role="list" aria-label="This week">
-        {week.map((item) => <button
-          type="button" role="listitem" key={item.date}
-          className={`jr-day${item.date === JOURNAL_DAY ? ' current' : ''}${item.pnl == null ? ' idle' : ` ${toneOf(item.pnl)}`}`}
-
-          disabled={item.pnl == null}
-          aria-current={item.date === JOURNAL_DAY ? 'date' : undefined}
-          onClick={() => setDate?.(item.date)}
-        >
-          <span>{item.weekday}</span>
-          <b>{item.dayNumber}</b>
-          <small>{item.pnl == null ? '—' : money(item.pnl, { privacy, decimals: 0 })}</small>
-        </button>)}
-        <div className="jr-week-total">
-          <span>Week</span>
-          <b className={`tone-${toneOf(weekNet)}`}>{money(weekNet, { privacy, decimals: 0 })}</b>
-        </div>
-      </div>
-        </div>
-      </div>
     </header>
 
     <div className="journal-layout">
@@ -1290,19 +1367,33 @@ const LABEL_MINUTES = 36
           </div>)}
         </div>
 
-        <section className="home-card">
-          <div className="session-timeline">
-            <div className="st-head">
-              <span className="card-title">Session Timeline</span>
-              <div className="st-tools">
-                <div className="ws-seg compact" role="tablist" aria-label="Timeline view">
-                  {['Packed', 'By trade'].map((option) => <button
-                    key={option} type="button" role="tab" aria-selected={timelineView === option}
-                    className={timelineView === option ? 'active' : ''} onClick={() => setTimelineView(option)}
-                  >{option}</button>)}
-                </div>
+        <section className="home-card duo jr-duo session-card">
+          <div className="shell-head">
+            <span className="card-title">Session</span>
+            {/* the timeline and the intraday curve share one card; the tools on the right follow the view */}
+            <div className="st-tools">
+              {sessionView === 'Timeline' ? <div className="ws-seg compact" role="tablist" aria-label="Timeline layout">
+                {['Packed', 'By trade'].map((option) => <button
+                  key={option} type="button" role="tab" aria-selected={timelineView === option}
+                  className={timelineView === option ? 'active' : ''} onClick={() => setTimelineView(option)}
+                >{option}</button>)}
+              </div> : <dl className="intraday-stats">
+                <div><dt>High</dt><dd className={`tone-${toneOf(intraday.high)}`}>{money(intraday.high, { privacy, decimals: 0 })}</dd></div>
+                <div><dt>Low</dt><dd className={`tone-${toneOf(intraday.low)}`}>{money(intraday.low, { privacy, decimals: 0 })}</dd></div>
+                <div><dt>Close</dt><dd className={`tone-${toneOf(intraday.close)}`}>{money(intraday.close, { privacy, decimals: 0 })}</dd></div>
+              </dl>}
+              <div className="ws-seg compact" role="tablist" aria-label="Session view">
+                {['Timeline', 'Intraday'].map((option) => <button
+                  key={option} type="button" role="tab" aria-selected={sessionView === option}
+                  className={sessionView === option ? 'active' : ''} onClick={() => setSessionView(option)}
+                >{option}</button>)}
               </div>
             </div>
+          </div>
+          <div className="shell-body">
+          {sessionView === 'Intraday' ? <div className="session-intraday">
+            <IntradayChart fills={sessionFills} height={210} privacy={privacy} onSelect={setDrawerTradeId}/>
+          </div> : <div className="session-timeline">
             {timelineView === 'Packed' && <div className="stl stl-packed" role="list">
               {[...packedRows, ...Array.from({ length: Math.max(0, TIMELINE_MIN_ROWS - packedRows.length) }, () => [])].map((row, rowIndex) => <div className={`stl-row full${row.length ? '' : ' is-empty'}`} key={rowIndex} aria-hidden={row.length ? undefined : true}>
                 <span className="stl-lane">
@@ -1368,6 +1459,7 @@ const LABEL_MINUTES = 36
               </div>
             </div>}
             <p className="st-meta st-foot">{sessionFills.length} trades · {Math.floor(heldMinutes / 60)}h {heldMinutes % 60}m in market · US Eastern</p>
+          </div>}
           </div>
         </section>
 
@@ -1455,30 +1547,47 @@ const LABEL_MINUTES = 36
           </div></div></div>
         </section>
 
-        <section className="home-card intraday-card">
-          <div className="intraday-head">
-            <div className="card-title">Intraday Net Cumulative P&L</div>
-            <dl className="intraday-stats">
-              <div><dt>High</dt><dd className={`tone-${toneOf(intraday.high)}`}>{money(intraday.high, { privacy, decimals: 0 })}</dd></div>
-              <div><dt>Low</dt><dd className={`tone-${toneOf(intraday.low)}`}>{money(intraday.low, { privacy, decimals: 0 })}</dd></div>
-              <div><dt>Close</dt><dd className={`tone-${toneOf(intraday.close)}`}>{money(intraday.close, { privacy, decimals: 0 })}</dd></div>
-            </dl>
-          </div>
-          <IntradayChart fills={sessionFills} height={250} privacy={privacy} onSelect={setDrawerTradeId}/>
-        </section>
       </div>
 
       <aside className="journal-side">
+      {/* the day picker heads the side column, above the note */}
+      <div className="jr-bar duo">
+        <div className="jr-nav shell-head">
+          <button type="button" aria-label="Previous trading day" disabled={!previousDay} onClick={() => setDate?.(previousDay)}><ChevronLeft size={16} strokeWidth={2}/></button>
+          <span className="jr-date" aria-live="polite">{new Date(`${date}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}</span>
+          <button type="button" aria-label="Next trading day" disabled={!nextDay} onClick={() => setDate?.(nextDay)}><ChevronRight size={16} strokeWidth={2}/></button>
+        </div>
+        <div className="shell-body">
+      <div className="jr-week" role="list" aria-label="This week" style={{ '--jr-cells': week.length + 1 }}>
+        {week.map((item) => <button
+          type="button" role="listitem" key={item.date}
+          className={`jr-day${item.date === JOURNAL_DAY ? ' current' : ''}${item.pnl == null ? ' idle' : ` ${toneOf(item.pnl)}`}`}
+
+          disabled={item.pnl == null}
+          aria-current={item.date === JOURNAL_DAY ? 'date' : undefined}
+          onClick={() => setDate?.(item.date)}
+        >
+          <span>{item.weekday}</span>
+          <b>{item.dayNumber}</b>
+          <small>{item.pnl == null ? '—' : money(item.pnl, { privacy, decimals: 0 })}</small>
+        </button>)}
+        <div className="jr-week-total">
+          <span>Week</span>
+          <b className={`tone-${toneOf(weekNet)}`}>{money(weekNet, { privacy, decimals: 0 })}</b>
+        </div>
+      </div>
+        </div>
+      </div>
       <section
-        className="home-card journal-note note-preview" role="button" tabIndex={0}
+        className="home-card journal-note note-preview duo jr-duo" role="button" tabIndex={0}
         aria-label="Open session note" onClick={openNote}
         onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); openNote() } }}
       >
-        <div className="np-head">
+        <div className="shell-head np-head">
           <span className="card-title">Session Note</span>
           <span className="np-meta">{savedAt ? `Saved ${savedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : 'Saved'}<ChevronRight size={14}/></span>
         </div>
-        <div className="np-body">
+        <div className="shell-body np-body">
           <b className="np-title">{notePreview.title}</b>
           {notePreview.body && <p className="np-text">{notePreview.body}</p>}
           <span className="np-lines" aria-hidden="true"><i/><i/><i/></span>
@@ -1540,8 +1649,9 @@ const LABEL_MINUTES = 36
         <img src={preview.src} alt={preview.name}/>
       </div>}
 
-      <section className="home-card day-breakdown">
-        <div className="card-title">Day Breakdown</div>
+      <section className="home-card day-breakdown duo jr-duo">
+        <div className="shell-head"><div className="card-title">Day Breakdown</div></div>
+        <div className="shell-body">
         <div className="db-rows">
           {[
             { label: 'Largest trade', left: breakdown.largestWin?.pnl, leftMeta: breakdown.largestWin?.symbol, right: breakdown.largestLoss?.pnl, rightMeta: breakdown.largestLoss?.symbol },
@@ -1562,17 +1672,18 @@ const LABEL_MINUTES = 36
             </div>
           })}
         </div>
+        </div>
       </section>
 
-      <section className="home-card checklist-card">
-        <button type="button" className="checklist-head as-toggle" aria-haspopup="dialog" onClick={() => setChecklistOpen(true)}>
-          <div>
-            <div className="card-title">Execution Checklist <ChevronRight size={14} strokeWidth={2.2} className="cc-caret"/></div>
+      <section className="home-card checklist-card duo jr-duo">
+        <button type="button" className="shell-head checklist-head as-toggle" aria-haspopup="dialog" onClick={() => setChecklistOpen(true)}>
+          <div className="card-title">Execution Checklist <ChevronRight size={14} strokeWidth={2.2} className="cc-caret"/></div>
+          <span className="cl-kept">
             <span className="checklist-sub">{checked.filter(Boolean).length} of {checklistRules.length} rules kept</span>
-          </div>
-          <span className={`discipline-ring ${disciplineTone(discipline)}`} style={{ '--share': discipline }} role="img" aria-label={`${discipline}% discipline`}/>
+            <span className={`discipline-ring ${disciplineTone(discipline)}`} style={{ '--share': discipline }} role="img" aria-label={`${discipline}% discipline`}/>
+          </span>
         </button>
-        <div className="checklist-foot">
+        <div className="shell-body checklist-foot">
           <div className="cw-head">
             <span>This week</span>
             {disciplineAverage != null && <span>Avg <b className={`tone-${disciplineTone(disciplineAverage) === 'pos' ? 'pos' : disciplineTone(disciplineAverage) === 'neg' ? 'neg' : 'mid'}`}>{disciplineAverage}%</b></span>}

@@ -51,6 +51,7 @@ export const accounts = [
 export const profile = {
   name: 'RNSENCE',
   caption: 'View account',
+  plan: 'LTF',
   discordId: '1221491991007989834',
   discordAvatar: '84a110c4c389947c81d65c878c148c9c',
 }

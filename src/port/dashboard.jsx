@@ -28,7 +28,7 @@ const theme = createTheme({
 
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`
 const SCORE_TIPS = {
-  'Win rate': 'Tighten entry criteria — skip setups that are not A-grade.',
+  'Win rate': 'Tighten entry criteria — skip setups that miss a checklist rule.',
   'Profit factor': 'Cut losing trades sooner so gross losses shrink.',
   'Avg win / loss': 'Let winners run to target instead of taking early profits.',
   Drawdown: 'Size down after two consecutive losses to cap drawdown.',
@@ -84,10 +84,10 @@ export function Dashboard({ privacy, range = 'All', openTrades }) {
         <Tile label="Net P&L" value={fmt(stats.netPnl)} tone={toneOf(stats.netPnl)}
           visual={<SparkLineChart data={series.map((day) => day.cumulative)} height={44} area curve="natural" color={stats.netPnl >= 0 ? POS : NEG} className="d3-spark"/>}
           rows={[['Avg / session', fmt(stats.netPnl / series.length), toneOf(stats.netPnl)], ['Best session', fmt(best), 'pos'], ['Worst session', fmt(worst), 'neg']]}/>
-        <Tile label="Trade win%" value={percent(stats.winRate, { decimals: 1 })}
+        <Tile label="Win rate" value={percent(stats.winRate, { decimals: 1 })}
           visual={<HalfGauge value={stats.winRate ?? 0}/>}
           rows={[['Winning', `${stats.wins}`, 'pos'], ['Breakeven', `${breakeven}`], ['Losing', `${stats.losses}`, 'neg']]}/>
-        <Tile label="Day win%" value={percent(stats.dayWinRate, { decimals: 1 })}
+        <Tile label="Day ratio" value={percent(stats.dayWinRate, { decimals: 1 })}
           visual={<HalfGauge value={stats.dayWinRate ?? 0}/>}
           rows={[['Green days', `${green.length}`, 'pos'], ['Red days', `${red.length}`, 'neg']]}/>
         <Tile label="Profit factor" value={ratio(stats.profitFactor)}

@@ -47,18 +47,6 @@
 .ac-page .ac-restore { margin-top: 12px; }
 .ac-page .ac-empty { align-items: center; gap: 6px; color: var(--ink-soft); text-align: center; }
 
-.ac-page .ac-sizer { margin-top: 16px; }
-.ac-sizer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr 1fr auto; gap: 10px; align-items: end; }
-.ac-page .ac-sizer .dlg-field input, .ac-page .ac-sizer .dlg-field select {
-  width: 100%; height: 36px; padding: 0 11px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; font-size: 13px; outline: none;
-}
-.ac-page .ac-sizer .dlg-field input:focus, .ac-page .ac-sizer .dlg-field select:focus { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(46,124,246,.12); }
-.ac-page .ac-sizer .dlg-field > span { color: var(--ink-soft); font-size: 11.5px; font-weight: 600; }
-.ac-page .ac-size-btn { height: 36px; border-radius: 10px; }
-.ac-page .ac-size-btn:disabled { opacity: .5; cursor: default; }
-.ac-sized { display: flex; align-items: center; gap: 12px; margin-top: 14px; padding: 12px 14px; border-radius: 12px; background: var(--fill); color: var(--ink-soft); font-size: 12.5px; line-height: 1.5; animation: dlg-rise .2s ease both; }
-.ac-sized strong { color: var(--ink); font-size: 26px; font-weight: 700; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
-.ac-sized b { color: var(--ink); }
 .ac-error { margin: 12px 0 0; color: #d92d20; font-size: 12px; }
 
 .ac-form { display: flex; flex-direction: column; gap: 16px; }
@@ -69,8 +57,6 @@
 .ac-check.wide { grid-column: 1 / -1; }
 .ac-check input { width: 14px; height: 14px; margin: 0; accent-color: #2f62dd; }
 .ac-foot { margin: 4px -20px -20px; position: sticky; bottom: -20px; background: #fff; }
-@media (max-width: 1200px) { .ac-sizer-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 560px) { .ac-sizer-grid { grid-template-columns: 1fr 1fr; } .ac-sized { flex-direction: column; align-items: flex-start; } }
 
 .ac-page .ac-row-closed td { opacity: .62; }
 .ac-page .ac-closed { margin-top: 16px; }
@@ -81,3 +67,52 @@
 .ac-closed-head .cc-caret-box svg { color: var(--ink-faint); transition: transform .2s ease; }
 .ac-closed.is-open .ac-closed-head .cc-caret-box svg { transform: rotate(180deg); }
 .ac-closed .ac-grid { animation: dlg-rise .2s ease both; }
+
+/* ---------- account cards at a glance: name and status, balance and result, one or two limits; the rest opens in a drawer */
+.ac-page .ac-card { cursor: pointer; display: flex; flex-direction: column; gap: 14px; }
+.ac-page .ac-card:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(46,124,246,.18) !important; }
+.ac-page .ac-card header p { margin: 2px 0 0; color: var(--ink-faint); font-size: 12px; }
+.ac-page .ac-figure { display: flex; flex-direction: column; gap: 3px; }
+.ac-page .ac-figure strong { color: var(--ink); font-size: 22px; font-weight: 700; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.ac-page .ac-figure small { color: var(--ink-faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ac-page .ac-figure em { font-style: normal; font-weight: 500; }
+.ac-page .ac-card-meters { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+.ac-page .ac-card-note { margin: -4px 0 0; color: var(--ink-soft); font-size: 12px; font-weight: 500; }
+
+/* ---------- account drawer (portaled: its own palette) */
+.ac-dw { --ink: #2b2f35; --ink-soft: #475467; --ink-faint: #98a2b3; --line: #eaecf0; --line-soft: #f2f4f7; --fill: #f2f4f7; --accent: #2e7cf6; display: flex; flex-direction: column; gap: 14px; color: var(--ink); }
+.ac-dw .tp-result { align-items: center; }
+.ac-dw .tp-result .ac-status { margin-left: auto; }
+.ac-dw .ac-dw-sub { margin: -8px 0 0; color: var(--ink-faint); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.ac-dw .ac-dw-sub b { font-weight: 500; }
+.ac-dw .ac-rules { padding-top: 14px; border-top: 1px solid var(--line-soft); }
+.ac-dw .dw-actions { justify-content: flex-end; margin-top: 2px; }
+.dw-trade.ac-dw .dw-actions > * { flex: none; height: 34px; padding: 0 14px; border: 0; border-radius: 10px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.dw-trade.ac-dw .dw-actions > .ws-outline { background: #fff; color: var(--ink); box-shadow: var(--shadow-tight), inset 0 0 0 1px rgba(16,24,40,.06); }
+/* compact cards: logo beside the name, tighter rhythm, no stretched gap above the bars */
+.ac-page .ac-card { gap: 12px; padding: 14px 16px !important; }
+.ac-page .ac-card header { align-items: center; gap: 10px; }
+.ac-page .ac-card header .ac-id { flex: 1; min-width: 0; }
+.ac-page .ac-card header h3 { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ac-page .ac-card header p { margin-top: 1px; }
+.ac-page .ac-card .acct-logo { width: 32px; height: 32px; border-radius: 9px; }
+.ac-page .ac-figure { gap: 1px; }
+.ac-page .ac-figure strong { font-size: 20px; }
+.ac-page .ac-card-meters { gap: 8px; margin-top: 0; }
+.ac-page .ac-card-meters .acct-meter-head { margin-bottom: 5px; }
+.ac-page .ac-card-note { margin: -2px 0 0; }
+/* cards sit on the grey frame tone, flat */
+#root .ac-page .ac-card { background: var(--duo-frame, #f7f7f8) !important; border: 0 !important; box-shadow: none !important; }
+#root .ac-page .ac-card:hover { background: #f2f3f5 !important; transform: none; }
+/* closed-out toggle: a filled grey bar in the cards' tone; the caret box turns white on it */
+#root .ac-page .ac-closed-head { background: var(--duo-frame, #f7f7f8) !important; box-shadow: none !important; transition: background .14s ease; }
+#root .ac-page .ac-closed-head:hover { background: #f2f3f5 !important; }
+#root .ac-page .ac-closed-head:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(46,124,246,.18) !important; }
+/* balance with its result beside it on one baseline */
+.ac-page .ac-figure { flex-direction: row; align-items: baseline; gap: 8px; }
+.ac-page .ac-figure em { font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.ac-page .ac-card header p { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* account groups: a quiet section label over each grid */
+.ac-page .ac-section { margin-top: 18px; }
+.ac-page .ac-section-label { margin: 0 0 8px 2px; color: var(--ink-faint); font-size: 13px; font-weight: 500; letter-spacing: 0; }
+.ac-page .ac-section .ac-grid { margin-top: 0; }
