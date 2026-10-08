@@ -27,7 +27,7 @@ import { Select } from '../select'
 import { TagStack } from './notebook'
 import './reports.css'
 
-const TABS = ['Insights', 'Compare', 'Publish']
+const TABS = ['Insights', 'Compare', 'Build', 'Publish']
 const plural = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`
 const MINUS = '−'
 const dateTime = (iso) => new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })
@@ -456,26 +456,18 @@ function Pick({ label, value, onChange, options, none, disabled = false }) {
   </label>
 }
 
-/** Ranked groups as a table: a takeaway line, then each group's rank, share bar, sample, value and P&L trend. */
+/** Ranked groups as a table: each group's rank, sample, win rate, average and value. */
 function RankTable({ rows, format, signed, onOpen, currentId, symbols = false, dimLabel, metricLabel, privacy, money: isMoney }) {
-  const top = rows[0], bottom = rows.at(-1)
-  const winners = rows.filter((row) => row.value > 0).length
   const total = rows.reduce((sum, row) => sum + row.value, 0)
   const noun = dimLabel.includes(' ') ? 'group' : dimLabel.toLowerCase()
   const nouns = noun.endsWith('s') ? `${noun}es` : `${noun}s`
-  const share = isMoney && total > 0 && top?.value > 0 ? ` (${Math.round((top.value / total) * 100)}% of the total)` : ''
   return <div className="rp-rank" role="table" aria-label={`${metricLabel} by ${dimLabel}`}>
-    {top && <p className="rp-rank-lede">
-      {signed && <><b>{winners} of {rows.length}</b> {nouns} are positive. </>}
-      <b>{top.label}</b> leads with <b className={signed ? `tone-${toneOf(top.value)}` : ''}>{format(top.value)}</b>{share}
-      {bottom && bottom !== top && <>; <b>{bottom.label}</b> {signed && bottom.value < 0 ? 'costs the most at' : 'trails at'} <b className={signed ? `tone-${toneOf(bottom.value)}` : ''}>{format(bottom.value)}</b></>}.
-    </p>}
     <div className="rp-rank-head" role="row">
       <span role="columnheader" aria-hidden="true">#</span><span role="columnheader">{dimLabel}</span><span role="columnheader" className="rp-c-trades">Trades</span><span role="columnheader" className="rp-c-win">Win rate</span><span role="columnheader" className="rp-c-avg">Avg / trade</span>
-      <span role="columnheader">{metricLabel}</span><span role="columnheader"><span className="rp-wide">P&L over time</span><span className="rp-narrow">Trend</span></span>
+      <span role="columnheader">{metricLabel}</span>
     </div>
     <div className="rp-rank-body" tabIndex={0} aria-label={`${rows.length} ${dimLabel.toLowerCase()} groups, scroll for more`}>
-    {rows.map((row, index) => <button key={row.id} type="button" role="row" className={`rp-rank-row${currentId === row.id ? ' is-current' : ''}`} onClick={() => onOpen(index)}
+    {rows.map((row, index) => <button key={row.id} type="button" role="row" className={`rp-rank-row${currentId === row.id ? ' is-current' : ''}`} onClick={(event) => { if (event.detail) event.currentTarget.blur(); onOpen(index) }}
       aria-label={`${row.label}: ${format(row.value)} over ${plural(row.trades, 'trade')}. Open trades`}>
       <span className="rp-rank-pos" role="cell">{index + 1}</span>
       <span className={`rp-rank-name${symbols ? ' has-token' : ''}`} role="cell">
@@ -485,11 +477,10 @@ function RankTable({ rows, format, signed, onOpen, currentId, symbols = false, d
       <span className="rp-rank-num rp-c-win" role="cell">{winPct(row.winRate)}</span>
       <span className={`rp-rank-num rp-c-avg tone-${toneOf(row.net ?? 0)}`} role="cell">{row.net == null ? '—' : money(row.net / Math.max(1, row.trades), { privacy, decimals: 0 })}</span>
       <strong className={`rp-rank-val${signed ? ` tone-${toneOf(row.value)}` : ''}`} role="cell">{format(row.value)}</strong>
-      <span className="rp-rank-trend" role="cell" aria-hidden="true">{row.curve.length > 2 && !privacy ? <AreaLine values={row.curve} tone={row.curve.at(-1) >= 0 ? 'pos' : 'neg'} density={6}/> : null}</span>
     </button>)}
     </div>
     <div className="rp-rank-foot">
-      <span>{rows.length} {nouns}{rows.length > 5 ? ` · scroll for ${rows.length - 5} more` : ''}</span>
+      <span>{rows.length} {nouns}</span>
       <span className="rp-rank-total">{isMoney ? 'Total' : 'Average'}<b className={signed ? `tone-${toneOf(isMoney ? total : total / rows.length)}` : ''}>{format(isMoney ? total : total / rows.length)}</b></span>
     </div>
   </div>
@@ -500,6 +491,8 @@ function BuilderTab({ trades, privacy, setups, drill, filter, setFilter }) {
   const [rows, setRows] = useState('playbook')
   const [columns, setColumns] = useState('')
   const [scatter, setScatter] = useState(['hold_seconds', 'pnl'])
+  // the scatter card stays folded to its head until switched on
+  const [scatterOn, setScatterOn] = useState(false)
   const [saved, setSaved] = useState(loadSavedReports)
   const [name, setName] = useState('')
   const [active, setActive] = useState(null)
@@ -633,10 +626,16 @@ function BuilderTab({ trades, privacy, setups, drill, filter, setFilter }) {
               <ProfitMix groups={mixGroups} privacy={privacy} onOpen={(id) => { const index = bars.findIndex((bar) => bar.id === id); if (index >= 0) openBar(index) }}/>
             </Card>
           </div>}
-      {scatter && <Card shell title={`${POINT_FIELDS[scatter[1]]} against ${POINT_FIELDS[scatter[0]]}`} aside={<div className="ws-legend"><span><i className="rp-key pos"/>Win</span><span><i className="rp-key neg"/>Loss</span></div>}>
-        {points.length
+      {/* the whole folded card opens it; once open, its head folds it again (the dots stay clickable) */}
+      {scatter && <div className={`rp-scatter-wrap${scatterOn ? ' is-on' : ''}`} role="button" tabIndex={0} aria-expanded={scatterOn}
+        aria-label={`${scatterOn ? 'Hide' : 'Show'} ${POINT_FIELDS[scatter[1]]} against ${POINT_FIELDS[scatter[0]]}`}
+        onClick={(event) => { if (!scatterOn || event.target.closest('.shell-head')) setScatterOn((value) => !value) }}
+        onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setScatterOn((value) => !value) } }}>
+      <Card shell className={`rp-scatter-card${scatterOn ? ' is-on' : ''}`} title={`${POINT_FIELDS[scatter[1]]} against ${POINT_FIELDS[scatter[0]]}`}
+        aside={scatterOn && <div className="ws-legend"><span><i className="rp-key pos"/>Win</span><span><i className="rp-key neg"/>Loss</span></div>}>
+        {!scatterOn ? null : points.length
           ? <ScatterChart
-              points={points} xLabel={POINT_FIELDS[scatter[0]]} yLabel={POINT_FIELDS[scatter[1]]}
+              points={points} xLabel={POINT_FIELDS[scatter[0]]} yLabel={POINT_FIELDS[scatter[1]]} height={190}
               label={`Scatter of ${POINT_FIELDS[scatter[1]]} against ${POINT_FIELDS[scatter[0]]}: ${points.length} trades`}
               xFormat={pointFormat(scatter[0], privacy)} yFormat={pointFormat(scatter[1], privacy)}
               onPick={(point) => setTradeId(point.trade.id)}
@@ -647,8 +646,8 @@ function BuilderTab({ trades, privacy, setups, drill, filter, setFilter }) {
               ]}/></>}
             />
           : <Empty title="No trade has both fields" detail="Pick two fields your trades record."/>}
-        <p className="rp-caption">{points.length} of {list.length} trades have both {inSentence(POINT_FIELDS[scatter[0]])} and {inSentence(POINT_FIELDS[scatter[1]])}. Click a dot to open the trade.</p>
-      </Card>}
+      </Card>
+      </div>}
     </>}
     {tradeId && <TradeDrawer trades={pointTrades} selectedId={tradeId} privacy={privacy} reviews={readStore('trade-reviews', {})} onSelect={setTradeId} onClose={() => setTradeId(null)}/>}
   </>
@@ -782,8 +781,6 @@ function PublishTab({ trades, privacy, setups, published, setPublished, openRepo
   const [own, setOwn] = useState({})
   const filter = shared ?? own
   const [title, setTitle] = useState('')
-  const [includeTrades, setIncludeTrades] = useState(true)
-  const [notes, setNotes] = useState(false)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState(null)
   const [fresh, setFresh] = useState(null)
@@ -796,7 +793,7 @@ function PublishTab({ trades, privacy, setups, published, setPublished, openRepo
       if (typeof navigator !== 'undefined' && navigator.onLine === false) {
         setPending(false); setError('lost'); return
       }
-      const definition = { filter: cleanFilter(filter), include_trades: includeTrades, include_notes: notes && hasPeriod }
+      const definition = { filter: cleanFilter(filter), include_trades: true, include_notes: hasPeriod }
       const report = { report_id: `rpt-${Date.now().toString(36)}`, title: title.trim(), definition, created_at: new Date().toISOString(), content: snapshot(trades, definition), shares: [] }
       setPublished([report, ...published])
       setTitle('')
@@ -806,29 +803,19 @@ function PublishTab({ trades, privacy, setups, published, setPublished, openRepo
   }
   const matched = useMemo(() => applyFilter(trades, filter).length, [trades, filter])
   return <>
-    <section className="home-card ws-card duo rp-compose" aria-label="New report">
-      <header className="shell-head rp-setcard-head">
-        <Send size={13} className="rp-compose-icon"/>
-        <h2>New Report</h2>
-        <span className="ws-hint rp-compose-count">Print it or share a link that expires</span>
-      </header>
+    {/* one line: name it, optionally narrow the trades, publish. Notes come along whenever a date range is set */}
+    <section className="home-card ws-card duo rp-compose rp-compose-lite" aria-label="New report">
       <div className="shell-body rp-compose-body">
-        <input className="rp-compose-title" aria-label="Report title" maxLength={120} placeholder="Name it, e.g. September review" value={title}
+        <input className="rp-compose-title" aria-label="Report title" maxLength={120} placeholder="Name a new report, e.g. September review" value={title}
           onChange={(event) => setTitle(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') publish() }}/>
-        <div className="rp-compose-row">
-          {shared ? <span className="rp-compose-scope">{filterCount(filter) ? `Freezes the ${plural(matched, 'trade')} filtered above` : `Freezes all ${plural(matched, 'trade')}`}{hasPeriod ? '' : ' · set dates above to include notes'}</span>
-            : <><TradeFilter trades={trades} value={own} onChange={setOwn} setups={setups} label="Limit trades"/><span className="rp-compose-scope">{plural(matched, 'trade')}{hasPeriod ? '' : ' · set dates to include notes'}</span></>}
-          <span className="rp-compose-gap"/>
-          <span className="rp-toggles" role="group" aria-label="Include">
-            <button type="button" aria-pressed={includeTrades} className={includeTrades ? 'on' : ''} onClick={() => setIncludeTrades(!includeTrades)}>{includeTrades && <Check size={11} strokeWidth={3}/>}Trades</button>
-            <button type="button" aria-pressed={notes && hasPeriod} disabled={!hasPeriod} title={hasPeriod ? undefined : 'Set a date range to include notes'} className={notes && hasPeriod ? 'on' : ''} onClick={() => setNotes(!notes)}>{notes && hasPeriod && <Check size={11} strokeWidth={3}/>}Notes</button>
-          </span>
-          <button type="button" className="start-day rp-compose-go" disabled={!title.trim() || pending} onClick={publish}>
-            <Send size={13}/> {pending ? 'Publishing…' : error === 'lost' ? 'Retry' : 'Publish'}
-          </button>
-        </div>
-        {error && <div className="rp-feedback error" role="alert">Publishing could not be confirmed. Retry sends the same report.</div>}
+        {shared
+          ? <span className="rp-compose-scope">{plural(matched, 'trade')}</span>
+          : <TradeFilter trades={trades} value={own} onChange={setOwn} setups={setups} label={plural(matched, 'trade')}/>}
+        <button type="button" className="start-day rp-compose-go" disabled={!title.trim() || pending} onClick={publish}>
+          {pending ? 'Publishing…' : error === 'lost' ? 'Retry' : 'Publish'}
+        </button>
       </div>
+      {error && <div className="rp-feedback error" role="alert">Publishing could not be confirmed. Retry sends the same report.</div>}
     </section>
     <div className="rp-section-head"><h3>Published</h3><span>{plural(published.length, 'report')} · private to you</span></div>
     {published.length
@@ -959,11 +946,11 @@ export function ReportsPage({ privacy, range = 'All' }) {
     <div className="rp-panel" key={tab}>
       {tab === 'Insights' && <InsightsTab {...props}/>}
       {tab === 'Compare' && <CompareTab {...props}/>}
-      {tab === 'Publish' && <>
-        <PublishTab {...props} published={published} setPublished={setPublished} openReport={openReport}/>
+      {tab === 'Build' && <>
         <Lede>Any metric by any breakdown, two breakdowns as a heatmap, and any two trade fields as a scatter. Click a row, cell or dot to see its trades.</Lede>
         <BuilderTab {...props} filter={buildFilter} setFilter={setBuildFilter}/>
       </>}
+      {tab === 'Publish' && <PublishTab {...props} published={published} setPublished={setPublished} openReport={openReport}/>}
     </div>
     <DrillLayer drill={drill.drill} step={drill.step} close={drill.close} privacy={privacy}/>
     {openId && <ReportDrawer report={published.find((item) => item.report_id === openId)} privacy={privacy} view={openView} setView={setOpenView} onClose={() => setOpenId(null)}

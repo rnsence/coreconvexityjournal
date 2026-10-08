@@ -1151,3 +1151,120 @@
 /* reports: green and red figures are never bold */
 #root .rp-page :is(.tone-pos, .tone-neg), #root .rp-page :is(.tone-pos, .tone-neg) * { font-weight: 500 !important; }
 #root .rp-page .metric-cell :is(strong, .metric-value):is(.tone-pos, .tone-neg), #root .rp-page .metric-cell :is(strong, .metric-value) :is(.tone-pos, .tone-neg) { font-weight: 700 !important; }
+/* report cover without the window: the quick look sits whole on a soft inset plate, no page frame cut off at the bottom */
+.rp-page .rv-cover { display: block; height: auto; padding: 14px 16px; overflow: visible; background: var(--canvas-soft, #f7f8fa); }
+.rp-page .rv-q-page { min-height: 0; padding: 0; border-radius: 0; background: none; transform: none; transition: none; }
+#root .rp-page .rv-q-page { box-shadow: none !important; }
+.rp-page .rp-rcard:hover .rv-q-page { transform: none; }
+/* covers stretch to the tallest card in the row, so titles and actions line up across cards */
+.rp-page .rp-rcard { display: flex; flex-direction: column; }
+.rp-page .rp-rcard > .rp-rcard-body { flex: 1; display: flex; flex-direction: column; }
+.rp-page .rp-rcard-body > .rv-cover { flex: 1; }
+
+/* Reports in the dashboard language: big cards are flat white with a hairline and one head spec; the grey duotone
+   stays only on the small strips (page header, KPI strip), as on the Dashboard */
+#root#root .rp-page .ws-card.duo { display: flex; flex-direction: column; gap: 0; padding: 0 !important; border: 1px solid var(--line, #eaecf0) !important; border-radius: var(--radius, 14px) !important; background: #fff !important; box-shadow: none !important; }
+#root#root .rp-page .ws-card.duo > .shell-head { flex: none; display: flex; align-items: center; gap: 10px; min-height: 44px !important; height: auto; margin: 0 !important; padding: 0 16px !important; border: 0 !important; background: none !important; }
+#root#root .rp-page .ws-card.duo > .shell-head .card-title { font-size: var(--card-title-size, 15px) !important; font-weight: 600 !important; letter-spacing: -.015em; color: var(--ink, #2b2f35); }
+#root#root .rp-page .ws-card.duo > .shell-head .ws-hint { margin-left: auto; color: var(--ink-faint, #98a2b3); font-size: 12px; }
+#root#root .rp-page .ws-card.duo > .shell-body { flex: 1; margin: 0 !important; padding: 0 16px 16px !important; border: 0 !important; border-radius: 0 0 var(--radius, 14px) var(--radius, 14px) !important; background: none !important; box-shadow: none !important; }
+/* footers inside a card read as a footer row: hairline above, same side padding */
+#root#root .rp-page .ws-card.duo > .rp-setcard-foot { min-height: 44px; margin: 0 !important; padding: 0 12px 0 16px !important; border-top: 1px solid var(--line-soft, #f2f4f7) !important; background: none !important; }
+#root#root .rp-page .ws-card.duo > .rp-setcard-head h2 { margin: 0; font-size: var(--card-title-size, 15px) !important; font-weight: 600 !important; letter-spacing: -.015em; color: var(--ink, #2b2f35); }
+/* on the white card, inputs and the head-to-head side panels need their own edge */
+#root#root .rp-page .rp-saved-new input { height: 28px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px; background: var(--fill, #f2f4f7) !important; font-size: 12px; }
+#root#root .rp-page .rp-saved-new input:focus { outline: none; border-color: var(--accent, #2e7cf6); background: #fff !important; box-shadow: 0 0 0 3px rgba(46,124,246,.12) !important; }
+#root#root .rp-page .rp-h2h-body .rp-sides3 > * { border: 1px solid var(--line, #eaecf0) !important; }
+@media (max-width: 520px) { #root#root .rp-page .ws-card.duo > .rp-setcard-head .ws-hint { display: none; } #root#root .rp-page .ws-card.duo > .rp-setcard-head h2 { white-space: nowrap; } }
+/* new report: a single quiet row: name field, trade scope, publish */
+#root#root .rp-page .rp-compose-lite > .rp-compose-body { display: flex; align-items: center; gap: 8px; padding: 10px !important; }
+#root#root .rp-page .rp-compose-lite .rp-compose-title { flex: 1; min-width: 0; height: 36px; margin: 0; padding: 0 12px; border: 1px solid transparent; border-radius: 9px; background: var(--fill, #f2f4f7); color: var(--ink, #2b2f35); font-size: 13px; font-weight: 500; letter-spacing: 0; transition: border-color .14s ease, background-color .14s ease; }
+#root#root .rp-page .rp-compose-lite .rp-compose-title::placeholder { color: var(--ink-faint, #98a2b3); font-weight: 400; }
+#root#root .rp-page .rp-compose-lite .rp-compose-title:focus { outline: none; border-color: var(--accent, #2e7cf6); background: #fff; box-shadow: 0 0 0 3px rgba(46,124,246,.12) !important; }
+#root#root .rp-page .rp-compose-lite .rf-btn { height: 36px; padding: 0 12px; border-radius: 9px; background: var(--fill, #f2f4f7) !important; white-space: nowrap; }
+#root#root .rp-page .rp-compose-lite .rp-compose-scope { color: var(--ink-faint, #98a2b3); font-size: 12px; white-space: nowrap; }
+#root#root .rp-page .rp-compose-lite .rp-compose-go { flex: none; height: 36px; padding: 0 16px; }
+#root#root .rp-page .rp-compose-lite .rp-compose-go:disabled { background: var(--fill, #f2f4f7) !important; color: var(--ink-faint, #98a2b3) !important; cursor: default; }
+#root#root .rp-page .rp-compose-lite > .rp-feedback { margin: 0 10px 10px; }
+@media (max-width: 520px) { #root#root .rp-page .rp-compose-lite > .rp-compose-body { flex-wrap: wrap; } #root#root .rp-page .rp-compose-lite .rp-compose-title { flex-basis: 100%; } #root#root .rp-page .rp-compose-lite .rp-compose-go { margin-left: auto; } }
+#root#root .rp-page .rp-compose-lite > .rp-compose-body { flex-direction: row; }
+#root#root .rp-page .rp-compose-lite .rp-compose-title { height: 36px !important; padding: 0 12px !important; border: 1px solid transparent !important; border-radius: 9px !important; background: var(--fill, #f2f4f7) !important; font-size: 13px; font-weight: 500; }
+#root#root .rp-page .rp-compose-lite .rp-compose-title:focus { border-color: var(--accent, #2e7cf6) !important; background: #fff !important; }
+#root#root .rp-page .rp-compose-lite .rp-compose-go:not(:disabled) { background: #0c111d !important; color: #fff !important; }
+#root#root .rp-page .rp-compose-lite .rp-compose-go { border-radius: 999px; font-size: 12.5px; font-weight: 600; }
+#root#root .rp-page .ws-card.duo.rp-compose-lite > .rp-compose-body { padding: 10px !important; align-items: center; }
+/* all three controls share one height and radius; Publish keeps the primary pill shape */
+#root#root .rp-page .rp-compose-lite :is(.rp-compose-title, .rf-btn, .rp-compose-go) { height: 34px !important; }
+#root#root .rp-page .rp-compose-lite .rp-compose-go:disabled { background: var(--fill, #f2f4f7) !important; color: #b4bcc8 !important; opacity: 1; }
+#root .rp-page .rp-compose-lite .rf-caret { display: none; }
+/* scatter card: folded to its head by default, a small switch opens it */
+#root#root .rp-page .rp-scatter-card:not(.is-on) > .shell-body { display: none; }
+#root#root .rp-page .rp-scatter-card > .shell-head .ws-legend { margin-left: auto; }
+#root#root .rp-page .rp-scatter-card > .shell-head .rp-switch { margin-left: 12px; }
+#root#root .rp-page .rp-scatter-card:not(.is-on) > .shell-head .rp-switch { margin-left: auto; }
+.rp-switch { position: relative; flex: none; width: 30px; height: 18px; padding: 0; border: 0; border-radius: 999px; background: #d0d5dd; cursor: pointer; transition: background-color .18s ease; }
+.rp-switch i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .26s cubic-bezier(.22,.82,.28,1); }
+.rp-switch[aria-checked="true"] { background: #0c111d; }
+.rp-switch[aria-checked="true"] i { transform: translateX(12px); }
+.rp-switch:focus-visible { outline: 2px solid var(--accent, #2e7cf6); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .rp-switch, .rp-switch i { transition: none; } }
+/* the setup row keeps the duotone: grey frame, white inset body */
+#root#root .rp-page .rp-rank-grid > .ws-card.duo { border: 0 !important; background: var(--duo-frame, #f7f7f8) !important; }
+#root#root .rp-page .rp-rank-grid > .ws-card.duo > .shell-head { min-height: 42px !important; padding: 0 14px !important; }
+#root#root .rp-page .rp-rank-grid > .ws-card.duo > .shell-body { margin: 0 4px 4px !important; padding: 14px !important; border-radius: 10px !important; background: #fff !important; }
+/* report cards back on the duotone: grey frame with the date, white inset body */
+#root#root .rp-page .rp-rcards > .ws-card.duo { border: 0 !important; background: var(--duo-frame, #f7f7f8) !important; }
+#root#root .rp-page .rp-rcards > .ws-card.duo > .shell-head { min-height: 36px !important; padding: 0 12px !important; }
+#root#root .rp-page .rp-rcards > .ws-card.duo > .shell-body { margin: 0 4px 4px !important; padding: 12px !important; border-radius: 10px !important; background: #fff !important; }
+/* the date reads like the Notebook's note date */
+#root#root .rp-page .rp-rcards > .ws-card.duo > .shell-head .card-title { font-size: 12px !important; font-weight: 500 !important; letter-spacing: 0 !important; color: var(--ink-faint, #98a2b3) !important; }
+/* card heads carry just the title: the grey explanatory hints are gone */
+#root#root .rp-page .ws-card.duo > .shell-head .ws-hint { display: none; }
+/* the folded scatter card is one big toggle; open, its head folds it again */
+.rp-scatter-wrap { border-radius: var(--radius, 14px); outline: none; }
+.rp-scatter-wrap:not(.is-on) { cursor: pointer; }
+.rp-scatter-wrap.is-on > .rp-scatter-card > .shell-head { cursor: pointer; }
+#root#root .rp-page .rp-scatter-wrap:not(.is-on):hover > .rp-scatter-card { border-color: #d0d5dd !important; }
+#root#root .rp-page .rp-scatter-wrap:focus-visible > .rp-scatter-card { border-color: var(--accent, #2e7cf6) !important; box-shadow: 0 0 0 3px rgba(46,124,246,.12) !important; }
+.rp-scatter-wrap:not(.is-on):active > .rp-scatter-card { transform: scale(.996); }
+#root#root .rp-page .rp-scatter-card > .shell-head .ws-legend { margin-left: auto; }
+/* the ranked list fills its card down to the footer instead of stopping at five rows and leaving a gap */
+#root#root .rp-page .rp-rank { min-height: 0; height: 100%; }
+#root#root .rp-page .rp-rank-body { flex: 1 1 0; min-height: 210px; max-height: none !important; }
+#root#root .rp-page .rp-rank-foot { margin-top: 0 !important; }
+/* ranked list header matches the Trades and Prop firms table heads: 36px grey row, 12.5px/600 faint labels, 10px ends */
+#root#root .rp-page .rp-rank-head { height: 36px; min-height: 36px; padding-top: 0; padding-bottom: 0; border-radius: 10px; background: var(--duo-frame, #f7f7f8); }
+#root#root .rp-page .rp-rank-head > [role="columnheader"] { color: var(--ink-faint, #98a2b3); font-size: 12.5px; font-weight: 600; line-height: 1.2; }
+/* rows hover like the Trades blotter: an instant light wash, the open row the darker plate; no leftover ring after the drawer closes */
+#root#root .rp-page .rp-rank-row { transition: none; }
+#root#root .rp-page .rp-rank-row:hover { background: #f6f6f7; }
+#root#root .rp-page .rp-rank-row.is-current { background: #ececed; }
+#root#root .rp-page .rp-rank-row:focus-visible { box-shadow: none !important; background: #f6f6f7; }
+#root#root .rp-page .rp-rank-row:focus:not(:focus-visible) { box-shadow: none !important; }
+/* rows as tall as the header, so the hover wash is the same 36px plate */
+#root#root .rp-page .rp-rank-row { height: 36px; min-height: 36px; }
+/* a small gap under the header, so a hovered first row never butts against it (as on Prop firms) */
+#root#root .rp-page .rp-rank-body { margin-top: 6px; }
+/* ranked list without the trend column: fixed-width figure columns on a flex row, so header and rows line up at every width */
+#root#root .rp-page :is(.rp-rank-head, .rp-rank-row) { display: flex !important; align-items: center; gap: 14px; }
+#root#root .rp-page :is(.rp-rank-head, .rp-rank-row) > :first-child { flex: 0 0 18px; }
+#root#root .rp-page :is(.rp-rank-head, .rp-rank-row) > :nth-child(2) { flex: 1 1 auto; min-width: 0; }
+#root#root .rp-page :is(.rp-rank-head, .rp-rank-row) > :is(.rp-c-trades, .rp-c-win) { flex: 0 0 56px; text-align: right; }
+#root#root .rp-page :is(.rp-rank-head, .rp-rank-row) > .rp-c-avg { flex: 0 0 76px; text-align: right; }
+#root#root .rp-page :is(.rp-rank-head, .rp-rank-row) > :last-child { flex: 0 0 104px; text-align: right; }
+#root#root .rp-page .rp-rank-body { margin-top: 4px; }
+/* profit mix: spare height goes around the donut, so the bars sit right on the footer instead of floating above a gap */
+#root#root .rp-page .rv-mix { height: 100%; }
+#root#root .rp-page .rv-mix > .rv-mix-top { flex: 1 1 auto; align-items: center; align-content: center; }
+#root#root .rp-page .rv-mix > .rv-mix-given { margin-top: 0 !important; }
+/* the giveback line reads like a stat row: label, a muted count, the figure at row weight */
+#root#root .rp-page .rv-mix-given { align-items: center; padding: 12px 4px 0; }
+#root#root .rp-page .rv-mix-given > span { display: inline-flex; align-items: baseline; gap: 8px; color: var(--ink, #2b2f35); font-size: 13px; font-weight: 500; }
+#root#root .rp-page .rv-mix-given > span em { color: var(--ink-faint, #98a2b3); font-size: 12px; font-style: normal; font-weight: 400; }
+#root#root .rp-page .rv-mix-given > b { font-size: 13px; font-weight: 500 !important; letter-spacing: -.01em; }
+/* edge map legend: a proper footer row, like the ranked list's */
+#root#root .rp-page .rv-edge-legend { min-height: 36px; padding: 12px 4px 4px; align-items: center; box-sizing: border-box; }
+/* profit vs trades bars a touch slimmer */
+#root#root .rp-page .rv-mix-vs { gap: 6px; }
+#root#root .rp-page .rv-mix-track, #root#root .rp-page .rv-mix-track > i { height: 8px; }
+#root#root .rp-page .rv-mix-track > i { border-radius: 2.5px; }

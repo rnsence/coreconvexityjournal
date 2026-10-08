@@ -968,10 +968,10 @@ function MonthlyWaterfall({ months, height = 280, privacy = false }) {
  */
 function TickTrack({ parts, scale }) {
   const ref = useRef(null)
-  const [count, setCount] = useState(60)
+  const [count, setCount] = useState(20)
   useEffect(() => {
     const el = ref.current; if (!el) return
-    const fit = () => setCount(Math.max(12, Math.floor((el.clientWidth + 2) / 5)))
+    const fit = () => setCount(Math.max(8, Math.min(24, Math.floor((el.clientWidth + 4) / 14))))
     fit(); const observer = new ResizeObserver(fit); observer.observe(el); return () => observer.disconnect()
   }, [])
   const tones = []
@@ -1435,8 +1435,8 @@ export function PropFirmsPage({ privacy }) {
             <div className="flow-lead">
               <span>Return on fees</span>
               <strong>{flow.multiple == null ? '—' : `${flow.multiple.toFixed(1)}×`}</strong>
-              {/* the same tick track as the firm rows: fees in (grey), then payouts out (blue) */}
-              <TickTrack scale={flow.spent + flow.paid} parts={[{ value: flow.spent, tone: 'paid' }, { value: flow.paid, tone: 'drawn' }]}/>
+              {/* one solid line split by share: fees in (grey), then payouts out (blue) */}
+              <span className="flow-split" aria-hidden="true"><i className="in" style={{ flexGrow: flow.spent }}/><i className="out" style={{ flexGrow: flow.paid }}/></span>
               <small>{money(flow.spent, { privacy, sign: false, decimals: 0 })} in · {money(flow.paid, { privacy, sign: false, decimals: 0 })} out</small>
             </div>
             <dl className="flow-stats">

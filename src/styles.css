@@ -7475,3 +7475,12 @@ body { min-height: 100dvh; padding: 12px; box-sizing: border-box; }
 #root#root .page.home.dc .feed-card .feed-table td.ft-sym span { gap: 7px; }
 #root#root .page.home.dc .feed-card .feed-table td.ft-sym .jt-token { width: 16px !important; height: 16px !important; min-width: 16px !important; }
 #root#root .page.home.dc .feed-card .feed-table thead th { height: 28px; }
+/* cash flow lead: fees in vs payouts out as one solid split line */
+#root .prop-ws .flow-lead .flow-split { display: flex; gap: 3px; height: 6px; margin: 6px 0 4px; }
+#root .prop-ws .flow-lead .flow-split > i { flex-basis: 0; min-width: 4px; border-radius: 999px; transition: flex-grow .4s cubic-bezier(.22,.82,.28,1); }
+#root .prop-ws .flow-lead .flow-split > i.in { background: #cfd4dc; }
+#root .prop-ws .flow-lead .flow-split > i.out { background: var(--accent, #2e7cf6); }
+@media (prefers-reduced-motion: reduce) { #root .prop-ws .flow-lead .flow-split > i { transition: none; } }
+/* fewer, chunkier ticks */
+.fn-ticks { gap: 2px; }
+.fn-ticks > i { border-radius: 2px; }

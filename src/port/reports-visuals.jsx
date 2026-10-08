@@ -178,15 +178,11 @@ export function ProfitMix({ groups, privacy, onOpen }) {
   const winners = groups.filter((row) => row.net > 0).sort((x, y) => y.net - x.net)
   const losers = groups.filter((row) => row.net < 0)
   const gross = winners.reduce((sum, row) => sum + row.net, 0)
-  const given = losers.reduce((sum, row) => sum + row.net, 0)
   const top = winners.slice(0, 5)
   const rest = winners.slice(5).reduce((sum, row) => sum + row.net, 0)
   const slices = [...top.map((row, index) => ({ id: row.id, label: row.label, value: row.net, trades: row.trades, color: MIX[index] })), ...(rest > 0 ? [{ id: 'other', label: `${winners.length - 5} more`, value: rest, trades: winners.slice(5).reduce((sum, row) => sum + row.trades, 0), color: '#e4e7ec' }] : [])]
-  const allTrades = groups.reduce((sum, row) => sum + row.trades, 0) || 1
   const lostTrades = losers.reduce((sum, row) => sum + row.trades, 0)
-  const topTrades = top.slice(0, 2).reduce((sum, row) => sum + row.trades, 0)
   const pct = (value) => `${Math.round((value / (gross || 1)) * 100)}%`
-  const topShare = top.length ? (top[0].net + (top[1]?.net ?? 0)) / (gross || 1) : 0
   if (!winners.length) return <ChartState state="empty" detail="No group made money here."/>
   return <div className="rv-mix">
     <div className="rv-mix-top">
@@ -210,10 +206,6 @@ export function ProfitMix({ groups, privacy, onOpen }) {
       <div className="rv-mix-bar"><span>Profit</span><span className="rv-mix-track">{slices.map((slice) => <i key={slice.id} style={{ flex: slice.value, background: slice.color }}/>)}</span></div>
       <div className="rv-mix-bar"><span>Trades</span><span className="rv-mix-track">{slices.map((slice) => <i key={slice.id} style={{ flex: slice.trades, background: slice.color }}/>)}{lostTrades > 0 && <i className="lost" style={{ flex: lostTrades }}/>}</span></div>
     </div>
-    <p className="rv-mix-note">{top.length > 1
-      ? <>Your top two make <b>{Math.round(topShare * 100)}%</b> of the profit from <b>{Math.round((topTrades / allTrades) * 100)}%</b> of the trades.</>
-      : <><b>{top[0].label}</b> makes all of it.</>}</p>
-    {losers.length > 0 && <div className="rv-mix-given"><span>Given back by {losers.length} losing</span><b className="tone-neg">{privacy ? '••••' : money(given, { decimals: 0 })}</b></div>}
   </div>
 }
 
@@ -222,7 +214,7 @@ export function EdgeMap({ groups, privacy, onOpen }) {
   const [hover, setHover] = useState(null)
   const points = groups.filter((row) => row.trades > 0 && row.winRate != null).map((row) => ({ ...row, per: row.net / row.trades }))
   if (points.length < 2) return <ChartState state="empty" detail="Needs two or more groups with trades."/>
-  const W = 280, H = 268, pad = { l: 8, r: 8, t: 10, b: 22 }
+  const W = 280, H = 268, pad = { l: 8, r: 8, t: 10, b: 10 }
   const wins = points.map((p) => p.winRate)
   const xlo = Math.min(0.4, ...wins) - 0.04, xhi = Math.max(0.6, ...wins) + 0.04
   const pers = points.map((p) => p.per)
@@ -239,10 +231,6 @@ export function EdgeMap({ groups, privacy, onOpen }) {
       <rect className="rv-edge-q good" x={x(0.5)} y={pad.t} width={W - pad.r - x(0.5)} height={y(0) - pad.t} rx="8"/>
       <line className="rv-edge-axis" x1={x(0.5)} x2={x(0.5)} y1={pad.t} y2={H - pad.b}/>
       <line className="rv-edge-axis" x1={pad.l} x2={W - pad.r} y1={y(0)} y2={y(0)}/>
-      <text className="rv-edge-tick" x={x(0.5)} y={H - 6} textAnchor="middle">50%</text>
-      <text className="rv-edge-tick" x={pad.l} y={H - 6}>{Math.round(xlo * 100)}%</text>
-      <text className="rv-edge-tick" x={W - pad.r} y={H - 6} textAnchor="end">{Math.round(xhi * 100)}%</text>
-      <text className="rv-edge-corner" x={W - pad.r - 6} y={pad.t + 14} textAnchor="end">Wins often, pays</text>
       {points.sort((a, b) => b.trades - a.trades).map((p) => <circle key={p.id} className={`rv-edge-dot ${p.per >= 0 ? 'pos' : 'neg'}${hover === p.id ? ' on' : ''}`}
         cx={x(p.winRate)} cy={y(p.per)} r={r(p.trades)} tabIndex={0} role="button" aria-label={`${p.label}: ${Math.round(p.winRate * 100)}% won, ${privacy ? 'hidden' : money(p.per)} per trade`}
         onMouseEnter={() => setHover(p.id)} onFocus={() => setHover(p.id)} onBlur={() => setHover(null)} onClick={() => onOpen?.(p.id)}

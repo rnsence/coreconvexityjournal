@@ -78,7 +78,7 @@ export function ScatterChart({ points, xLabel, yLabel, xFormat, yFormat, tip, he
   const [ref, size] = useSize()
   const [active, setActive] = useState(null)
   const width = size.width || 640
-  const pad = { top: 16, right: 14, bottom: 34, left: 56 }
+  const pad = { top: 16, right: 14, bottom: 22, left: 56 }
   const plotWidth = Math.max(40, width - pad.left - pad.right)
   const plotHeight = Math.max(60, height - pad.top - pad.bottom)
   const xs = points.map((point) => point.x)
@@ -108,7 +108,6 @@ export function ScatterChart({ points, xLabel, yLabel, xFormat, yFormat, tip, he
         <line className={tick === 0 ? 'ws-zero' : 'cume-grid rp-grid-v'} x1={xAt(tick)} y1={pad.top} x2={xAt(tick)} y2={pad.top + plotHeight}/>
         <text className="cume-axis" x={xAt(tick)} y={height - 14} textAnchor="middle">{xFormat(tick)}</text>
       </g>)}
-      <text className="rp-axis-title" x={pad.left + plotWidth} y={height - 1} textAnchor="end">{xLabel} →</text>
       <text className="rp-axis-title" x={pad.left + 6} y={pad.top + 11}>↑ {yLabel}</text>
       {points.map((item, index) => <circle
         key={item.id}
