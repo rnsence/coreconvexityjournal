@@ -1,8 +1,8 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
-  Archive, ArchiveRestore, Bold, Circle, CalendarDays, Check, CircleAlert, Code, ChevronRight, Hash, Heading2, Info, Italic, List, ListOrdered,
-  NotebookPen, Pencil, Quote, Search, WifiOff, X,
+  Bold, Circle, CalendarDays, Check, CircleAlert, Code, Hash, Heading2, Info, Italic, List, ListOrdered,
+  NotebookPen, Quote, Search, WifiOff, X,
 } from 'lucide-react'
 import { PageHead, Card } from '../workspace'
 import { SymbolToken } from '../viz'
@@ -330,11 +330,13 @@ function JournalNote({ entry }) {
     command.submit({ kind: 'revise', entry_id: entry.entry_id, expected_revision: entry.revision, content }, close)
   }
   const toggleArchive = () => command.submit({ kind: archived ? 'restore' : 'archive', entry_id: entry.entry_id, expected_revision: entry.revision })
-  const date = entry.content.occurred_on ?? new Date(entry.created_at).toLocaleDateString()
+  // "Fri, 09/25": weekday plus month/day, read in UTC so a date-only value never slips a day
+  const day = entry.content.occurred_on ? new Date(`${entry.content.occurred_on}T12:00:00Z`) : new Date(entry.created_at)
+  const date = `${day.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' })}, ${day.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', timeZone: 'UTC' })}`
 
   return <Card className={`nb-note duo${archived ? ' is-archived' : ''}`}>
     <div className="nb-note-meta shell-head">
-      <span className="card-title"><CalendarDays size={13}/>{date}</span>
+      <span className="card-title">{date}</span>
       {entry.author === 'assistant' && <span className="nb-badge soft">By assistant</span>}
       {archived && <span className="nb-badge">Archived</span>}
       {entry.content.symbols?.length > 0 && <span className="nb-note-tickers" aria-label={`Symbols: ${entry.content.symbols.join(', ')}`}>
@@ -353,11 +355,11 @@ function JournalNote({ entry }) {
     </> : undefined}>{command.error.message}</Feedback>}
     </div>
     <footer className="nb-note-foot">
-      <span>Revision {entry.revision}{command.isSuccess && ' · saved'}</span>
+      <span role="status">{command.isSuccess ? 'Saved' : ''}</span>
       <div>
-        {!archived && <button type="button" className="nb-btn" disabled={command.isPending || (!!command.pending && !pendingRevision)} onClick={openEditor}><Pencil size={13}/> Edit</button>}
+        {!archived && <button type="button" className="nb-btn" disabled={command.isPending || (!!command.pending && !pendingRevision)} onClick={openEditor}>Edit</button>}
         <button type="button" className="nb-btn ghost" disabled={command.isPending || !!command.pending} onClick={toggleArchive}>
-          {archived ? <ArchiveRestore size={13}/> : <Archive size={13}/>}{archived ? 'Restore' : 'Archive'}
+          {archived ? 'Restore' : 'Archive'}
         </button>
       </div>
     </footer>
@@ -380,7 +382,7 @@ function JournalNote({ entry }) {
           submitLabel={command.isPending ? 'Saving…' : pendingRevision ? 'Retry save' : conflicted ? `Save over revision ${entry.revision}` : 'Save revision'}
           onSubmit={(content) => revise(content, close)}
           onCancel={close}
-          crumb={<>Notebook<ChevronRight size={12}/><b>Edit note</b></>}
+          crumb={<>Notebook<span className="nb-crumb-sep" aria-hidden="true">/</span><b>Edit note</b></>}
         />
       </>}</EditPane>
     </Drawer>}

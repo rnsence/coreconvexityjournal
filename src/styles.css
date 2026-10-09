@@ -1,3 +1,9 @@
+/* site typeface: Open Runde (SIL OFL 1.1, licence in public/fonts/open-runde); Inter stays as the fallback */
+@font-face { font-family: 'Open Runde'; src: url('/fonts/open-runde/OpenRunde-Regular.woff2') format('woff2'), url('/fonts/open-runde/OpenRunde-Regular.woff') format('woff'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Open Runde'; src: url('/fonts/open-runde/OpenRunde-Medium.woff2') format('woff2'), url('/fonts/open-runde/OpenRunde-Medium.woff') format('woff'); font-weight: 500; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Open Runde'; src: url('/fonts/open-runde/OpenRunde-Semibold.woff2') format('woff2'), url('/fonts/open-runde/OpenRunde-Semibold.woff') format('woff'); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Open Runde'; src: url('/fonts/open-runde/OpenRunde-Bold.woff2') format('woff2'), url('/fonts/open-runde/OpenRunde-Bold.woff') format('woff'); font-weight: 700; font-style: normal; font-display: swap; }
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&display=swap');
 :root {
   /* one shadow for every raised surface: buttons, cards, dropdowns, drawers */
@@ -6,7 +12,7 @@
 }
 
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Open Runde', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   color: var(--ink, #14161a);
   background: #fff;
   font-synthesis: none;
@@ -233,20 +239,20 @@ main { width: 100%; }
 .chart-periods button { min-width: 42px; height: 27px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 10.5px; }
 .chart-periods button.active { background: var(--text); color: var(--bg); font-weight: 650; }
 .performance-chart { position: relative; min-width: 0; margin-top: 14px; padding-left: 54px; }
-.performance-y-axis { position: absolute; inset: 3px auto 27px 0; width: 42px; z-index: 2; display: flex; flex-direction: column; justify-content: space-between; color: var(--muted-2); font: 10px Inter, sans-serif; text-align: right; pointer-events: none; }
+.performance-y-axis { position: absolute; inset: 3px auto 27px 0; width: 42px; z-index: 2; display: flex; flex-direction: column; justify-content: space-between; color: var(--muted-2); font: 10px 'Open Runde', Inter, sans-serif; text-align: right; pointer-events: none; }
 .performance-plot { position: relative; height: var(--performance-height); min-width: 0; outline: none; cursor: crosshair; }
 .performance-plot:focus-visible { outline: 1px solid color-mix(in srgb, var(--blue) 42%, transparent); outline-offset: 4px; border-radius: 7px; }
 .performance-plot svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .performance-grid { stroke: var(--chart-line); stroke-width: 1; stroke-dasharray: 2 6; }
 .performance-zero { stroke: color-mix(in srgb, var(--text) 14%, transparent); stroke-width: 1; stroke-dasharray: 4 5; vector-effect: non-scaling-stroke; }
-.performance-x-axis { position: absolute; left: 1%; right: 1%; bottom: 1px; display: flex; justify-content: space-between; color: var(--muted-2); font: 9.5px Inter, sans-serif; pointer-events: none; }
+.performance-x-axis { position: absolute; left: 1%; right: 1%; bottom: 1px; display: flex; justify-content: space-between; color: var(--muted-2); font: 9.5px 'Open Runde', Inter, sans-serif; pointer-events: none; }
 .performance-endpoint, .performance-active-dot { position: absolute; z-index: 4; width: 8px; height: 8px; border: 2px solid var(--blue); border-radius: 50%; background: var(--panel); box-shadow: 0 0 0 3px color-mix(in srgb, var(--blue) 12%, transparent); transform: translate(-50%, -50%); pointer-events: none; }
 .performance-crosshair { position: absolute; z-index: 3; top: 9px; bottom: 28px; width: 1px; background: linear-gradient(to bottom, color-mix(in srgb, var(--text) 34%, transparent), transparent); pointer-events: none; }
 .performance-tooltip { position: absolute; z-index: 6; min-width: 138px; padding: 9px 10px; display: grid; gap: 3px; border: 1px solid color-mix(in srgb, var(--text) 11%, transparent); border-radius: 9px; background: color-mix(in srgb, var(--panel-3) 94%, transparent); box-shadow: var(--shadow-tight); backdrop-filter: blur(10px); transform: translate(-50%, calc(-100% - 13px)); pointer-events: none; }
 .performance-tooltip.align-left { transform: translate(7px, calc(-100% - 13px)); }
 .performance-tooltip.align-right { transform: translate(calc(-100% - 7px), calc(-100% - 13px)); }
 .performance-tooltip span { color: var(--muted); font-size: 10px; }
-.performance-tooltip strong { font: 600 13px Inter, sans-serif; }
+.performance-tooltip strong { font: 600 13px 'Open Runde', Inter, sans-serif; }
 .performance-tooltip small { color: var(--muted-2); font-size: 9px; }
 .equity-card .drawdown { margin: 9px -20px -16px; padding: 13px 20px 10px 74px; }
 .dashboard-insights { margin-top: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -269,7 +275,7 @@ main { width: 100%; }
 .edge-ranges button:hover { color: var(--text); }
 .edge-ranges button.active { background: var(--panel-3); color: var(--text); font-weight: 600; }
 .edge-chart { flex: 1; display: grid; place-items: center; padding: 16px 0 6px; }
-.grade-donut text { fill: #fff; font: 600 12px Inter, sans-serif; text-anchor: middle; }
+.grade-donut text { fill: #fff; font: 600 12px 'Open Runde', Inter, sans-serif; text-anchor: middle; }
 .grade-donut path { stroke-opacity: 1; }
 .edge-note { display: flex; align-items: center; gap: 8px; margin: 0; padding-top: 14px; color: var(--muted); font-size: 12px; }
 .edge-note svg { min-width: 13px; color: var(--muted-2); }
@@ -294,7 +300,7 @@ main { width: 100%; }
 .chart { width: 100%; height: 100%; overflow: visible; }
 .grid-line { stroke: var(--chart-line); stroke-width: 1; vector-effect: non-scaling-stroke; }
 .dash-line { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 5; vector-effect: non-scaling-stroke; }
-.chart-labels { display: flex; justify-content: space-between; color: var(--muted-2); font: 9.5px Inter, sans-serif; }
+.chart-labels { display: flex; justify-content: space-between; color: var(--muted-2); font: 9.5px 'Open Runde', Inter, sans-serif; }
 .spark-bars { display: flex; align-items: flex-end; gap: 2px; width: 52px; height: 30px; }
 .spark-bars i { flex: 1; border-radius: 2px; background: color-mix(in srgb, var(--blue) 70%, transparent); }
 .spark-bars.tone-green i { background: color-mix(in srgb, var(--green) 70%, transparent); }
@@ -337,7 +343,7 @@ main { width: 100%; }
 .chart-legend .dot-up { background: var(--blue); }
 .chart-legend .dot-down { background: var(--red); margin-left: 6px; }
 .activity-row span:nth-child(3) { color: var(--muted); font-size: 10.5px; }
-.activity-list b { font: 11px Inter, sans-serif; }
+.activity-list b { font: 11px 'Open Runde', Inter, sans-serif; }
 .activity-summary { margin-top: auto; display: grid; grid-template-columns: 1.4fr 1fr; gap: 6px; padding-top: 14px; }
 .activity-summary > div { min-height: 62px; display: flex; flex-direction: column; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--hairline); border-radius: 11px; background: var(--panel-2); }
 .activity-summary span { color: var(--muted-2); font-size: 11.5px; font-weight: 500; }
@@ -403,7 +409,7 @@ main { width: 100%; }
 .day-chips { display: flex; flex-direction: column; gap: 3px; }
 .day-chip { display: flex; align-items: center; gap: 7px; height: 23px; padding: 0 8px; border: 0; border-radius: 6px; background: var(--panel-2); color: var(--text); font-size: 11.5px; text-align: left; }
 .day-chip b { font-weight: 600; letter-spacing: -.01em; }
-.day-chip small { margin-left: auto; font: 500 10.5px Inter, sans-serif; }
+.day-chip small { margin-left: auto; font: 500 10.5px 'Open Runde', Inter, sans-serif; }
 .day-chip.win { background: color-mix(in srgb, var(--green) 13%, transparent); color: color-mix(in srgb, var(--green) 78%, var(--text)); }
 .day-chip.win small { color: var(--green); }
 .day-chip.loss { background: color-mix(in srgb, var(--red) 13%, transparent); color: color-mix(in srgb, var(--red) 78%, var(--text)); }
@@ -412,7 +418,7 @@ main { width: 100%; }
 .day-more:hover { color: var(--text); }
 .month-summary { min-height: 42px; display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 14px; border-top: 1px solid var(--hairline); color: var(--muted); font-size: 11.5px; }
 .month-summary strong { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-weight: 500; }
-.month-summary strong b { font: 600 12px Inter, sans-serif; }
+.month-summary strong b { font: 600 12px 'Open Runde', Inter, sans-serif; }
 .section-title { display: flex; justify-content: space-between; align-items: flex-end; margin: 28px 0 12px; }
 .section-title h2 { margin: 0; font-size: 17px; letter-spacing: -.02em; }
 .section-title p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
@@ -446,7 +452,7 @@ main { width: 100%; }
 .trade-summary b { font-size: 12px; }
 .trade-chart { position: relative; height: 330px; overflow: hidden; border: 0; border-radius: 9px; background: repeating-linear-gradient(to right, transparent 0, transparent 12.4%, var(--chart-line) 12.5%, transparent 12.6%), repeating-linear-gradient(to bottom, transparent 0, transparent 16.5%, var(--chart-line) 16.7%, transparent 16.9%), var(--bg); box-shadow: inset 0 3px 10px rgba(0,0,0,.16); }
 .trade-chart svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.price-grid { position: absolute; z-index: 2; inset: 5px 8px auto auto; height: 94%; display: flex; flex-direction: column; justify-content: space-between; color: var(--muted); font: 9px Inter, sans-serif; }
+.price-grid { position: absolute; z-index: 2; inset: 5px 8px auto auto; height: 94%; display: flex; flex-direction: column; justify-content: space-between; color: var(--muted); font: 9px 'Open Runde', Inter, sans-serif; }
 .trade-marker, .profit-tag { position: absolute; z-index: 3; font-size: 10px; }
 .trade-marker.sell { left: 25%; top: 12%; color: var(--red); }
 .trade-marker.buy { left: 78%; top: 78%; color: var(--green); }
@@ -1162,7 +1168,7 @@ input, textarea, select { width: 100%; border: 0; border-radius: 7px; background
 .journal-note article h3 { margin: 20px 0 6px; color: var(--ink); font-size: 13px; font-weight: 600; }
 .journal-note article p, .journal-note article li { margin: 0; font-size: 12.5px; line-height: 1.65; }
 .journal-note article ul { margin: 0; padding-left: 18px; }
-.journal-note textarea { width: 100%; min-height: 360px; padding: 14px 16px; resize: vertical; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 12px/1.7 Inter, sans-serif; outline: none; }
+.journal-note textarea { width: 100%; min-height: 360px; padding: 14px 16px; resize: vertical; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: 12px/1.7 'Open Runde', Inter, sans-serif; outline: none; }
 .journal-note textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .save-state { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-faint); font-size: 11.5px; }
 .save-state svg { color: #12b76a; }
@@ -6595,7 +6601,7 @@ body { min-height: 100dvh; padding: 12px; box-sizing: border-box; }
 .cs-menu {
   position: fixed; z-index: 420; overflow-y: auto; padding: 4px; border-radius: 12px; background: #fff;
   box-shadow: 0 0 0 1px rgba(16,24,40,.07), var(--shadow-tight), 0 12px 28px -14px rgba(16,24,40,.22);
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif; scrollbar-width: thin; overscroll-behavior: contain;
+  font-family: 'Open Runde', Inter, ui-sans-serif, system-ui, sans-serif; scrollbar-width: thin; overscroll-behavior: contain;
   transform-origin: top left; animation: cs-in .16s cubic-bezier(.22,.82,.28,1) both;
 }
 .cs-menu.is-up { transform-origin: bottom left; animation-name: cs-in-up; }
@@ -6923,7 +6929,7 @@ body { min-height: 100dvh; padding: 12px; box-sizing: border-box; }
 /* tile charts: a quiet crosshair and an ink-ringed marker on hover; the shared tooltip card styling applies */
 .tc .MuiChartsAxisHighlight-root { stroke: rgba(16,24,40,.2) !important; stroke-dasharray: none !important; }
 .tc .MuiLineChart-highlight { fill: #fff !important; stroke: #2b2f35 !important; stroke-width: 1.5px; }
-.MuiChartsTooltip-paper { border: 0 !important; border-radius: 10px !important; background: rgba(255,255,255,.97) !important; box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px -10px rgba(16,24,40,.22) !important; font-family: Inter, ui-sans-serif, system-ui, sans-serif !important; }
+.MuiChartsTooltip-paper { border: 0 !important; border-radius: 10px !important; background: rgba(255,255,255,.97) !important; box-shadow: 0 1px 2px rgba(16,24,40,.06), 0 8px 24px -10px rgba(16,24,40,.22) !important; font-family: 'Open Runde', Inter, ui-sans-serif, system-ui, sans-serif !important; }
 .MuiChartsTooltip-paper * { font-family: inherit !important; font-size: 12px !important; }
 /* the cumulative plot bleeds to the plate's sides; its money labels float over the left of the plot */
 #root .page.home.dc .cume-card > .shell-body { overflow: hidden; }
@@ -7484,3 +7490,63 @@ body { min-height: 100dvh; padding: 12px; box-sizing: border-box; }
 /* fewer, chunkier ticks */
 .fn-ticks { gap: 2px; }
 .fn-ticks > i { border-radius: 2px; }
+/* one 16px rhythm between every dashboard container, across and down */
+#root#root .page.home.dc .hw-week { gap: 16px !important; margin-bottom: 16px !important; }
+@media (max-width: 620px) { #root#root .page.home.dc .hw-week { margin-top: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; } }
+/* calendar: the same 16px rhythm between header, filters and the board */
+#root#root .calendar-page > .cal-layout { margin-top: 16px !important; }
+#root#root .calendar-page > .cal-tabs { margin-top: 16px !important; margin-bottom: 0 !important; }
+#root#root .calendar-page .cal-layout { gap: 16px !important; }
+#root#root .calendar-page .cal-rail { gap: 16px !important; }
+/* day breakdown: rows spread through whatever height the card has, so no empty band collects at the bottom */
+#root#root .page.home.journal .day-breakdown .db-rows { flex: 1 1 auto; justify-content: space-between; margin-top: 0 !important; margin-bottom: 0 !important; }
+/* stacked strip: the label sits above the figure, left aligned */
+#root .metric-strip.is-stacked .metric-top { flex-direction: column-reverse; align-items: flex-start; gap: 4px; }
+#root .metric-strip.is-stacked .metric-name { margin: 0; }
+#root .metric-strip.is-stacked .metric-top strong { font-weight: 600 !important; }
+/* prop firms ledger + payout calendar: content plate on top, the title strip (with its controls) underneath */
+#root#root .prop-ws .ledger-row > .ws-card.duo { display: flex; flex-direction: column; }
+#root#root .prop-ws .ledger-row > .ws-card.duo > .shell-body { order: 0; margin: 4px 4px 0 !important; }
+#root#root .prop-ws .ledger-row > .ws-card.duo > .shell-head { order: 1; }
+/* no dropdown arrows anywhere: native selects lose their caret and the space reserved for it */
+#root select { -webkit-appearance: none; appearance: none; background-image: none !important; }
+#root :is(.ws-select, .board-select select) { padding-right: 12px !important; }
+#root .cc-caret-box, #root .rf-caret, #root .nb-caret { display: none !important; }
+.nb-crumb-sep { margin: 0 6px; color: var(--ink-faint, #98a2b3); }
+/* a table card's white plate hugs its table: the header band sits 6px from the plate's edge, as in Playbooks → Outcomes */
+#root#root .page .shell-body:is(:has(> :is(.ws-table-wrap, .journal-table-wrap):first-child), :has(> .card-fold:first-child > .card-fold-inner > .journal-table-wrap:first-child)) { padding: 6px !important; }
+/* prop firms: the payout summary strip sits 6px inside its plate too */
+#root#root .page .shell-body:has(> .prop-cal-summary:first-child) { padding: 6px !important; }
+/* side by side, the ledger fills the height its row gives it (set by the payout calendar), so no white wall under the last row */
+@media (min-width: 1241px) {
+  #root .prop-ws .ledger-row .shell-body:has(> .lg-scroll) { flex-direction: column; }
+  #root .prop-ws .ledger-row .shell-body > .lg-scroll { flex: 1 1 0; min-height: 0; max-height: none; }
+}
+/* prop firms top row: firm plates sit 6px inside their white plate; the cash flow chart keeps a little more room for its axis text */
+#root#root .prop-ws .shell-body:has(> .firm-net:first-child) { padding: 4px !important; }
+/* the list keeps an even 2px so plate shadows aren't clipped: plates land 6px from every edge */
+#root#root .prop-ws .shell-body > .firm-net { margin: 0 !important; padding: 2px !important; }
+#root#root .prop-ws .shell-body:has(> .flow-layout:first-child) { padding: 10px !important; }
+/* snug plates, part two: row lists and tiles sit 6px in; text and chart cards 10px */
+#root#root .rp-page .rp-insights > .ws-card.duo > .shell-body:has(> .rp-irows:first-child) { padding: 6px 4px !important; }
+#root#root .page .shell-body > .rp-irows { margin: 0 !important; }
+#root#root .rp-page .rp-insights > .ws-card.duo > .shell-body:has(> .rp-rules2:first-child) { padding: 6px !important; }
+#root#root .page .nb-note.duo > .shell-body,
+#root#root .page .jr-duo > .shell-body { padding: 10px !important; }
+/* the broken-rules list under the tiles lines its text up with the Winning / Losing rows (14px in) */
+#root#root .rp-page .rp-rules2 > .rp-rbroken { margin-top: 10px; padding: 0 8px 4px; }
+/* dashboard week strip is read-only: no pointer, hover or press */
+#root#root .page.home .hw-day.duo.is-static { cursor: default; transition: none; pointer-events: none; }
+/* calendar header matches the other card heads: 44px, buttons 5px from the top and bottom */
+#root#root .month-board.duo > .board-toolbar { padding-top: 5px !important; padding-bottom: 5px !important; min-height: 44px; }
+/* calendar weekday band: a slimmer strip above the day cells */
+#root#root .month-board .month-weekdays { height: auto !important; padding-top: 4px !important; }
+#root#root .month-board .month-weekdays > span { height: 22px; line-height: 22px; }
+/* the grey calendar plate sits 6px inside the white plate, like every other card */
+#root#root .month-board.duo > .shell-body { padding: 6px 6px 10px !important; }
+#root#root .month-board .month-weekdays { margin: 0 !important; }
+#root#root .month-board .month-grid { margin: 0 0 8px !important; }
+/* page subtitles under the title read the same on Calendar and Daily journal */
+#root .calendar-page .greeting-plate .page-lede { font-size: 13px !important; line-height: normal !important; }
+/* every page subtitle under the title: 13px, one line height */
+#root .page :is(.ws-meta, .page-lede, .journal-lede) { font-size: 13px !important; line-height: normal !important; }

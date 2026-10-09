@@ -3,19 +3,20 @@
  * and a cover thumbnail per published report.
  */
 import React, { useMemo, useState } from 'react'
+import { ArrowRight, ArrowUp } from 'lucide-react'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import { LineChart } from '@mui/x-charts/LineChart'
 import { BarChart } from '@mui/x-charts/BarChart'
 import { ChartsReferenceLine } from '@mui/x-charts/ChartsReferenceLine'
 import { PieChart } from '@mui/x-charts/PieChart'
-import { ChartState, compactMoney, money, toneOf } from '../viz'
+import { ChartState, ChipStack, TipRows, Tooltip, compactMoney, money, toneOf } from '../viz'
 
 const INK = '#2b2f35'
 const ACCENT = '#2e7cf6'
 const POS = '#22c47d'
 const NEG = '#f5615a'
 const theme = createTheme({
-  typography: { fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, sans-serif' },
+  typography: { fontFamily: '"Open Runde", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif' },
   palette: { primary: { main: ACCENT }, text: { primary: INK, secondary: '#667085' } },
 })
 const cartesian = { grid: { horizontal: true }, margin: { left: 4, right: 8, top: 12, bottom: 4 } }
@@ -38,7 +39,9 @@ function seriesOver(list, dates) {
 
 const VIEWS = [['equity', 'Equity'], ['drawdown', 'Drawdown'], ['daily', 'Daily P&L']]
 // the two compared sets: iris and cyan — distinct in hue and lightness, clear of the P&L green/red
-const A_INK = '#5b5bd6', B_BLUE = '#0797b9'
+const A_INK = '#2e7cf6', B_BLUE = '#eab308'
+// daily bars use the same set colours as the lines
+const BAR_A = A_INK, BAR_B = B_BLUE
 
 export const RANGES = [['1M', 31], ['3M', 92], ['6M', 183], ['YTD', 'ytd'], ['All', null]]
 /** First date included by a range, counted back from the latest trade date (null = everything). */
@@ -52,6 +55,8 @@ export function rangeStart(range, lastDate) {
  *  tagged on it, a view switch (equity / drawdown / daily) and a range control. A summary row closes it. */
 export function DuelChart({ listA, listB, privacy, range, setRange }) {
   const [view, setView] = useState('equity')
+  // our own hover card (MUI's floated off the plate): the nearest session to the pointer
+  const [hover, setHover] = useState(null)
   const dates = useMemo(() => [...new Set([...listA, ...listB].map((trade) => trade.date))].sort(), [listA, listB])
   const a = useMemo(() => seriesOver(listA, dates), [listA, dates])
   const b = useMemo(() => seriesOver(listB, dates), [listB, dates])
@@ -71,58 +76,105 @@ export function DuelChart({ listA, listB, privacy, range, setRange }) {
     })
     return { leadA, leadB, total: leadA + leadB || 1, crosses, gap }
   }, [a, b, dates])
+  // the four comparisons that decide between the sets: payoff, pain, consistency, and form
+  const verdict = useMemo(() => {
+    const per = (list) => (list.length ? list.reduce((sum, t) => sum + t.pnl, 0) / list.length : null)
+    const worst = (series) => Math.min(0, ...series.map((point) => point.dd ?? 0))
+    const green = (series) => { const days = series.filter((point) => point.day != null); return days.length ? days.filter((point) => point.day > 0).length / days.length : null }
+    const recent = (series, n) => { const live = series.filter((point) => point.cum != null); if (!live.length) return null; const end = live.at(-1).cum; const start = live.length > n ? live.at(-n - 1).cum : 0; return end - start }
+    const span = Math.min(20, dates.length)
+    const pick = (x, y, higher = true) => (x == null || y == null || x === y ? null : (higher ? x > y : x < y) ? 'A' : 'B')
+    const perA = per(listA), perB = per(listB), ddA = worst(a), ddB = worst(b), gA = green(a), gB = green(b), rA = recent(a, span), rB = recent(b, span)
+    return [
+      { key: 'per', label: 'Earns more per trade', win: pick(perA, perB), detail: perA == null || perB == null ? null : `${money(Math.abs(perA - perB), { privacy, decimals: 0, sign: false })} more a trade` },
+      { key: 'dd', label: 'Smaller drawdowns', win: pick(ddA, ddB), detail: `${money(Math.abs(ddA - ddB), { privacy, decimals: 0, sign: false })} less at worst` },
+      { key: 'green', label: 'More green days', win: pick(gA, gB), detail: gA == null || gB == null ? null : `${Math.round(Math.max(gA, gB) * 100)}% vs ${Math.round(Math.min(gA, gB) * 100)}%` },
+      { key: 'form', label: `Better last ${span} days`, win: pick(rA, rB), detail: rA == null || rB == null ? null : `${money(Math.max(rA, rB), { privacy, decimals: 0 })} vs ${money(Math.min(rA, rB), { privacy, decimals: 0 })}` },
+    ]
+  }, [listA, listB, a, b, dates, privacy])
   if (!listA.length && !listB.length) return <ChartState state="empty" detail="Neither set has trades."/>
   const last = (series) => [...series].reverse().find((point) => point[pick] != null)?.[pick]
   const leader = story.leadB > story.leadA ? 'B' : 'A'
   const leadShare = Math.round((Math.max(story.leadA, story.leadB) / story.total) * 100)
   const endA = last(a), endB = last(b)
-  return <div className="rv-duel3">
+  return <div className={`rv-duel3${view === 'daily' ? ' is-bars' : ''}`}>
     <div className="rv-duel-bar">
       <div className="rv-switch" role="tablist" aria-label="Chart">
         {VIEWS.map(([key, label]) => <button key={key} type="button" role="tab" aria-selected={view === key} className={view === key ? 'on' : ''} onClick={() => setView(key)}>{label}</button>)}
       </div>
-      <div className="rv-range" role="group" aria-label="Range">
-        {RANGES.map(([key]) => <button key={key} type="button" aria-pressed={range === key} className={range === key ? 'on' : ''} onClick={() => setRange(key)}>{key}</button>)}
+      <div className="rv-switch rv-range-switch" role="tablist" aria-label="Range">
+        {RANGES.map(([key]) => <button key={key} type="button" role="tab" aria-selected={range === key} className={range === key ? 'on' : ''} onClick={() => setRange(key)}>{key}</button>)}
       </div>
     </div>
+    <div className="rv-duel-box">
+    <h3 className="rv-duel-title">{view === 'equity' ? 'Cumulative Net P&L' : view === 'drawdown' ? 'Drawdown from Peak' : 'Daily Net P&L'}</h3>
     <div className="rv-duel-legend">
-      <span><i className="rv-swatch a"/>Set A<b>{endA == null ? '—' : privacy ? '••••' : money(endA, { decimals: 0 })}</b></span>
-      <span><i className="rv-swatch b"/>Set B<b>{endB == null ? '—' : privacy ? '••••' : money(endB, { decimals: 0 })}</b></span>
-      <small>{view === 'equity' ? 'Cumulative net P&L' : view === 'drawdown' ? 'Distance below each set\'s peak' : 'Net P&L per session'} · {dates.length} sessions</small>
+      {/* the Dashboard's chip stack: Set A in front, Set B behind it, fanned out on click */}
+      <ChipStack label="sets" className="rv-duel-chips" items={[['A', endA], ['B', endB]].map(([id, end]) => ({
+        key: `Set ${id}`,
+        content: <><i className={`rv-swatch ${id.toLowerCase()}`}/><b className="sc-label">Set {id}</b><b className={`sc-value${end == null ? '' : ` tone-${toneOf(end)}`}`}>{end == null ? '—' : privacy ? '••••' : money(end, { decimals: 0 })}</b></>,
+      }))}/>
     </div>
-    <div className="rv-duel-chart">
+    <div className="rv-duel-chart" onMouseLeave={() => setHover(null)} onMouseMove={(event) => {
+      const box = event.currentTarget.getBoundingClientRect()
+      const x = event.clientX - box.left
+      const index = Math.max(0, Math.min(dates.length - 1, Math.round((x / box.width) * (dates.length - 1))))
+      setHover({ index, x: (index / Math.max(1, dates.length - 1)) * box.width, y: event.clientY - box.top, width: box.width })
+    }}>
+      {hover && <span className="rv-duel-cross" style={{ left: hover.x }} aria-hidden="true"/>}
+      <Tooltip point={hover ? { x: hover.x, y: Math.max(120, hover.y - 12) } : null} width={hover?.width} gap={8}>
+        {hover && <>
+          <div className="tip-title">{axisDate(dates[hover.index])}</div>
+          <TipRows rows={[
+            { label: 'Set A', value: tip(a[hover.index]?.[pick]), tone: toneOf(a[hover.index]?.[pick] ?? 0) },
+            { label: 'Set B', value: tip(b[hover.index]?.[pick]), tone: toneOf(b[hover.index]?.[pick] ?? 0) },
+            ...(view !== 'daily' && a[hover.index]?.[pick] != null && b[hover.index]?.[pick] != null ? [{ label: 'B − A', value: tip(b[hover.index][pick] - a[hover.index][pick]), tone: toneOf(b[hover.index][pick] - a[hover.index][pick]) }] : []),
+          ]}/>
+        </>}
+      </Tooltip>
       <ThemeProvider theme={theme}>
         {view === 'daily'
           ? <BarChart
-              height={280} {...cartesian} margin={{ ...cartesian.margin, left: 8 }} borderRadius={2}
-              xAxis={[{ scaleType: 'band', data: dates, valueFormatter: axisDate, tickInterval: everyNth(dates, 7), categoryGapRatio: 0.3, barGapRatio: 0.1 }]}
-              yAxis={[{ valueFormatter: axisMoney, width: 58, tickNumber: 5, position: 'right' }]}
+              height={280} margin={{ left: 0, right: 0, top: 10, bottom: 12 }} borderRadius={2} slotProps={{ tooltip: { trigger: 'none' } }}
+              xAxis={[{ scaleType: 'band', data: dates, valueFormatter: axisDate, categoryGapRatio: 0.3, barGapRatio: 0.1, position: 'none' }]}
+              yAxis={[{ valueFormatter: axisMoney, tickNumber: 5, position: 'none' }]}
               series={[
-                { id: 'a', data: a.map((point) => point.day), color: A_INK, label: 'Set A', valueFormatter: tip },
-                { id: 'b', data: b.map((point) => point.day), color: B_BLUE, label: 'Set B', valueFormatter: tip },
+                { id: 'a', data: a.map((point) => point.day), color: BAR_A, label: 'Set A', valueFormatter: tip },
+                { id: 'b', data: b.map((point) => point.day), color: BAR_B, label: 'Set B', valueFormatter: tip },
               ]}
               hideLegend
-            ><ChartsReferenceLine y={0} lineStyle={{ stroke: 'rgba(16,24,40,.22)' }}/></BarChart>
+            />
           : <LineChart
-              height={280} {...cartesian} margin={{ ...cartesian.margin, left: 8 }}
-              xAxis={[{ scaleType: 'point', data: dates, valueFormatter: axisDate, tickInterval: everyNth(dates, 7) }]}
-              yAxis={[{ valueFormatter: axisMoney, width: 58, tickNumber: 5, position: 'right' }]}
+              height={280} margin={{ left: 0, right: 0, top: view === 'drawdown' ? 22 : 10, bottom: 12 }} slotProps={{ tooltip: { trigger: 'none' } }}
+              xAxis={[{ scaleType: 'point', data: dates, valueFormatter: axisDate, position: 'none' }]}
+              yAxis={[{ valueFormatter: axisMoney, tickNumber: 5, position: 'none' }]}
               series={[
-                { id: 'a', data: a.map((point) => point[pick]), showMark: false, curve: 'linear', color: A_INK, label: 'Set A', valueFormatter: tip, connectNulls: false },
-                { id: 'b', data: b.map((point) => point[pick]), showMark: false, curve: 'linear', color: B_BLUE, label: 'Set B', valueFormatter: tip, connectNulls: false },
+                { id: 'a', data: a.map((point) => point[pick]), area: true, baseline: view === 'drawdown' ? 'max' : 'min', showMark: false, curve: 'monotoneX', color: A_INK, label: 'Set A', valueFormatter: tip, connectNulls: false },
+                { id: 'b', data: b.map((point) => point[pick]), area: true, baseline: view === 'drawdown' ? 'max' : 'min', showMark: false, curve: 'monotoneX', color: B_BLUE, label: 'Set B', valueFormatter: tip, connectNulls: false },
               ]}
               hideLegend
-              sx={{ '& .MuiLineChart-line': { strokeWidth: 1.75 } }}
+              sx={{ '& .MuiLineChart-line': { strokeWidth: 1.75 }, '& .MuiLineChart-area[data-series="a"]': { fill: "url('#rv-duel-a')" }, '& .MuiLineChart-area[data-series="b"]': { fill: "url('#rv-duel-b')" } }}
             >
-              <ChartsReferenceLine y={0} lineStyle={{ stroke: 'rgba(16,24,40,.22)' }}/>
+              {/* the Dashboard cumulative chart's soft wash: each line's colour fading to nothing at the bottom */}
+              <defs>
+                <linearGradient id="rv-duel-a" x1="0" y1={view === 'drawdown' ? 1 : 0} x2="0" y2={view === 'drawdown' ? 0 : 1}><stop offset="0" stopColor={A_INK} stopOpacity=".12"/><stop offset="1" stopColor={A_INK} stopOpacity="0"/></linearGradient>
+                <linearGradient id="rv-duel-b" x1="0" y1={view === 'drawdown' ? 1 : 0} x2="0" y2={view === 'drawdown' ? 0 : 1}><stop offset="0" stopColor={B_BLUE} stopOpacity=".12"/><stop offset="1" stopColor={B_BLUE} stopOpacity="0"/></linearGradient>
+              </defs>
             </LineChart>}
       </ThemeProvider>
     </div>
+    {/* the Dashboard chart key: one chip per set */}
+    <ul className="cume-legend rv-duel-key" aria-label="Legend">
+      <li className="stack-chip"><i style={{ background: view === 'daily' ? BAR_A : A_INK }}/>Set A</li>
+      <li className="stack-chip"><i style={{ background: view === 'daily' ? BAR_B : B_BLUE }}/>Set B</li>
+    </ul>
+    </div>
+    {/* four figures, each a value with one short line of context */}
     <dl className="rv-summary">
-      <div><dt>Leader</dt><dd><b className={`lead-${leader.toLowerCase()}`}>Set {leader}</b> on {leadShare}% of sessions</dd></div>
-      <div><dt>Crossovers</dt><dd>{story.crosses}</dd></div>
-      <div><dt>Widest gap</dt><dd>{story.gap.date ? <>{privacy ? '••••' : money(story.gap.size, { decimals: 0, sign: false })} to {story.gap.who} · {axisDate(story.gap.date)}</> : '—'}</dd></div>
-      <div><dt>Range</dt><dd>{dates.length ? `${axisDate(dates[0])} – ${axisDate(dates.at(-1))}` : '—'}</dd></div>
+      {verdict.map((item) => <div key={item.key}><dt>{item.label}</dt><dd>
+        <b className={item.win ? `lead-${item.win.toLowerCase()}` : undefined}>{item.win ? `Set ${item.win}` : 'Even'}</b>
+        {item.detail && <small>{item.detail}</small>}
+      </dd></div>)}
     </dl>
   </div>
 }
@@ -246,7 +298,7 @@ export function EdgeMap({ groups, privacy, onOpen }) {
       <span className={tip.per >= 0 ? 'tone-pos' : 'tone-neg'}>{privacy ? '••••' : money(tip.per)} per trade</span>
     </div>}
     </div>
-    <div className="rv-edge-legend"><span>Win rate →</span><span>↑ Per trade</span><span><i/>size = trades</span></div>
+    <div className="rv-edge-legend"><span>Win rate<ArrowRight size={12} strokeWidth={2} aria-hidden="true"/></span><span><ArrowUp size={12} strokeWidth={2} aria-hidden="true"/>Per trade</span><span><i/>size = trades</span></div>
   </div>
 }
 

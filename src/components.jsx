@@ -14,7 +14,7 @@ import { UserMenu } from './port/user-menu'
 import AddSolidIcon from '@iconify-react/basil/add-solid'
 import SettingsSolidIcon from '@iconify-react/basil/settings-solid'
 import {
-  ChevronDown, Sparkles, Search, Download, Image as ImageIcon, Mic, Star, ArrowUpRight, Menu,
+  Sparkles, Search, Download, Image as ImageIcon, Mic, Star, ArrowUpRight, Menu,
   GripVertical, ChevronLeft, ChevronRight, TrendingUp, TrendingDown, Target, Plus, Settings,
 } from 'lucide-react'
 
@@ -94,7 +94,6 @@ function SidebarContents({ page, setPage, openLog, closeMobile, mobile = false, 
       <Logo />
       <span className="brand-switcher sidebar-label">
         <strong>Journal</strong>
-        <ChevronDown className="brand-switch" size={14} strokeWidth={2} aria-hidden="true" />
       </span>
       {!mobile && <button
         type="button" className="rail-toggle"
@@ -130,7 +129,6 @@ function SidebarContents({ page, setPage, openLog, closeMobile, mobile = false, 
             <button type="button" className="nav-link subtle nav-more" aria-expanded={showOverflow} onClick={() => setExpandedGroups(prev => ({ ...prev, [group.id]: !prev[group.id] }))}>
               <MoreNavIcon size={18} />
               <span className="sidebar-label">{showOverflow ? 'Less' : 'More'}</span>
-              <ChevronDown className="nav-more-caret sidebar-label" size={14} strokeWidth={2} aria-hidden="true" />
             </button>
           </>}
         </div>

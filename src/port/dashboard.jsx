@@ -22,7 +22,7 @@ const ACCENT = '#2e7cf6'
 const INK_FAINT = '#98a2b3'
 
 const theme = createTheme({
-  typography: { fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, sans-serif' },
+  typography: { fontFamily: '"Open Runde", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif' },
   palette: { primary: { main: ACCENT }, text: { primary: '#2b2f35', secondary: '#667085' } },
 })
 

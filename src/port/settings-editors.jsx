@@ -5,7 +5,7 @@
  * editing one opens the drawer, so half-filled rows never sit in the form.
  */
 import React, { useState } from 'react'
-import { ChevronRight, CircleAlert, Info, Plus } from 'lucide-react'
+import { CircleAlert, Info, Plus } from 'lucide-react'
 import { Drawer } from '../dialogs'
 import { money } from '../viz'
 import {
@@ -63,7 +63,6 @@ function ItemRow({ title, summary, aside, error, onOpen }) {
   return <button type="button" className={`st-item${error ? ' has-error' : ''}`} onClick={onOpen}>
     <span className="st-item-copy"><b>{title}</b><small>{summary}</small></span>
     {aside}
-    <ChevronRight size={15} className="st-item-go"/>
   </button>
 }
 

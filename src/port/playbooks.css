@@ -230,7 +230,8 @@
 /* process reviews + matrix in duotone shells */
 .pb-page .pb-reviews > .shell-body, .pb-page .pb-matrix-card > .shell-body { padding: 4px 8px 8px !important; }
 .pb-page .pb-review-table { min-width: 720px; }
-.pb-page .pb-review-table td, .pb-page .pb-review-table th { height: 42px; }
+.pb-page .pb-review-table td { height: 42px; }
+.pb-page .pb-review-table thead th { height: 32px; padding-top: 0; padding-bottom: 0; }
 .pb-page .pb-review-btn { height: 26px; display: inline-flex; align-items: center; gap: 5px; padding: 0 9px; border: 0; border-radius: 7px; background: #f4f5f7; color: var(--ink-soft); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: background .13s ease, color .13s ease; }
 .pb-page .pb-review-btn:hover { background: #eceef2; color: var(--ink); }
 .pb-page .pb-review-btn.is-new { background: #0c111d; color: #fff; }

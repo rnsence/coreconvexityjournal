@@ -13,7 +13,7 @@ import { Tooltip, TipRows, longDate, useSize } from '../viz'
 
 const POS = '#22c47d'
 const NEG = '#f5615a'
-const theme = createTheme({ typography: { fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, sans-serif' } })
+const theme = createTheme({ typography: { fontFamily: '"Open Runde", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif' } })
 const MARGIN = { top: 6, right: 0, bottom: 0, left: 0 }
 const NO_TOOLTIP = { tooltip: () => null }
 

@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CalendarBlank, CaretDown, CaretLeft, CaretRight, FunnelSimple } from '@phosphor-icons/react'
+import { CalendarBlank, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { SymbolToken } from '../viz'
 import { searchSymbols } from '../symbols'
 
@@ -189,9 +189,8 @@ export function FilterMenu({ filters, tags, onChange }) {
   const summary = [filters.symbol, filters.tag && `#${filters.tag}`, (filters.from || filters.to) && (active ?? 'Dates')].filter(Boolean)
   return <span ref={boxRef} className="nb-filtermenu">
     <button type="button" className={`nb-btn nb-filterbtn${count ? ' is-set' : ''}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-      <FunnelSimple size={14} weight="bold"/>Filters
+      Filters
       {count > 0 && <em>{count}</em>}
-      <CaretDown size={11} weight="bold" className="nb-caret"/>
     </button>
     {summary.length > 0 && <span className="nb-filter-summary">{summary.join(' · ')}</span>}
     {open && place && createPortal(<div ref={panelRef} role="dialog" aria-label="Filters"

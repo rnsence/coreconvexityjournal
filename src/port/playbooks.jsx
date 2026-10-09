@@ -311,17 +311,12 @@ const outcomeOf = (list) => {
   return { n: list.length, wins, losses, net, avg: list.length ? net / list.length : 0, win: wins + losses ? wins / (wins + losses) : null }
 }
 
-// a stable 0..1 offset per trade, so dots keep their place in a lane between renders
-const jitter = (id) => { let h = 7; for (const ch of String(id)) h = (h * 31 + ch.charCodeAt(0)) % 9973; return (h % 1000) / 1000 }
-
 /**
  * Does following the plan pay? A headline (how much more a trade makes when the plan was followed),
- * every reviewed trade as a dot in one of two lanes with each lane's average marked, and each
- * playbook as a dumbbell from "broke a rule" to "followed", sorted by how much the plan pays there.
+ * the two sides as matching cards, and each playbook ranked by how much its plan pays.
  */
 function Outcomes({ playbooks, reviews, tradeById, privacy }) {
-  const stripRef = useRef(null)
-  const bellRef = useRef(null)
+  const listRef = useRef(null)
   const [tip, setTip] = useState(null)
   const data = useMemo(() => {
     const lanes = { followed: [], broke: [] }
@@ -338,7 +333,7 @@ function Outcomes({ playbooks, reviews, tradeById, privacy }) {
     const rows = [...map.values()].map((row) => ({ id: row.id, followed: outcomeOf(row.followed), broke: outcomeOf(row.broke) }))
       .map((row) => ({ ...row, gap: row.followed.n && row.broke.n ? row.followed.avg - row.broke.avg : null }))
       .sort((a, b) => (b.gap ?? -Infinity) - (a.gap ?? -Infinity))
-    return { lanes, followed: outcomeOf(lanes.followed), broke: outcomeOf(lanes.broke), rows }
+    return { followed: outcomeOf(lanes.followed), broke: outcomeOf(lanes.broke), rows }
   }, [reviews, tradeById])
   const nameOf = (id) => { const playbook = playbooks.find((item) => item.playbook_id === id); return playbook ? current(playbook).content.name : 'Playbook' }
   const total = data.followed.n + data.broke.n
@@ -348,98 +343,45 @@ function Outcomes({ playbooks, reviews, tradeById, privacy }) {
   const pct = (value) => (value == null ? '—' : `${Math.round(value * 100)}%`)
   const both = data.followed.n > 0 && data.broke.n > 0
   const gap = both ? data.followed.avg - data.broke.avg : null
-
-  // strip plot: one shared, symmetric P&L axis so zero sits in the middle
-  const all = [...data.lanes.followed, ...data.lanes.broke].map((trade) => Math.abs(trade.pnl)).sort((a, b) => a - b)
-  const reach = Math.max(1, all[Math.floor(all.length * 0.96)] ?? all[all.length - 1] ?? 1)
-  const xAt = (value) => 50 + (Math.max(-reach, Math.min(reach, value)) / reach) * 48
-  // dumbbell: its own symmetric axis from the playbook averages
-  const bellReach = Math.max(1, ...data.rows.flatMap((row) => [row.followed.n ? Math.abs(row.followed.avg) : 0, row.broke.n ? Math.abs(row.broke.avg) : 0]))
-  // square-root scale: one big playbook doesn't flatten the rest against zero, and order and sign are kept
-  const bx = (value) => 50 + Math.sign(value) * Math.sqrt(Math.abs(value) / bellReach) * 46
-  const show = (ref, event, payload) => {
-    const box = ref.current.getBoundingClientRect(), r = event.currentTarget.getBoundingClientRect()
-    setTip({ ref, x: r.left - box.left + r.width / 2, y: r.top - box.top, ...payload })
+  const peak = Math.max(1, ...data.rows.map((row) => Math.abs(row.gap ?? 0)))
+  const side = (key, label) => {
+    const stat = data[key]
+    return <div className={`ou-side is-${key}`}>
+      <span className="ou-side-top"><span className="ou-side-label">{label}</span>
+        <strong className={stat.n ? `tone-${toneOf(stat.avg)}` : undefined}>{stat.n ? fmt(stat.avg) : '—'}<small>a trade</small></strong></span>
+      <span className="ou-side-foot"><span>{pct(stat.win)} win · {plural(stat.n, 'trade')}</span><span className={stat.n ? `tone-${toneOf(stat.net)}` : undefined}>{stat.n ? `${fmt(stat.net)} net` : '—'}</span></span>
+    </div>
+  }
+  const show = (event, row) => {
+    const box = listRef.current.getBoundingClientRect(), r = event.currentTarget.getBoundingClientRect()
+    setTip({ x: r.left - box.left + r.width / 2, y: r.top - box.top, title: nameOf(row.id), rows: [
+      { label: `Followed · ${plural(row.followed.n, 'trade')}`, value: row.followed.n ? `${fmt(row.followed.avg)} a trade · ${pct(row.followed.win)} win` : '—', tone: row.followed.n ? toneOf(row.followed.avg) : undefined },
+      { label: `Broke · ${plural(row.broke.n, 'trade')}`, value: row.broke.n ? `${fmt(row.broke.avg)} a trade · ${pct(row.broke.win)} win` : '—', tone: row.broke.n ? toneOf(row.broke.avg) : undefined },
+    ] })
   }
 
   return <div className="ou">
-    <section className="home-card ws-card duo ou-card" aria-label="Does following the plan pay">
-      <header className="shell-head ou-head"><span className="card-title">Does your plan pay?</span><span className="ws-hint">{plural(total, 'reviewed trade')}</span></header>
-      <div className="shell-body ou-body">
-        <div className="ou-hero">
-          <div className="ou-verdict">
-            {both
-              ? <><strong className={`tone-${toneOf(gap)}`}>{fmt(gap)}</strong>
-                  <p>{gap >= 0 ? 'more' : 'less'} per trade when you follow the plan</p></>
-              : <><strong>{fmt(data.followed.n ? data.followed.avg : data.broke.avg)}</strong><p>per trade · review more trades to compare</p></>}
-          </div>
-          <dl className="ou-table" aria-label="Followed versus broke a rule">
-            <div className="ou-tr ou-th"><dt/><dd><i className="ou-key is-followed"/>Followed</dd><dd><i className="ou-key is-broke"/>Broke a rule</dd></div>
-            <div className="ou-tr"><dt>Per trade</dt><dd className={`tone-${toneOf(data.followed.avg)}`}>{data.followed.n ? fmt(data.followed.avg) : '—'}</dd><dd className={`tone-${toneOf(data.broke.avg)}`}>{data.broke.n ? fmt(data.broke.avg) : '—'}</dd></div>
-            <div className="ou-tr"><dt>Win rate</dt>
-              <dd><span className="ou-rate"><b>{pct(data.followed.win)}</b><i style={{ '--w': `${(data.followed.win ?? 0) * 100}%` }}/></span></dd>
-              <dd><span className="ou-rate is-broke"><b>{pct(data.broke.win)}</b><i style={{ '--w': `${(data.broke.win ?? 0) * 100}%` }}/></span></dd></div>
-            <div className="ou-tr"><dt>Net</dt><dd className={`tone-${toneOf(data.followed.net)}`}>{data.followed.n ? fmt(data.followed.net) : '—'}</dd><dd className={`tone-${toneOf(data.broke.net)}`}>{data.broke.n ? fmt(data.broke.net) : '—'}</dd></div>
-            <div className="ou-tr"><dt>Trades</dt><dd>{data.followed.n}</dd><dd>{data.broke.n}</dd></div>
-          </dl>
-        </div>
-
-        <div className="ou-strip" ref={stripRef} onMouseLeave={() => setTip(null)}>
-          <div className="ou-strip-head"><span>Every reviewed trade</span><span className="ou-legend"><span><i className="pos"/>Win</span><span><i className="neg"/>Loss</span><span><i className="avg"/>Average</span></span></div>
-          {[['followed', 'Followed'], ['broke', 'Broke a rule']].map(([key, label]) => {
-            const stat = data[key]
-            return <div key={key} className={`ou-lane is-${key}`}>
-              <span className="ou-lane-label">{label}</span>
-              <div className="ou-lane-track">
-                <i className="ou-zero" style={{ left: '50%' }}/>
-                {data.lanes[key].map((trade) => <span key={trade.id} className={`ou-dot ${trade.pnl > 0 ? 'pos' : trade.pnl < 0 ? 'neg' : 'flat'}`}
-                  style={{ left: `${xAt(trade.pnl)}%`, top: `${18 + jitter(trade.id) * 64}%` }}
-                  onMouseEnter={(event) => show(stripRef, event, { title: `${trade.symbol} · ${shortDay(trade.date)}`, rows: [{ label: label, value: fmt(trade.pnl, { decimals: 2 }), tone: toneOf(trade.pnl) }, { label: 'Setup', value: trade.setup }] })}/>)}
-                {stat.n > 0 && <span className="ou-avg" style={{ left: `${xAt(stat.avg)}%` }}><b className={`tone-${toneOf(stat.avg)}`}>{fmt(stat.avg)}</b></span>}
-              </div>
-            </div>
-          })}
-          <div className="ou-axis" aria-hidden="true">
-            <span style={{ left: '2%' }}>{privacy ? '' : fmt(-reach)}</span><span style={{ left: '50%' }}>$0</span><span style={{ left: '98%' }}>{privacy ? '' : fmt(reach)}</span>
-          </div>
-          {tip?.ref === stripRef && <Tooltip point={{ x: tip.x, y: tip.y }} width={stripRef.current?.offsetWidth} gap={8}><div className="tip-title">{tip.title}</div><TipRows rows={tip.rows}/></Tooltip>}
-        </div>
-      </div>
+    <section className="home-card ws-card duo ou-card" aria-label="Plan">
+      <header className="shell-head ou-head"><span className="card-title">Plan</span>
+        <span className="ou-answer">{both ? <>Following it pays <b>{fmt(Math.abs(gap), { sign: false })}</b> {gap >= 0 ? 'more' : 'less'} a trade</> : 'Review trades on both sides to compare'}</span></header>
+      <div className="shell-body ou-body">{side('followed', 'Followed')}{side('broke', 'Broke a rule')}</div>
     </section>
 
-    <section className="home-card ws-card duo ou-card" aria-label="By playbook">
-      <header className="shell-head ou-head"><span className="card-title">By playbook</span><span className="ou-legend"><span><i className="dot-followed"/>Followed</span><span><i className="dot-broke"/>Broke a rule</span></span></header>
-      <div className="shell-body ou-bells" ref={bellRef} onMouseLeave={() => setTip(null)}>
-        <div className="ou-bell-head" aria-hidden="true"><span>Per trade</span><span className="ou-bell-scale"><em style={{ left: '4%' }}>{privacy ? 'Loss' : fmt(-bellReach)}</em><em style={{ left: '50%' }}>$0</em><em style={{ left: '96%' }}>{privacy ? 'Gain' : fmt(bellReach)}</em></span><span>Plan pays</span></div>
-        {data.rows.map((row) => {
-          const a = row.followed.n ? bx(row.followed.avg) : null, c = row.broke.n ? bx(row.broke.avg) : null
-          const lo = Math.min(a ?? c, c ?? a), hi = Math.max(a ?? c, c ?? a)
-          return <div key={row.id} className="ou-bell" tabIndex={0}
-            onMouseEnter={(event) => show(bellRef, event, { title: nameOf(row.id), rows: [
-              { label: `Followed · ${plural(row.followed.n, 'trade')}`, value: row.followed.n ? `${fmt(row.followed.avg)} a trade · ${pct(row.followed.win)} win` : '—', tone: row.followed.n ? toneOf(row.followed.avg) : undefined },
-              { label: `Broke · ${plural(row.broke.n, 'trade')}`, value: row.broke.n ? `${fmt(row.broke.avg)} a trade · ${pct(row.broke.win)} win` : '—', tone: row.broke.n ? toneOf(row.broke.avg) : undefined },
-            ] })}>
-            <span className="ou-bell-name">{nameOf(row.id)}<small>{row.followed.n + row.broke.n} trades</small></span>
-            <span className="ou-bell-track">
-              <i className="ou-zero" style={{ left: '50%' }}/>
-              {a != null && c != null && <i className={`ou-bell-line ${row.gap >= 0 ? 'pos' : 'neg'}`} style={{ left: `${lo}%`, width: `${hi - lo}%` }}/>}
-              {c != null && <i className="ou-bell-dot is-broke" style={{ left: `${c}%` }}/>}
-              {a != null && <i className="ou-bell-dot is-followed" style={{ left: `${a}%` }}/>}
-            </span>
-            <span className={`ou-gap${row.gap == null ? ' is-none' : ` tone-${toneOf(row.gap)}`}`}>{row.gap == null ? 'Not enough' : fmt(row.gap)}</span>
-          </div>
-        })}
-        {(() => {
-          // the takeaway: where the plan pays most, and where breaking it did better (its rules are worth a look)
-          const ranked = data.rows.filter((row) => row.gap != null)
-          const best = ranked[0], worst = ranked[ranked.length - 1]
-          if (!best) return null
-          return <div className="ou-takeaways">
-            {best.gap > 0 && <p><i className="pos"/><span><b>{nameOf(best.id)}</b> pays most when you follow it: {fmt(best.gap, { sign: false })} more a trade.</span></p>}
-            {worst && worst.gap < 0 && <p><i className="neg"/><span><b>{nameOf(worst.id)}</b> did {fmt(-worst.gap, { sign: false })} better a trade when a rule broke. Its rules may need a look.</span></p>}
-          </div>
-        })()}
-        {tip?.ref === bellRef && <Tooltip point={{ x: tip.x, y: tip.y }} width={bellRef.current?.offsetWidth} gap={8}><div className="tip-title">{tip.title}</div><TipRows rows={tip.rows}/></Tooltip>}
+    <section className="home-card ws-card duo ou-card" aria-label="Playbook">
+      <header className="shell-head ou-head"><span className="card-title">Playbook</span><span className="ws-hint">Average a trade</span></header>
+      <div className="shell-body ou-list" ref={listRef} onMouseLeave={() => setTip(null)}>
+        <div className="ou-row ou-row-head" aria-hidden="true"><span>Playbook</span><span>Trades</span><span>Followed</span><span>Broke</span><span>Plan pays</span></div>
+        {data.rows.map((row) => <div key={row.id} className="ou-row" tabIndex={0} onMouseEnter={(event) => show(event, row)} onFocus={(event) => show(event, row)} onBlur={() => setTip(null)}>
+          <span className="ou-name">{nameOf(row.id)}</span>
+          <span className="ou-count">{row.followed.n + row.broke.n}</span>
+          <span className={row.followed.n ? `tone-${toneOf(row.followed.avg)}` : 'is-none'}>{row.followed.n ? fmt(row.followed.avg) : '—'}</span>
+          <span className={row.broke.n ? `tone-${toneOf(row.broke.avg)}` : 'is-none'}>{row.broke.n ? fmt(row.broke.avg) : '—'}</span>
+          <span className="ou-pays">
+            {row.gap != null && <span className="ou-diverge" aria-hidden="true"><i className={row.gap >= 0 ? 'pos' : 'neg'} style={{ '--w': `${(Math.abs(row.gap) / peak) * 50}%` }}/></span>}
+            <b className={row.gap == null ? 'is-none' : `tone-${toneOf(row.gap)}`}>{row.gap == null ? 'Too few' : fmt(row.gap)}</b>
+          </span>
+        </div>)}
+        {tip && <Tooltip point={{ x: tip.x, y: tip.y }} width={listRef.current?.offsetWidth} gap={8}><div className="tip-title">{tip.title}</div><TipRows rows={tip.rows}/></Tooltip>}
       </div>
     </section>
   </div>
@@ -524,7 +466,7 @@ export function PlaybooksPage({ privacy }) {
   return <div className="page home ws-page pb-page">
     <PageHead
       title="Playbooks"
-      meta="A playbook states the plan. Reviewing a trade checks it against the plan, never the P&L."
+      meta={[plural(active.length, 'active playbook'), plural(reviewList.length, 'trade') + ' reviewed', reviewList.length ? `${Math.round(topShare * 100)}% followed the plan` : null].filter(Boolean).join(' · ')}
       actions={<button type="button" className="start-day" onClick={() => setEditing('new')}>New playbook</button>}
     />
     <MetricStrip items={[

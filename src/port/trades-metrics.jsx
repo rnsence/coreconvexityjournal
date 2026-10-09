@@ -234,7 +234,6 @@ export function AllMetrics({ trades, reviews, privacy }) {
     <button type="button" className="tm-toggle shell-head" aria-expanded={open} aria-controls="tm-fold" onClick={() => { setSeen(true); setOpen(!open) }}>
       <span className="card-title" id="journal-calculations-title">All Metrics</span>
       <span className="tm-lede">Trade statistics · calculated from your trades in this range, in USD</span>
-      <span className="cc-caret-box"><ChevronDown size={14} strokeWidth={2.2}/></span>
     </button>
     <div className={`card-fold${open ? ' open' : ''}`} id="tm-fold"><div className="card-fold-inner"><div className="shell-body">
     {seen && <div className="tm-body">

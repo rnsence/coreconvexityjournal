@@ -465,7 +465,7 @@
 
 /* ================================================================ visuals pass: one job per visual */
 .rp-page .MuiChartsAxis-line, .rp-page .MuiChartsAxis-tick { display: none; }
-.rp-page .MuiChartsAxis-tickLabel { fill: #98a2b3 !important; font-size: 11px !important; font-family: Inter, ui-sans-serif, system-ui, sans-serif !important; }
+.rp-page .MuiChartsAxis-tickLabel { fill: #98a2b3 !important; font-size: 11px !important; font-family: 'Open Runde', Inter, ui-sans-serif, system-ui, sans-serif !important; }
 .rp-page .MuiChartsGrid-line { stroke: #f2f4f7 !important; }
 .rp-page .MuiLineElement-root { stroke-width: 2; }
 .rp-page .MuiChartsAxisHighlight-root { stroke: rgba(16,24,40,.18) !important; stroke-dasharray: none !important; }
@@ -833,8 +833,8 @@
 .rp-page .rv-edge svg { width: 100%; height: auto; overflow: visible; }
 .rp-page .rv-edge-q.good { fill: rgba(34,196,125,.06); }
 .rp-page .rv-edge-axis { stroke: rgba(16,24,40,.12); stroke-width: 1; stroke-dasharray: 3 3; }
-.rp-page .rv-edge-tick { fill: #98a2b3; font-size: 9.5px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
-.rp-page .rv-edge-corner { fill: #0e9f6e; font-size: 9.5px; font-weight: 600; opacity: .8; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+.rp-page .rv-edge-tick { fill: #98a2b3; font-size: 9.5px; font-family: 'Open Runde', Inter, ui-sans-serif, system-ui, sans-serif; }
+.rp-page .rv-edge-corner { fill: #0e9f6e; font-size: 9.5px; font-weight: 600; opacity: .8; font-family: 'Open Runde', Inter, ui-sans-serif, system-ui, sans-serif; }
 .rp-page .rv-edge-dot { stroke: #fff; stroke-width: 1.5; cursor: pointer; transition: opacity .15s ease, stroke-width .15s ease; animation: rv-pop .5s cubic-bezier(.22,.82,.28,1) both; transform-box: fill-box; transform-origin: center; }
 .rp-page .rv-edge-dot.pos { fill: rgba(34,196,125,.75); }
 .rp-page .rv-edge-dot.neg { fill: rgba(245,97,90,.75); }
@@ -1010,7 +1010,7 @@
 @media (max-width: 1180px) { .rp-page .rp-side2-row { flex-wrap: wrap; } .rp-page .rp-side2-stats { flex-basis: 100%; padding: 8px 0 0; border-left: 0; border-top: 1px solid var(--line-soft, #f2f4f7); } }
 
 /* compare palette: Set A iris, Set B cyan (one pair of tokens, used by every A/B mark) */
-.rp-page { --set-a: #5b5bd6; --set-a-soft: rgba(91,91,214,.14); --set-b: #0797b9; --set-b-soft: rgba(7,151,185,.14); }
+.rp-page { --set-a: #2e7cf6; --set-a-soft: rgba(46,124,246,.14); --set-b: #eab308; --set-b-soft: rgba(234,179,8,.16); }
 .rp-page .rp-set-chip.set-a { background: var(--set-a); }
 .rp-page .rp-set-chip.set-b { background: var(--set-b); }
 .rp-page .rv-dot.a, .rp-page .rp-share-track i.a, .rp-page .rv-t-bar.a i { background: var(--set-a); }
@@ -1268,3 +1268,324 @@
 #root#root .rp-page .rv-mix-vs { gap: 6px; }
 #root#root .rp-page .rv-mix-track, #root#root .rp-page .rv-mix-track > i { height: 8px; }
 #root#root .rp-page .rv-mix-track > i { border-radius: 2.5px; }
+/* panels space their blocks with the flex gap alone (16px), no extra top margins stacking on it */
+#root#root .rp-page .rp-panel > * { margin-top: 0 !important; }
+/* insight charts: duotone, the white chart plate on top and the title on the grey strip underneath */
+#root#root .rp-page .rp-insight-charts > .ws-card.duo { border: 0 !important; background: var(--duo-frame, #f7f7f8) !important; }
+#root#root .rp-page .rp-insight-charts > .ws-card.duo > .shell-body { order: 0; margin: 4px 4px 0 !important; padding: 14px !important; border-radius: 10px !important; background: #fff !important; }
+#root#root .rp-page .rp-insight-charts > .ws-card.duo > .shell-head { order: 1; min-height: 40px !important; padding: 0 14px !important; }
+/* insights cards, tight: shorter rows, smaller tiles, no padding stacked around the lists */
+#root#root .rp-page .rp-insights .rp-irows { padding: 0; margin: 0 -10px; }
+#root#root .rp-page .rp-insights .rp-irow { min-height: 0 !important; height: auto; padding: 7px 10px !important; gap: 10px; grid-template-columns: 30px minmax(0, 1fr) 92px; }
+#root#root .rp-page .rp-insights .rp-itile { width: 30px !important; height: 30px !important; border-radius: 8px; }
+#root#root .rp-page .rp-insights .rp-itile.is-logo .jt-token { width: 30px !important; height: 30px !important; min-width: 30px !important; }
+#root#root .rp-page .rp-insights .rp-icopy { gap: 1px; }
+#root#root .rp-page .rp-insights .rp-ifig { gap: 5px; }
+#root#root .rp-page .rp-insights .rp-irows li + li .rp-irow::before { left: 50px; right: 10px; }
+#root#root .rp-page .rp-insights .rp-isum { margin: 6px 0 0 !important; padding: 10px 0 0 !important; }
+#root#root .rp-page .rp-insights .rp-rsplit { padding: 0; margin: 0 -2px; }
+#root#root .rp-page .rp-insights .rp-rstat { padding: 4px 2px 8px !important; }
+#root#root .rp-page .rp-insights .rp-rstat + .rp-rstat { padding-left: 16px !important; }
+#root#root .rp-page .rp-insights .rp-rshare { padding: 4px 0 12px !important; }
+#root#root .rp-page .rp-insights .rp-rbroken { padding-top: 10px !important; margin-top: 0 !important; }
+#root#root .rp-page .rp-insights .rp-rbroken .rp-sublabel { margin: 0 0 2px !important; }
+#root#root .rp-page .rp-insights .rp-icopy b { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#root#root .rp-page .rp-insights .rp-rbroken .rp-sublabel { padding: 0 !important; }
+#root#root .rp-page .rp-insights .rp-irow { padding: 6px 10px !important; }
+/* the equity curve takes whatever height its plate has; the drawdown strip keeps its own */
+#root#root .rp-page .rp-insight-charts > .ws-card:first-child > .shell-body { display: flex; flex-direction: column; }
+#root .rp-page .ic-equity { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+#root .rp-page .ic-equity-main { position: relative; flex: 1 1 auto; min-height: 160px; }
+#root .rp-page .ic-equity-main > * { position: absolute !important; inset: 0; }
+#root .rp-page .ic-equity > :not(.ic-equity-main) { flex: none !important; }
+/* stacked strip figures at 600, signed ones included */
+#root#root .rp-page .metric-strip.is-stacked .metric-cell strong, #root#root .rp-page .metric-strip.is-stacked .metric-cell strong :is(.tone-pos, .tone-neg) { font-weight: 600 !important; }
+/* insight charts: the equity curve takes two thirds and the full height; hour and outcome bars stack beside it */
+#root#root .rp-page .rp-insight-charts { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); grid-template-rows: auto auto; gap: 16px; }
+#root#root .rp-page .rp-insight-charts > :first-child { grid-row: 1 / span 2; }
+#root#root .rp-page .rp-insight-charts > :first-child .ic-equity-main { min-height: 260px; }
+@media (max-width: 1100px) { #root#root .rp-page .rp-insight-charts { grid-template-columns: minmax(0, 1fr); } #root#root .rp-page .rp-insight-charts > :first-child { grid-row: auto; } }
+/* Reports equity = the Dashboard cumulative chart, same skin, bleeding to the plate edges */
+#root#root .rp-page .rp-equity-card > .shell-body { display: flex; flex-direction: column; padding-left: 0 !important; padding-right: 0 !important; }
+#root .rp-page .rp-equity { flex: 1 1 auto; display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+#root .rp-page .rp-equity > .cume-chips { padding: 0 14px; }
+#root .rp-page .rp-equity .cume-chart { flex: 1 1 auto; min-height: 260px; width: auto; }
+#root .rp-page .rp-equity :is(.cume-grid, .cume-dd-base) { display: none; }
+#root .rp-page .rp-equity .cume-area { opacity: .2; }
+#root .rp-page .rp-equity .cume-run-area { opacity: .12; }
+#root .rp-page .rp-equity .cume-dd-area { opacity: .22; }
+#root .rp-page .rp-equity > .cume-chips { overflow: hidden; }
+/* insights cards: duotone, content on the white plate up top, the title on the grey strip underneath */
+#root#root .rp-page .rp-insights > .ws-card.duo { border: 0 !important; background: var(--duo-frame, #f7f7f8) !important; }
+#root#root .rp-page .rp-insights > .ws-card.duo > .shell-body { order: 0; margin: 4px 4px 0 !important; padding: 14px !important; border-radius: 10px !important; background: #fff !important; }
+#root#root .rp-page .rp-insights > .ws-card.duo > .shell-head { order: 1; min-height: 40px !important; padding: 0 14px !important; }
+/* insights, minimal: one line of meta, figure on the right, no per-row bars */
+#root#root .rp-page .rp-insights .rp-irow { grid-template-columns: 30px minmax(0, 1fr) auto; }
+#root#root .rp-page .rp-insights .rp-ifig { font-size: 13px; font-weight: 500 !important; font-variant-numeric: tabular-nums; }
+#root#root .rp-page .rp-insights .rp-rstat small { font-size: 12px; }
+#root#root .rp-page .rp-insights .rp-irow { grid-template-columns: minmax(0, 1fr) auto; }
+#root#root .rp-page .rp-insights .rp-irows li + li .rp-irow::before { left: 10px; }
+/* compare cards: no coloured strip along the top edge */
+#root#root .rp-page .rp-sides3 > *::before { content: none !important; display: none !important; }
+/* head-to-head chart sits in its own white plate, no axis numbers */
+#root#root .rp-page .rv-duel-box { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px; border: 1px solid var(--line, #eaecf0); border-radius: 14px; background: #fff; }
+#root#root .rp-page .rv-duel-box > * { margin-left: 0 !important; margin-right: 0 !important; padding-left: 0 !important; padding-right: 0 !important; }
+/* the chart runs edge to edge inside its container; the container clips it to the rounded corners */
+#root#root .rp-page .rv-duel-box { overflow: hidden; }
+#root#root .rp-page .rv-duel-box > .rv-duel-chart { margin: 0 -16px -14px !important; }
+/* compare: set and spread cards as duotone plates (grey frame, white inset), the statistics card as a duotone card */
+#root#root .rp-page .rp-sides3 > * { padding: 4px !important; border: 0 !important; border-radius: 14px !important; background: var(--duo-frame, #f7f7f8) !important; box-shadow: none !important; }
+#root#root .rp-page .rp-sides3 > * > * { background: none; }
+#root#root .rp-page .rp-sides3 > .rp-side2 > .rp-side2-top { padding: 8px 10px 6px; }
+#root#root .rp-page .rp-sides3 > .rp-side2 > .rp-side2-row { padding: 12px; border-radius: 10px; background: #fff !important; }
+#root#root .rp-page .rp-sides3 > .rp-spread { display: grid; grid-template-rows: auto 1fr; }
+#root#root .rp-page .rp-stats-card.ws-card.duo { border: 0 !important; background: var(--duo-frame, #f7f7f8) !important; }
+#root#root .rp-page .rp-stats-card.ws-card.duo > .shell-body { margin: 0 4px 4px !important; padding: 14px !important; border-radius: 10px !important; background: #fff !important; }
+#root#root .rp-page .rp-sides3 > .rp-spread { display: flex; flex-direction: column; gap: 0; }
+#root#root .rp-page .rp-sides3 > .rp-spread > .rp-spread-label { padding: 8px 10px 6px; }
+#root#root .rp-page .rp-sides3 > .rp-spread > .rp-spread-body { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 8px; padding: 12px; border-radius: 10px; background: #fff; }
+/* set cards: the white plate grows to the frame's 4px bezel, like the spread card */
+#root#root .rp-page .rp-sides3 > .rp-side2 { display: flex; flex-direction: column; justify-content: flex-start; }
+#root#root .rp-page .rp-sides3 > .rp-side2 > .rp-side2-row { flex: 1 1 auto; margin: 0 !important; align-items: center; }
+#root .rp-page .rp-edge-text { color: var(--ink-soft, #475467); font-size: 12px; font-weight: 600; }
+/* set card filter button: just the word, no icon, count badge or caret (the chip beside it shows what's applied) */
+#root#root .rp-page .rp-side2 .rf-btn > svg, #root#root .rp-page .rp-side2 .rf-btn > em { display: none !important; }
+/* set and spread cards share one compact 30px title strip */
+#root#root .rp-page .rp-sides3 > .rp-side2 > .rp-side2-top { min-height: 0; height: 30px; padding: 0 6px 0 10px !important; align-items: center; }
+#root#root .rp-page .rp-sides3 > .rp-side2 > .rp-side2-top :is(.rf-btn, .rf-chip, .rf-bar > *) { height: 22px !important; min-height: 0 !important; padding-top: 0; padding-bottom: 0; font-size: 12px; }
+#root#root .rp-page .rp-sides3 > .rp-spread > .rp-spread-label { height: 30px; padding: 0 10px !important; display: flex; align-items: center; }
+/* duel chart: our own crosshair and hover card, no grid */
+#root#root .rp-page .rv-duel-chart { position: relative; }
+#root#root .rp-page .rv-duel-chart .MuiChartsGrid-root { display: none; }
+#root#root .rp-page .rv-duel-chart .MuiChartsAxisHighlight-root { display: none; }
+.rp-page .rv-duel-cross { position: absolute; top: 10px; bottom: 12px; z-index: 1; width: 0; border-left: 1px dashed rgba(46,124,246,.45); pointer-events: none; }
+/* daily bars view: legend swatches follow the blue / grey bars */
+/* set name sits over its net figure, like the stat labels beside it; filters keep the grey strip */
+#root#root .rp-page .rp-side2-figure { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+#root#root .rp-page .rp-side2-figure .rp-side2-name { color: var(--ink-faint, #98a2b3); font-size: 12px; font-weight: 500; line-height: 1.2; }
+#root#root .rp-page .rp-sides3 > .rp-side2 > .rp-side2-top { justify-content: flex-end; }
+/* head to head: one master control for both sets, at the right of the title */
+#root#root .rp-page .rp-h2h > .rp-setcard-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.rp-page .rp-sets { position: relative; }
+.rp-page .rp-sets-btn { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 0; border-radius: 9px; background: var(--duo-frame, #f7f7f8); color: var(--ink, #2b2f35); font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: background-color .14s ease; }
+.rp-page .rp-sets-btn em { color: var(--ink-faint, #98a2b3); font-style: normal; font-weight: 400; }
+.rp-page .rp-sets-btn svg { margin-left: 2px; color: var(--ink-faint, #98a2b3); transition: transform .18s ease; }
+.rp-page .rp-sets-btn:hover, .rp-page .rp-sets-btn.is-open { background: #eef0f3; }
+.rp-page .rp-sets-btn.is-open svg { transform: rotate(180deg); }
+.rp-page .rp-sets-btn:focus-visible { outline: 2px solid var(--accent, #2e7cf6); outline-offset: 2px; }
+.rp-page .rp-sets-panel { position: absolute; top: calc(100% + 6px); right: 0; z-index: 30; display: flex; flex-direction: column; min-width: 300px; padding: 6px; border-radius: 12px; background: #fff; animation: rp-sets-in .18s cubic-bezier(.22,.82,.28,1) both; }
+#root .rp-page .rp-sets-panel { box-shadow: 0 0 0 1px var(--line, #eaecf0), 0 12px 28px -12px rgba(16,24,40,.25) !important; }
+.rp-page .rp-sets-row { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 8px; border-radius: 8px; }
+.rp-page .rp-sets-row + .rp-sets-row { border-top: 1px solid var(--line-soft, #f2f4f7); border-radius: 0; }
+.rp-page .rp-sets-row > b { flex: none; width: 44px; color: var(--ink-soft, #475467); font-size: 12px; font-weight: 600; }
+.rp-page .rp-sets-row .rf-bar { flex: 1; min-width: 0; }
+@keyframes rp-sets-in { from { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .rp-page .rp-sets-panel { animation: none; } }
+/* spread: its name sits over the figure on the white plate, like Set A / Set B */
+#root#root .rp-page .rp-spread-figure { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+#root#root .rp-page .rp-spread-figure .rp-side2-name { color: var(--ink-faint, #98a2b3); font-size: 12px; font-weight: 500; line-height: 1.2; }
+#root#root .rp-page .rp-spread-figure .rp-side2-name em { color: #c4cad4; font-style: normal; }
+/* compare stats: no dividers; the supporting figures sit together on a soft grey rounded plate */
+#root#root .rp-page .rp-side2-stats, #root#root .rp-page .rp-spread dl { border: 0 !important; padding: 8px 12px !important; border-radius: 10px; background: var(--canvas-soft, #f7f8fa); box-shadow: none !important; gap: 16px; margin: 0; }
+#root#root .rp-page .rp-side2-stats > div, #root#root .rp-page .rp-spread dl > div { border: 0 !important; padding: 0 !important; box-shadow: none !important; }
+#root#root .rp-page .rp-side2-stats > div::before, #root#root .rp-page .rp-spread dl > div::before { content: none !important; }
+/* spread: figure on the left, its two supporting figures beside it, like the set cards */
+#root#root .rp-page .rp-sides3 > .rp-spread > .rp-spread-body { flex-direction: row; align-items: center; justify-content: space-between; gap: 14px; }
+#root#root .rp-page .rp-sides3 > .rp-spread > .rp-spread-body > dl { flex: 0 1 auto; display: flex; }
+@media (max-width: 1100px) { #root#root .rp-page .rp-sides3 > .rp-spread > .rp-spread-body { flex-direction: column; align-items: stretch; } }
+#root#root .rp-page .rp-sides3 > .rp-spread dl :is(dt, dd) { white-space: nowrap; }
+/* set and spread figures at the same weight as the metric strip figures (600) */
+#root#root .rp-page .rp-side2-figure strong, #root#root .rp-page .rp-spread-figure b { font-weight: 600 !important; }
+/* duel legend chips: the swatch sits inside each chip */
+#root .rp-page .rv-duel-chips .stack-chip .rv-swatch { flex: none; width: 10px; height: 3px; border-radius: 2px; }
+#root .rp-page .rv-duel-legend { align-items: center; }
+#root#root .rp-page .rv-duel-chips .stack-chip .sc-label { color: var(--ink-faint, #98a2b3) !important; font-size: 12px !important; font-weight: 500 !important; margin: 0 !important; }
+#root#root .rp-page .rv-duel-chips .stack-chip .sc-value { font-size: 12px !important; font-weight: 500 !important; margin: 0 !important; }
+#root#root .rp-page .rv-duel-chips .stack-chip .sc-value.tone-pos { color: #0e9f6e !important; } #root#root .rp-page .rv-duel-chips .stack-chip .sc-value.tone-neg { color: #e0453c !important; }
+/* the drawdown lines sit at zero most of the time; keep the stroke clear of the plate's top edge */
+#root .rp-page .rv-duel-chart svg { overflow: visible; }
+/* duel summary: the four figures on a soft grey rounded plate, no dividers or outline */
+#root#root .rp-page .rv-summary { margin: 16px 0 0 !important; padding: 12px 16px !important; border: 0 !important; border-radius: 12px; background: var(--canvas-soft, #f7f8fa); box-shadow: none !important; }
+#root#root .rp-page .rv-summary > div { border: 0 !important; box-shadow: none !important; }
+#root#root .rp-page .rv-summary > div::before { content: none !important; }
+#root#root .rp-page .rv-duel-box > .rv-duel-key { position: relative; z-index: 2; margin: 2px 0 0 !important; }
+/* chart block and summary span the same width as the set cards above */
+#root#root .rp-page .rv-duel3 { padding-left: 0 !important; padding-right: 0 !important; }
+/* summary plate, tighter: the padding lives on the plate only */
+#root#root .rp-page .rv-summary { padding: 10px 16px !important; }
+#root#root .rp-page .rv-summary > div { padding: 0 !important; display: flex; flex-direction: column; gap: 2px; }
+/* head to head: the Dashboard's 16px between every block (set cards, chart, summary) */
+#root#root .rp-page .rp-h2h-body { gap: 16px !important; }
+#root#root .rp-page .rp-sides3 { gap: 16px !important; }
+#root#root .rp-page .rv-duel3 { display: flex; flex-direction: column; gap: 16px; padding-top: 0 !important; }
+#root#root .rp-page .rv-duel3 > * { margin-top: 0 !important; margin-bottom: 0 !important; }
+/* summary: label, value, one muted line, in four even columns */
+#root#root .rp-page .rv-summary { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; padding: 12px 16px !important; }
+#root#root .rp-page .rv-summary > div { gap: 4px; }
+#root#root .rp-page .rv-summary dt { margin: 0; color: var(--ink-faint, #98a2b3); font-size: 12px; font-weight: 500; }
+#root#root .rp-page .rv-summary dd { display: flex; flex-direction: column; gap: 1px; margin: 0; }
+#root#root .rp-page .rv-summary dd b { color: var(--ink, #2b2f35); font-size: 15px; font-weight: 600; letter-spacing: -.015em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#root#root .rp-page .rv-summary dd b.lead-a { color: var(--set-a); } #root#root .rp-page .rv-summary dd b.lead-b { color: var(--set-b); }
+#root#root .rp-page .rv-summary dd small { color: var(--ink-faint, #98a2b3); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 760px) { #root#root .rp-page .rv-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 14px; } }
+/* the sets control reads as a plain Filters button: white, raised, no caret */
+#root#root .rp-page .rp-sets-btn { height: 30px; padding: 0 12px; border-radius: 9px; background: #fff; color: var(--ink, #2b2f35); font-size: 12.5px; font-weight: 500; box-shadow: 0 0 0 1px var(--line, #eaecf0) !important; }
+#root#root .rp-page .rp-sets-btn:hover, #root#root .rp-page .rp-sets-btn.is-open { background: var(--canvas-soft, #f7f8fa); }
+/* statistics card: folded to its head by default, like the scatter card */
+#root#root .rp-page .rp-stats-card:not(.is-on) > .shell-body { display: none; }
+.rp-stats-wrap { border-radius: var(--radius, 14px); outline: none; }
+.rp-stats-wrap:not(.is-on) { cursor: pointer; }
+.rp-stats-wrap.is-on > .rp-stats-card > .shell-head { cursor: pointer; }
+#root#root .rp-page .rp-stats-wrap:not(.is-on):hover > .rp-stats-card { background: #f0f1f3 !important; }
+.rp-stats-wrap:not(.is-on):active > .rp-stats-card { transform: scale(.996); }
+#root#root .rp-page .rp-stats-wrap:focus-visible > .rp-stats-card { box-shadow: 0 0 0 3px rgba(46,124,246,.18) !important; }
+
+/* statistics sheet, refined: a tally bar on top, airy rows, no column rules, the winning side marked in its set colour */
+#root#root .rp-page .rp-sheet-wrap { padding: 0; }
+.rp-page .rp-sheet-tally { display: flex; align-items: center; gap: 12px; margin: 0 0 14px; padding: 10px 12px; border-radius: 10px; background: var(--canvas-soft, #f7f8fa); font-size: 12.5px; }
+.rp-page .rp-sheet-tally > span:not(.rp-sheet-split) { display: inline-flex; align-items: center; gap: 6px; flex: none; color: var(--ink-soft, #475467); white-space: nowrap; }
+.rp-page .rp-sheet-tally > span > i { width: 8px; height: 8px; border-radius: 3px; }
+.rp-page .rp-sheet-tally .is-a > i { background: var(--set-a); } .rp-page .rp-sheet-tally .is-b > i { background: var(--set-b); }
+.rp-page .rp-sheet-tally b { color: var(--ink, #2b2f35); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rp-page .rp-sheet-split { flex: 1; display: flex; gap: 3px; height: 6px; }
+.rp-page .rp-sheet-split > i { flex-basis: 0; min-width: 4px; border-radius: 999px; transition: flex-grow .4s cubic-bezier(.22,.82,.28,1); }
+.rp-page .rp-sheet-split > i.is-a { background: var(--set-a); } .rp-page .rp-sheet-split > i.is-b { background: var(--set-b); }
+#root#root .rp-page .rp-sheet thead th { height: 30px; border-bottom: 1px solid var(--line, #eaecf0); color: var(--ink-faint, #98a2b3); font-size: 12px; font-weight: 500; }
+#root#root .rp-page .rp-sheet :is(td, th) { border-left: 0 !important; }
+#root#root .rp-page .rp-sheet .rp-sheet-group th { height: 34px; padding: 10px 12px 4px; background: none; border: 0; color: var(--ink-faint, #98a2b3); font-size: 12px; font-weight: 500; vertical-align: bottom; }
+#root#root .rp-page .rp-sheet tbody tr:not(.rp-sheet-group) th { padding-left: 12px; color: var(--ink, #2b2f35); font-weight: 400; }
+#root#root .rp-page .rp-sheet tbody tr:not(.rp-sheet-group) :is(th, td) { height: 36px; border-bottom: 1px solid var(--line-soft, #f2f4f7); }
+#root#root .rp-page .rp-sheet tbody tr:not(.rp-sheet-group):hover :is(th, td) { background: #f9fafb; }
+#root#root .rp-page .rp-sheet tbody td { color: var(--ink-soft, #475467); }
+#root#root .rp-page .rp-sheet tbody td.is-edge { color: var(--ink, #2b2f35); font-weight: 600; }
+#root#root .rp-page .rp-sheet tbody td.tone-pos { color: #0e9f6e; } #root#root .rp-page .rp-sheet tbody td.tone-neg { color: #e0453c; }
+.rp-page .rp-edge-dot { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+.rp-page .rp-edge-dot.is-a { background: var(--set-a-soft); color: var(--set-a); }
+.rp-page .rp-edge-dot.is-b { background: var(--set-b-soft); color: #a16207; }
+@media (prefers-reduced-motion: reduce) { .rp-page .rp-sheet-split > i { transition: none; } }
+/* summary: same 3px rhythm above and below the value, fixed line heights so the glyph gaps really match */
+#root#root .rp-page .rv-summary > div { gap: 3px !important; }
+#root#root .rp-page .rv-summary dd { gap: 3px !important; }
+#root#root .rp-page .rv-summary dt, #root#root .rp-page .rv-summary dd small { line-height: 16px; }
+#root#root .rp-page .rv-summary dd b { line-height: 18px; }
+/* chart title, the Dashboard card-title style */
+#root .rp-page .rv-duel-title { margin: 0; color: var(--ink, #2b2f35); font-size: var(--card-title-size, 15px); font-weight: 600; letter-spacing: -.015em; }
+/* verdicts: the winning set in ink with its colour as a small dot */
+#root#root .rp-page .rv-summary dd b:is(.lead-a, .lead-b) { display: inline-flex; align-items: center; gap: 7px; color: var(--ink, #2b2f35) !important; }
+#root#root .rp-page .rv-summary dd b:is(.lead-a, .lead-b)::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 3px; }
+#root#root .rp-page .rv-summary dd b.lead-a::before { background: var(--set-a); } #root#root .rp-page .rv-summary dd b.lead-b::before { background: var(--set-b); }
+/* verdicts on two lines: label, then winner and detail side by side */
+#root#root .rp-page .rv-summary { padding: 10px 16px !important; }
+#root#root .rp-page .rv-summary dd { flex-direction: row !important; align-items: baseline; gap: 8px !important; min-width: 0; }
+#root#root .rp-page .rv-summary dd b { flex: none; font-size: 14px; }
+#root#root .rp-page .rv-summary dd small { min-width: 0; }
+#root#root .rp-page .rv-summary dd { flex-wrap: wrap; row-gap: 2px !important; }
+#root#root .rp-page .rv-summary dd small { white-space: nowrap; overflow: visible; }
+/* edge column: a plain squircle in the winning set's colour */
+#root#root .rp-page .rp-edge-dot { width: 8px; height: 8px; border-radius: 3px; vertical-align: middle; }
+#root#root .rp-page .rp-edge-dot.is-a { background: var(--set-a); } #root#root .rp-page .rp-edge-dot.is-b { background: var(--set-b); }
+/* statistics table as a duotone: column headers on the grey frame, the rows on a white inset */
+#root#root .rp-page .rp-sheet-duo { padding: 0 4px 4px; border-radius: 14px; background: var(--duo-frame, #f7f7f8); }
+#root#root .rp-page .rp-sheet-duo .rp-sheet { border-collapse: separate; border-spacing: 0; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet thead th { height: 36px; border-bottom: 0; background: none; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet tbody :is(th, td) { background: #fff; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet tbody:first-of-type tr:first-child > :first-child { border-top-left-radius: 10px; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet tbody:first-of-type tr:first-child > :last-child { border-top-right-radius: 10px; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet tbody:last-of-type tr:last-child > :first-child { border-bottom-left-radius: 10px; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet tbody:last-of-type tr:last-child > :last-child { border-bottom-right-radius: 10px; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet tbody:last-of-type tr:last-child :is(th, td) { border-bottom: 0; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet tbody tr:not(.rp-sheet-group):hover :is(th, td) { background: #f9fafb; }
+/* stepped header: Statistic on the top strip, the value labels a row lower on grey, a curve joining the two */
+#root .rp-page .rp-sr { position: absolute; width: 1px; height: 1px; padding: 0 !important; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet thead th:first-child { height: 34px; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet .rp-sheet-group.is-first > th { border-top-left-radius: 10px; border-top-right-radius: 10px; background: #fff; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet .rp-sheet-group.is-first > td.rp-sheet-colhead { position: relative; height: 38px; padding: 0 12px; background: var(--duo-frame, #f7f7f8); color: var(--ink-faint, #98a2b3); font-size: 12px; font-weight: 500; text-align: right; vertical-align: middle; border-bottom: 0; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet .rp-sheet-group.is-first > td.rp-sheet-colhead:last-child { text-align: center; }
+/* the concave fillet where the white panel turns under the grey */
+#root#root .rp-page .rp-sheet-duo .rp-sheet .rp-sheet-group.is-first > td.rp-sheet-colhead:nth-child(2)::before { content: ''; position: absolute; left: 0; bottom: 0; width: 10px; height: 10px; background: radial-gradient(circle at 100% 0, var(--duo-frame, #f7f7f8) 9.5px, #fff 10px); }
+/* the white panel's top edge now starts at the first data row on the right */
+#root#root .rp-page .rp-sheet-duo .rp-sheet tbody:first-of-type tr:first-child > :last-child { border-top-right-radius: 0; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet tbody:first-of-type tr:nth-child(2) > :last-child { border-top-right-radius: 10px; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet .rp-sheet-group.is-first > th { vertical-align: middle; padding-top: 0; padding-bottom: 0; }
+/* no visible top strip: the white panel starts at the frame's 4px bezel on the left */
+#root#root .rp-page .rp-sheet-duo { padding-top: 4px; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet thead.rp-sr-head th { height: 0 !important; padding: 0 !important; }
+/* verdicts hollowed out like the metric strip: grey frame, each stat in its own white inset */
+#root#root .rp-page .rv-summary { gap: 4px !important; padding: 4px !important; border-radius: 14px; background: var(--duo-frame, #f7f7f8); }
+#root#root .rp-page .rv-summary > div { padding: 10px 14px !important; border-radius: 10px; background: #fff; }
+/* optical centring: caps and figures sit high in their line box, so the labels drop 1.5px; the dots stay on the bar's centre */
+/* tally labels: "Set A" and its count share one text baseline; the dot centres on that line */
+#root#root .rp-page .rp-sheet-tally > span:not(.rp-sheet-split) { align-items: baseline; line-height: 16px; }
+#root#root .rp-page .rp-sheet-tally > span:not(.rp-sheet-split) > b { line-height: 16px; }
+#root#root .rp-page .rp-sheet-tally > span:not(.rp-sheet-split) > i { align-self: center; }
+/* header row fully grey: Performance shares the strip with the column labels; the white panel starts at the first row */
+#root#root .rp-page .rp-sheet-duo .rp-sheet .rp-sheet-group.is-first > th { border-radius: 0 !important; background: none !important; height: 38px; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet .rp-sheet-group.is-first > td.rp-sheet-colhead { background: none !important; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet .rp-sheet-group.is-first > td.rp-sheet-colhead:nth-child(2)::before { content: none !important; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet tbody:first-of-type tr:nth-child(2) > :first-child { border-top-left-radius: 10px; }
+#root#root .rp-page .rp-sheet-duo .rp-sheet tbody:first-of-type tr:nth-child(2) > :last-child { border-top-right-radius: 10px; }
+/* rules kept / broken: two soft grey tiles side by side, no divider */
+#root#root .rp-page .rp-insights .rp-rsplit { gap: 8px; padding: 0 !important; margin: 0 !important; border: 0 !important; }
+#root#root .rp-page .rp-insights .rp-rstat { padding: 10px 12px !important; border-radius: 10px !important; background: var(--canvas-soft, #f7f8fa) !important; }
+#root#root .rp-page .rp-insights .rp-rstat + .rp-rstat { padding-left: 12px !important; }
+#root#root .rp-page .rp-insights .rp-rstat + .rp-rstat::before { content: none !important; }
+#root#root .rp-page .rp-insights .rp-rstat:hover, #root#root .rp-page .rp-insights .rp-rstat.is-current { background: #f0f2f5 !important; }
+#root#root .rp-page .rp-insights .rp-rbroken { border-top: 0 !important; padding-top: 0 !important; margin-top: 14px !important; }
+/* saved views live in the Build head, at the right: saved chips then the name field and Save */
+#root#root .rp-page .rp-builder > .rp-setcard-head { display: flex; align-items: center; gap: 10px; }
+#root#root .rp-page .rp-saved-head { display: flex; align-items: center; gap: 6px; margin: 0 0 0 auto !important; padding: 0 !important; border: 0 !important; background: none !important; min-width: 0; }
+#root#root .rp-page .rp-saved-head .rp-saved-new { display: inline-flex; align-items: center; gap: 4px; }
+#root#root .rp-page .rp-saved-head .rp-saved-new input { width: 140px; }
+@media (max-width: 640px) { #root#root .rp-page .rp-builder > .rp-setcard-head { flex-wrap: wrap; } #root#root .rp-page .rp-saved-head { margin-left: 0 !important; width: 100%; } }
+/* build controls: each pick and the filter button on its own soft grey pill; the dividers go */
+#root#root .rp-page .rp-builder .rp-ctlbar { gap: 6px; }
+#root#root .rp-page .rp-builder .rp-ctlgroup { gap: 6px; }
+#root#root .rp-page .rp-builder .rp-ctlsep { display: none; }
+#root#root .rp-page .rp-builder :is(.rp-ctl, .rf-btn) { height: 32px; padding: 0 10px !important; border: 0 !important; border-radius: 9px !important; background: var(--canvas-soft, #f7f8fa) !important; box-shadow: none !important; transition: background-color .14s ease; }
+#root#root .rp-page .rp-builder :is(.rp-ctl, .rf-btn):hover { background: #eef0f3 !important; }
+#root#root .rp-page .rp-builder .rp-ctlbar { flex-wrap: wrap; }
+/* build: one row of controls, saved views pushed right; no title */
+#root#root .rp-page .rp-builder > .rp-setcard-head { flex-wrap: wrap; min-height: 56px; padding-top: 10px !important; padding-bottom: 10px !important; }
+#root#root .rp-page .rp-builder > .rp-setcard-head > .rp-ctlbar { margin: 0; padding: 0; }
+/* build controls: no carets, no funnel icon */
+#root#root .rp-page .rp-builder :is(.rp-ctl, .rf-btn) svg { display: none !important; }
+/* each pick hugs its chosen value now that the caret is gone */
+#root#root .rp-page .rp-builder .rp-ctl select { padding-right: 0 !important; field-sizing: content; width: auto; min-width: 0; }
+#root#root .rp-page .rp-builder > .rp-setcard-head { row-gap: 8px; padding-top: 12px !important; padding-bottom: 12px !important; }
+#root#root .rp-page .rp-builder.ws-card.duo > .rp-setcard-head { flex-wrap: wrap; row-gap: 8px; height: auto !important; padding-top: 10px !important; padding-bottom: 10px !important; }
+/* save: a plain outlined button, the same height as the name field */
+#root#root .rp-page .rp-saved-head .rp-saved-new button { height: 30px; padding: 0 12px; border: 1px solid var(--line, #eaecf0) !important; border-radius: 9px; background: #fff; color: var(--ink, #2b2f35); font-size: 12.5px; font-weight: 500; box-shadow: none !important; transition: background-color .14s ease, border-color .14s ease; }
+#root#root .rp-page .rp-saved-head .rp-saved-new button:hover:not(:disabled) { background: var(--canvas-soft, #f7f8fa); border-color: #d0d5dd !important; }
+#root#root .rp-page .rp-saved-head .rp-saved-new button:disabled { color: var(--ink-faint, #98a2b3); opacity: 1; }
+#root#root .rp-page .rp-saved-head .rp-saved-new input { height: 30px; }
+/* build row, compact: 6px around the controls, no min-height */
+#root#root .rp-page .rp-builder.ws-card.duo > .rp-setcard-head { min-height: 0 !important; padding-top: 6px !important; padding-bottom: 6px !important; padding-left: 6px !important; padding-right: 6px !important; }
+#root#root .rp-page .rp-builder.ws-card.duo { min-height: 0 !important; }
+#root#root .rp-page .rp-builder .rp-saved-head { min-height: 0 !important; height: auto !important; }
+#root#root .rp-page .rp-builder .rp-saved-head .rp-saved-new :is(input, button) { height: 32px !important; }
+/* edge legend: small rounded arrow icons sitting on the text line */
+#root .rp-page .rv-edge-legend > span { display: inline-flex; align-items: center; gap: 4px; }
+#root .rp-page .rv-edge-legend svg { flex: none; color: var(--ink-faint, #98a2b3); stroke-linecap: round; stroke-linejoin: round; }
+#root#root .rp-page .rv-edge-legend svg { width: 12px !important; height: 12px !important; min-width: 0 !important; }
+#root#root .rp-page .rv-edge-legend > span { white-space: nowrap; }
+/* ranked list footer: a slim line, not a band */
+#root#root .rp-page .rp-rank-foot { padding: 8px 0 0 !important; }
+#root#root .rp-page .rp-rank-grid > .ws-card.duo:has(.rp-rank) > .shell-body { padding-bottom: 10px !important; }
+/* scatter legend sits on the same bottom line as the profit / trades bars beside it */
+#root#root .rp-page .rv-edge-legend { align-items: flex-end; padding-top: 0 !important; padding-bottom: 0 !important; }
+/* the hairline sits 12px above the legend text, the same gap as above the profit row; the text stays level with Trades */
+#root#root .rp-page .rv-edge-legend { box-sizing: border-box; height: auto; min-height: 0 !important; margin-top: auto; padding-top: 12px !important; }
+/* setup cards: no separator lines anywhere */
+#root#root .rp-page .rp-rank-grid :is(.rp-rank-foot, .rv-edge-legend, .rv-mix-vs) { border-top: 0 !important; }
+/* publish: a squircle outline button like Save, not a filled pill */
+#root#root .rp-page .rp-compose-lite .rp-compose-go { height: 34px !important; padding: 0 14px !important; border: 1px solid var(--line, #eaecf0) !important; border-radius: 9px !important; background: #fff !important; color: var(--ink, #2b2f35) !important; box-shadow: none !important; font-weight: 500; }
+#root#root .rp-page .rp-compose-lite .rp-compose-go:hover:not(:disabled) { background: var(--canvas-soft, #f7f8fa) !important; border-color: #d0d5dd !important; }
+#root#root .rp-page .rp-compose-lite .rp-compose-go:disabled { background: #fff !important; color: var(--ink-faint, #98a2b3) !important; }
+/* published reports in a duotone card: title on the grey frame, the cards on a white inset */
+.rp-page .rp-published { padding: 0 4px 4px; border-radius: 14px; background: var(--duo-frame, #f7f7f8); }
+.rp-page .rp-published-title { margin: 0; padding: 0 12px; height: 44px; display: flex; align-items: center; color: var(--ink, #2b2f35); font-size: var(--card-title-size, 15px); font-weight: 600; letter-spacing: -.015em; }
+.rp-page .rp-published-body { padding: 12px; border-radius: 10px; background: #fff; }
+.rp-page .rp-published-body > .rp-rcards { margin: 0 !important; }
+/* new report row, compact: 6px around 32px controls */
+#root#root .rp-page .ws-card.duo.rp-compose-lite > .rp-compose-body { padding: 6px !important; }
+#root#root .rp-page .rp-compose-lite :is(.rp-compose-title, .rf-btn, .rp-compose-go) { height: 32px !important; }

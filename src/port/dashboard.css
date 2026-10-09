@@ -120,11 +120,11 @@
 
 /* ------------------------------------------------------------ MUI chart chrome, quietened */
 .d3 .MuiChartsAxis-line, .d3 .MuiChartsAxis-tick { display: none; }
-.d3 .MuiChartsAxis-tickLabel { fill: #98a2b3 !important; font-size: 11px !important; font-family: Inter, ui-sans-serif, system-ui, sans-serif !important; }
+.d3 .MuiChartsAxis-tickLabel { fill: #98a2b3 !important; font-size: 11px !important; font-family: 'Open Runde', Inter, ui-sans-serif, system-ui, sans-serif !important; }
 .d3 .MuiChartsGrid-line { stroke: #f2f4f7 !important; }
 .d3 .MuiLineElement-root { stroke-width: 2; }
 .d3 .MuiChartsAxisHighlight-root { stroke: rgba(16,24,40,.18) !important; stroke-dasharray: none !important; }
-.MuiChartsTooltip-paper { border: 0 !important; border-radius: 10px !important; background: rgba(255,255,255,.96) !important; box-shadow: var(--shadow-tight) !important; font-family: Inter, ui-sans-serif, system-ui, sans-serif !important; }
+.MuiChartsTooltip-paper { border: 0 !important; border-radius: 10px !important; background: rgba(255,255,255,.96) !important; box-shadow: var(--shadow-tight) !important; font-family: 'Open Runde', Inter, ui-sans-serif, system-ui, sans-serif !important; }
 .MuiChartsTooltip-paper * { font-family: inherit !important; font-size: 12px !important; }
 
 /* phones: one column, controls wrap under the title */

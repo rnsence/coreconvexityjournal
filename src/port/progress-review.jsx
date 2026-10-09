@@ -68,8 +68,8 @@ function WriteView({ week, review, fields, setField, figures, coverLine, pending
         onInput={(event) => { const el = event.currentTarget; el.style.height = 'auto'; el.style.height = `${el.scrollHeight}px` }}/>
     </label>)}</div>
     <div className="pgr-links">
-      <button type="button" className="pgr-link" onClick={() => setView('covered')}><span>Covers</span><b>{coverLine}</b><ChevronRight size={15}/></button>
-      {review && <button type="button" className="pgr-link" onClick={() => setView('history')}><span><History size={13}/>History</span><b>{(review.history?.length ?? 0) + 1} revisions</b><ChevronRight size={15}/></button>}
+      <button type="button" className="pgr-link" onClick={() => setView('covered')}><span>Covers</span><b>{coverLine}</b></button>
+      {review && <button type="button" className="pgr-link" onClick={() => setView('history')}><span><History size={13}/>History</span><b>{(review.history?.length ?? 0) + 1} revisions</b></button>}
     </div>
     <div className="pgr-actions">
       <button type="button" className="pgr-btn" disabled={pending} onClick={close}>Cancel</button>

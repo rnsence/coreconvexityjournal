@@ -2,7 +2,7 @@
  * Routine card (habits kept per day, last three months) and the calendar's month summary.
  */
 import React, { useMemo, useState } from 'react'
-import { Archive, ArchiveRestore, ChevronDown, Plus } from 'lucide-react'
+import { Archive, ArchiveRestore, Plus } from 'lucide-react'
 import { Card, MetricStrip } from '../workspace'
 import { money, toneOf } from '../viz'
 import { metricRows, pickRows } from './calendar-metrics'
@@ -41,7 +41,6 @@ export function MonthSummary({ trades, privacy }) {
   return <section className={`cal-summary cal-stats duo${open ? ' is-open' : ''}`} aria-label="Month statistics">
     <button type="button" className="cal-stats-toggle shell-head" aria-expanded={open} aria-controls="cal-stats-body" onClick={toggle}>
       <span className="card-title">Statistics</span>
-      <span className="cc-caret-box"><ChevronDown size={14} strokeWidth={2.2}/></span>
     </button>
     <div className={`card-fold${open ? ' open' : ''}`} id="cal-stats-body"><div className="card-fold-inner">
       <div className="shell-body">

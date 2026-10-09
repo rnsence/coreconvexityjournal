@@ -630,7 +630,7 @@ export function cumeSummary(series) {
 /** The cumulative chart's series key, laid out in a row for under the chart. */
 // A row of chips folded into one: the first in front, the rest stacked behind it; a click fans them out
 // (wrapping onto more lines when the row is wider than the parent).
-function ChipStack({ items, label, className = '' }) {
+export function ChipStack({ items, label, className = '' }) {
   const [open, setOpen] = useState(false)
   const [widths, setWidths] = useState([])
   const [room, setRoom] = useState(0)
@@ -683,7 +683,11 @@ export function CumeChips({ items, privacy }) {
     content: <><b className="sc-label">{item.label}</b><b className={`sc-value${item.tone ? ` tone-${item.tone}` : ''}`}>{money(item.value, { privacy, decimals: 0 })}</b></> }))}/>
 }
 
-export function CumeKey({ span }) {
+export function CumeKey({ span, equity = false }) {
+  if (equity) return <ul className="cume-legend" aria-label="Legend">
+    <li className="stack-chip"><i className="k-net"/>Equity</li>
+    <li className="stack-chip"><i className="k-dd"/>Drawdown</li>
+  </ul>
   return <ul className="cume-legend" aria-label="Legend">
     <li className="stack-chip"><i className="k-net"/>Net cumulative</li>
     <li className="stack-chip"><i className="k-run"/>Rolling {span}-session net</li>
@@ -691,7 +695,8 @@ export function CumeKey({ span }) {
   </ul>
 }
 
-export function CumulativeChart({ series, height: fixedHeight = 360, fill = false, privacy = false, side = true }) {
+// `equity` drops the rolling-net line and labels the curve as equity, for the Reports equity & drawdown view
+export function CumulativeChart({ series, height: fixedHeight = 360, fill = false, privacy = false, side = true, equity = false }) {
   const [ref, size] = useSize()
   const [active, setActive] = useState(null)
   const width = size.width || 900
@@ -714,8 +719,8 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
   // drawdown: how far below the best equity so far each session closed (0 at a new high), drawn under $0
   const under = series.map((point) => Math.min(0, point.drawdown))
 
-  const min = Math.min(0, ...values, ...rolling)
-  const max = Math.max(1, ...values, ...rolling)
+  const min = Math.min(0, ...values, ...(equity ? [] : rolling))
+  const max = Math.max(1, ...values, ...(equity ? [] : rolling))
   // the drawdown gets its own band along the foot of the plot, on its own scale, so it never squashes
   const band = Math.round(plotHeight * .24), bandGap = 0
   const mainHeight = plotHeight - band - bandGap
@@ -791,8 +796,8 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
       <line className="cume-dd-base" x1={pad.left} x2={pad.left + plotWidth} y1={ddTop} y2={ddTop} />
       {underArea && <path className="cume-dd-area" d={underArea} />}
       {underPath && <path className="cume-dd" d={underPath} vectorEffect="non-scaling-stroke" />}
-      {runArea && <path className="cume-run-area" d={runArea} />}
-      {runPath && <path className="cume-run" d={runPath} vectorEffect="non-scaling-stroke" />}
+      {!equity && runArea && <path className="cume-run-area" d={runArea} />}
+      {!equity && runPath && <path className="cume-run" d={runPath} vectorEffect="non-scaling-stroke" />}
       {line && <path className="cume-line" d={line} vectorEffect="non-scaling-stroke" />}
 
       {side && dateLabels.map((index) => (
@@ -810,7 +815,7 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
       {point && <>
         <line className="cume-cross" x1={xAt(active)} y1={pad.top} x2={xAt(active)} y2={ddTop + band} />
         {under[active] < 0 && <circle className="cume-focus dd" cx={xAt(active)} cy={yDd(under[active])} r="3.5" />}
-        <circle className="cume-focus run" cx={xAt(active)} cy={yAt(rolling[active])} r="4" />
+        {!equity && <circle className="cume-focus run" cx={xAt(active)} cy={yAt(rolling[active])} r="4" />}
         <circle className="cume-focus" cx={xAt(active)} cy={yAt(point.cumulative)} r="4.5" />
       </>}
     </svg>
@@ -818,8 +823,8 @@ export function CumulativeChart({ series, height: fixedHeight = 360, fill = fals
       {point && <>
         <div className="tip-title">{longDate(point.date)}</div>
         <TipRows rows={[
-          { label: 'Net cumulative', value: money(point.cumulative, { privacy }), tone: toneOf(point.cumulative) },
-          { label: `Rolling ${span}-session`, value: money(rolling[active], { privacy, decimals: 0 }), tone: toneOf(rolling[active]) },
+          { label: equity ? 'Equity' : 'Net cumulative', value: money(point.cumulative, { privacy }), tone: toneOf(point.cumulative) },
+          ...(equity ? [] : [{ label: `Rolling ${span}-session`, value: money(rolling[active], { privacy, decimals: 0 }), tone: toneOf(rolling[active]) }]),
           { label: 'Drawdown', value: under[active] < 0 ? money(under[active], { privacy, decimals: 0 }) : 'At a high', tone: under[active] < 0 ? 'neg' : undefined },
           { label: 'Session P&L', value: money(point.pnl, { privacy }), tone: toneOf(point.pnl) },
           { label: 'Trades', value: `${point.trades}` },

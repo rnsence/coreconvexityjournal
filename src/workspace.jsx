@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
-  ArrowDownRight, ArrowUpRight, Check, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown, Import, Plus,
+  ArrowDownRight, ArrowUpRight, Check, ChevronLeft, ChevronRight, Import, Plus,
   Search, Star, X,
 } from 'lucide-react'
 import {
@@ -80,14 +80,15 @@ export function firmOf(name = '') {
   return text.trim() || 'Unassigned'
 }
 
-export function MetricStrip({ items }) {
-  return <section className="metric-strip" style={{ '--cells': items.length }}>
+/** KPI row. `hideSub` drops each cell's small print and sets the label above the figure. */
+export function MetricStrip({ items, hideSub = false }) {
+  return <section className={`metric-strip${hideSub ? ' is-stacked' : ''}`} style={{ '--cells': items.length }}>
     {items.map((item) => <div className={`metric-cell${item.viz ? ' has-viz' : ''}`} key={item.label}>
       <div className="metric-top">
         <strong className={item.tone ? `tone-${item.tone}` : undefined}>{item.value}</strong>
         <span className="metric-name">{item.label}</span>
       </div>
-      {item.sub && <small>{item.sub}</small>}
+      {!hideSub && item.sub && <small>{item.sub}</small>}
       {item.line && <MetricLine line={item.line}/>}
       {item.viz && <span className="ms-viz" aria-hidden="true">{item.viz}</span>}
     </div>)}
@@ -547,9 +548,8 @@ export function TradesPage({ privacy, range = 'All', initialQuery = '', openLog 
     URL.revokeObjectURL(link.href)
   }
   const toggleSort = (key) => setSort((current) => ({ key, dir: current.key === key && current.dir === 'desc' ? 'asc' : 'desc' }))
-  const sortIcon = (key) => sort.key === key
-    ? <ChevronsUpDown size={12} className={`sort-icon ${sort.dir}`}/>
-    : <ChevronsUpDown size={12} className="sort-icon idle"/>
+  // headers stay clickable to sort; no chevron marks
+  const sortIcon = () => null
 
 
   return <div className="page home ws-page trades-page">
@@ -1534,7 +1534,6 @@ export function PropFirmsPage({ privacy }) {
       >
         <span className="grave-title">Graveyard</span>
         <span className="grave-meta">{money(graveyardFees, { privacy, sign: false, decimals: 0 })} in fees burned</span>
-        <span className="cc-caret-box"><ChevronDown size={14} strokeWidth={2.2}/></span>
       </button>
       <div className={`card-fold${boneyardOpen ? ' open' : ''}`} id="grave-fold"><div className="card-fold-inner"><div className="shell-body">
         <div className="grave-body">

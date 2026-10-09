@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   AArrowDown, AArrowUp, Copy, X, ArrowDownRight, Bold, Italic, List, ArrowUpRight, Bot, Settings2, Trash2, Check, ChevronLeft, ChevronRight, Download, FileImage, Info, Rocket, Scaling, Sigma, TrendingDown,
   GripVertical, Image as ImageIcon, Maximize2, MoreHorizontal, MoveRight, Pencil, Plus, Scale, Search, Send, SlidersHorizontal, Sparkles, Star, Target, TrendingUp, Wallet,
@@ -203,12 +203,11 @@ function WeekStrip({ trades, privacy }) {
     const net = list.reduce((sum, trade) => sum + trade.pnl, 0)
     return { name, date, count: list.length, rate: list.length ? Math.round((wins / list.length) * 100) : 0, net, state: date === anchor ? 'today' : date > today || (!list.length && date > anchor) ? 'future' : 'past' }
   })
-  // one day at a time can be picked; it starts on the last journaled day, and a second click clears it
-  const [picked, setPicked] = useState(anchor)
+  // read-only: the last journaled day keeps the picked look as a fixed marker
   return <section className="hw-week" aria-label="This week">
-    {days.map((day) => <button key={day.date} type="button" aria-pressed={picked === day.date}
-      className={`hw-day duo is-${day.state}${day.count ? ' has-trades' : ''}${picked === day.date ? ' is-picked' : ''}`}
-      title={day.state === 'today' ? 'Last journaled day' : undefined} onClick={() => setPicked((current) => (current === day.date ? null : day.date))}>
+    {days.map((day) => <div key={day.date} aria-current={day.date === anchor ? 'date' : undefined}
+      className={`hw-day duo is-static is-${day.state}${day.count ? ' has-trades' : ''}${day.date === anchor ? ' is-picked' : ''}`}
+      title={day.state === 'today' ? 'Last journaled day' : undefined}>
       <div className="hw-day-top shell-head">
         <b>{day.name} {day.date.slice(8).replace(/^0/, '')}</b>
         <span className="hw-day-rate">{day.count ? `${day.rate}%` : '—'}</span>
@@ -217,7 +216,7 @@ function WeekStrip({ trades, privacy }) {
         <span>{day.count ? `${day.count} ${day.count === 1 ? 'trade' : 'trades'}` : 'No trades'}</span>
         {day.count > 0 && <em className={`tone-${toneOf(day.net)}`}>{money(day.net, { privacy, decimals: 0 })}</em>}
       </small>
-    </button>)}
+    </div>)}
   </section>
 }
 
@@ -733,12 +732,6 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
   const weeks = Math.ceil(month.cells.length / 7)
   const currentWeek = weekIndex ?? Math.max(0, Math.floor(month.cells.findIndex((cell) => !cell.outside && cell.day === (month.isEasternMonth ? easternToday.day : 1)) / 7))
   const visibleCells = view === 'Month' ? month.cells : month.cells.slice(currentWeek * 7, currentWeek * 7 + 7)
-  const step = (delta) => {
-    if (view === 'Week' && currentWeek + delta >= 0 && currentWeek + delta < weeks) { setWeekIndex(currentWeek + delta); return }
-    setMonthOffset(monthOffset + delta)
-    setWeekIndex(view === 'Week' ? (delta > 0 ? 0 : null) : null)
-  }
-  const resetMonth = () => { setMonthOffset(0); setWeekIndex(null) }
   const hasFilter = filter !== 'All trades' || query
 
   return <div className="page calendar-page">
@@ -821,13 +814,8 @@ export function CalendarPage({ privacy, openJournal, openTrades, openLog }) {
     <div className="cal-main">
     <section className="month-board duo">
       <div className="board-toolbar shell-head">
-        <div className="board-title"><h2>{month.longName}</h2><p>{view === 'Week' ? `Week ${currentWeek + 1} of ${weeks}` : month.range}</p></div>
+        <div className="board-title"><h2>{month.longName}</h2>{view === 'Week' && <p>Week {currentWeek + 1} of {weeks}</p>}</div>
         <div className="board-tools">
-          <div className="board-steps">
-            <button aria-label={view === 'Week' ? 'Previous week' : 'Previous month'} onClick={() => step(-1)}><ChevronLeft size={16} strokeWidth={2}/></button>
-            <button className="board-today" onClick={resetMonth}>Today</button>
-            <button aria-label={view === 'Week' ? 'Next week' : 'Next month'} onClick={() => step(1)}><ChevronRight size={16} strokeWidth={2}/></button>
-          </div>
           <TodayJournalButton onClick={() => setOpenDay(todayIso)}/>
           <button className="board-primary" onClick={openLog}>Log trade</button>
         </div>
@@ -1315,6 +1303,28 @@ const LABEL_MINUTES = 36
   const [checked, setChecked] = useState(() => readChecks(date) || checklistItems.map(() => false))
   const [checklistOpen, setChecklistOpen] = useState(false)
   const [noteOpen, setNoteOpen] = useState(true)
+  // the two columns stack independently; the shorter of the versus row and the day breakdown stretches so the next cards start level
+  const layoutRef = useRef(null)
+  useLayoutEffect(() => {
+    const layout = layoutRef.current
+    if (!layout) return undefined
+    const align = () => {
+      const versus = layout.querySelector('.journal-main > .versus-row'), card = layout.querySelector('.journal-side > .day-breakdown')
+      if (!versus || !card) return
+      versus.style.minHeight = ''; card.style.minHeight = ''
+      const main = layout.querySelector('.journal-main'), side = layout.querySelector('.journal-side')
+      if (Math.round(main.getBoundingClientRect().left) === Math.round(side.getBoundingClientRect().left)) return
+      const diff = versus.getBoundingClientRect().bottom - card.getBoundingClientRect().bottom
+      if (Math.abs(diff) < 1 || Math.abs(diff) > 160) return
+      const target = diff > 0 ? card : versus
+      target.style.minHeight = `${target.getBoundingClientRect().height + Math.abs(diff)}px`
+    }
+    align()
+    const observer = new ResizeObserver(align)
+    observer.observe(layout)
+    ;[...layout.querySelectorAll('.journal-main > :not(.versus-row), .journal-side > :not(.day-breakdown)')].forEach((node) => observer.observe(node))
+    return () => observer.disconnect()
+  })
   const toggleCheck = (index) => setChecked((current) => {
     const next = current.map((value, position) => (position === index ? !value : value))
     try { localStorage.setItem(checklistKey, JSON.stringify(next)) } catch { /* storage unavailable */ }
@@ -1347,14 +1357,12 @@ const LABEL_MINUTES = 36
       <div className="home-greeting">
         <div className="greeting-plate">
         <h1>Daily Journal</h1>
-        <p className="journal-lede">{date === REVIEWED_DAY
-          ? 'A strong session built on selectivity, not activity.'
-          : `${day.net >= 0 ? 'Green' : 'Red'} session · ${plural(sessionFills.length, 'trade')} · ${breakdown.largestWin ? `best ${breakdown.largestWin.symbol} ${money(breakdown.largestWin.pnl, { privacy, decimals: 0 })}` : 'no winners'}`}</p>
+        <p className="journal-lede">{[plural(sessionFills.length, 'trade'), `${money(day.net, { privacy, decimals: 0 })} net`, breakdown.largestWin ? `best ${breakdown.largestWin.symbol} ${money(breakdown.largestWin.pnl, { privacy, decimals: 0 })}` : 'no winners'].join(' · ')}</p>
         </div>
       </div>
     </header>
 
-    <div className="journal-layout">
+    <div className="journal-layout" ref={layoutRef}>
       <div className="journal-main">
         <div className="journal-kpis">
           {tiles.map((tile) => <div className="stat-tile" key={tile.label}>
@@ -1585,7 +1593,7 @@ const LABEL_MINUTES = 36
       >
         <div className="shell-head np-head">
           <span className="card-title">Session Note</span>
-          <span className="np-meta">{savedAt ? `Saved ${savedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : 'Saved'}<ChevronRight size={14}/></span>
+          <span className="np-meta">{savedAt ? `Saved ${savedAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}` : 'Saved'}</span>
         </div>
         <div className="shell-body np-body">
           <b className="np-title">{notePreview.title}</b>
@@ -1677,7 +1685,7 @@ const LABEL_MINUTES = 36
 
       <section className="home-card checklist-card duo jr-duo">
         <button type="button" className="shell-head checklist-head as-toggle" aria-haspopup="dialog" onClick={() => setChecklistOpen(true)}>
-          <div className="card-title">Execution Checklist <ChevronRight size={14} strokeWidth={2.2} className="cc-caret"/></div>
+          <div className="card-title">Execution Checklist</div>
           <span className="cl-kept">
             <span className="checklist-sub">{checked.filter(Boolean).length} of {checklistRules.length} rules kept</span>
             <span className={`discipline-ring ${disciplineTone(discipline)}`} style={{ '--share': discipline }} role="img" aria-label={`${discipline}% discipline`}/>

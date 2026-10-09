@@ -13,42 +13,41 @@ import { breakdown } from './reports-data'
 
 const POS = '#22c47d', NEG = '#f5615a', INK = '#2b2f35'
 const theme = createTheme({
-  typography: { fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, sans-serif' },
+  typography: { fontFamily: '"Open Runde", Inter, ui-sans-serif, system-ui, -apple-system, sans-serif' },
   palette: { primary: { main: '#2e7cf6' }, text: { primary: INK, secondary: '#667085' } },
 })
-const cartesian = { grid: { horizontal: true }, margin: { left: 4, right: 8, top: 10, bottom: 4 } }
-const everyNth = (values, count) => { const step = Math.max(1, Math.ceil(values.length / count)); return (_, index) => index % step === 0 }
 const axisDate = (iso) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 
 /** Cumulative net P&L by session, and how far below its last peak it sat (the underwater strip). */
+// the Dashboard's cumulative-chart palette: accent blue equity on a soft blue wash, a smooth coral drawdown
+const EQ_LINE = '#2e6fe8', DD_LINE = '#f1786f'
+// no axes or grid: the curve alone, values on hover
+const bare = { margin: { left: 0, right: 0, top: 10, bottom: 0 } }
 export function EquityDrawdown({ trades, privacy }) {
   const days = useMemo(() => equitySeries(trades), [trades])
   if (days.length < 2) return <ChartState state="empty" detail="Needs two or more sessions."/>
   const dates = days.map((day) => day.date)
   const tip = (value) => (value == null ? '—' : money(value, { privacy }))
   const axis = (value) => (privacy ? '••' : compactMoney(value))
-  const worst = days.reduce((low, day) => (day.drawdown < low.drawdown ? day : low), days[0])
   return <ThemeProvider theme={theme}>
     <div className="ic-equity">
-      <LineChart height={168} {...cartesian}
-        xAxis={[{ scaleType: 'point', data: dates, valueFormatter: axisDate, tickInterval: everyNth(dates, 6), tickLabelStyle: { display: 'none' }, height: 4 }]}
-        yAxis={[{ valueFormatter: axis, width: 56, tickNumber: 4 }]}
-        series={[{ id: 'equity', data: days.map((day) => day.cumulative), area: true, showMark: false, curve: 'monotoneX', color: INK, label: 'Net P&L', valueFormatter: tip, baseline: 'min' }]}
+      <div className="ic-equity-main"><LineChart {...bare}
+        xAxis={[{ scaleType: 'point', data: dates, valueFormatter: axisDate, position: 'none' }]}
+        yAxis={[{ valueFormatter: axis, position: 'none' }]}
+        series={[{ id: 'equity', data: days.map((day) => day.cumulative), area: true, showMark: false, curve: 'monotoneX', color: EQ_LINE, label: 'Net P&L', valueFormatter: tip, baseline: 'min' }]}
         hideLegend
-        sx={{ '& .MuiLineChart-area[data-series="equity"]': { fill: "url('#ic-eq-fill')", opacity: 1 } }}
+        sx={{ '& .MuiLineChart-area[data-series="equity"]': { fill: "url('#ic-eq-fill')", opacity: 1 }, '& .MuiLineChart-line[data-series="equity"]': { strokeWidth: 1.75 } }}
       >
-        <defs><linearGradient id="ic-eq-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={INK} stopOpacity=".12"/><stop offset="1" stopColor={INK} stopOpacity="0"/></linearGradient></defs>
-        <ChartsReferenceLine y={0} lineStyle={{ stroke: 'rgba(16,24,40,.16)' }}/>
-      </LineChart>
-      <LineChart height={86} {...cartesian} margin={{ ...cartesian.margin, top: 2 }}
-        xAxis={[{ scaleType: 'point', data: dates, valueFormatter: axisDate, tickInterval: everyNth(dates, 6) }]}
-        yAxis={[{ valueFormatter: axis, width: 56, tickNumber: 2 }]}
-        series={[{ id: 'dd', data: days.map((day) => day.drawdown), area: true, showMark: false, curve: 'stepAfter', color: NEG, label: 'Drawdown', valueFormatter: tip }]}
+        <defs><linearGradient id="ic-eq-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={EQ_LINE} stopOpacity=".18"/><stop offset="1" stopColor={EQ_LINE} stopOpacity=".05"/></linearGradient></defs>
+      </LineChart></div>
+      <LineChart height={96} {...bare} margin={{ left: 0, right: 0, top: 0, bottom: 2 }}
+        xAxis={[{ scaleType: 'point', data: dates, valueFormatter: axisDate, position: 'none' }]}
+        yAxis={[{ valueFormatter: axis, position: 'none', max: 0, min: Math.min(-1, ...days.map((day) => day.drawdown)) }]}
+        series={[{ id: 'dd', data: days.map((day) => day.drawdown), area: true, showMark: false, curve: 'monotoneX', color: DD_LINE, label: 'Drawdown', valueFormatter: tip }]}
         hideLegend
-        sx={{ '& .MuiLineChart-area[data-series="dd"]': { opacity: 0.16 }, '& .MuiLineChart-line[data-series="dd"]': { strokeWidth: 1.25 } }}
+        sx={{ '& .MuiLineChart-area[data-series="dd"]': { opacity: 0.1 }, '& .MuiLineChart-line[data-series="dd"]': { strokeWidth: 1.5 } }}
       />
     </div>
-    <p className="ic-note">Deepest drawdown <b className="tone-neg">{money(worst.drawdown, { privacy, decimals: 0 })}</b> on {axisDate(worst.date)} · ended at <b className={days.at(-1).cumulative >= 0 ? 'tone-pos' : 'tone-neg'}>{money(days.at(-1).cumulative, { privacy, decimals: 0 })}</b></p>
   </ThemeProvider>
 }
 
@@ -56,17 +55,14 @@ export function EquityDrawdown({ trades, privacy }) {
 export function HourBars({ trades, privacy }) {
   const rows = useMemo(() => breakdown(trades, 'hour').sort((a, b) => Number(a.key) - Number(b.key)), [trades])
   if (!rows.length) return <ChartState state="empty" detail="No trades to place by hour."/>
-  const best = rows.reduce((top, row) => (row.net_pnl > top.net_pnl ? row : top), rows[0])
-  const worst = rows.reduce((low, row) => (row.net_pnl < low.net_pnl ? row : low), rows[0])
   const hour = (key) => `${String(key).padStart(2, '0')}:00`
   return <ThemeProvider theme={theme}>
-    <BarChart height={254} {...cartesian} borderRadius={4}
-      xAxis={[{ scaleType: 'band', data: rows.map((row) => hour(row.key)), categoryGapRatio: 0.38 }]}
-      yAxis={[{ valueFormatter: (value) => (privacy ? '••' : compactMoney(value)), width: 56, tickNumber: 4, colorMap: { type: 'piecewise', thresholds: [0], colors: [NEG, POS] } }]}
+    <BarChart height={160} {...bare} borderRadius={4}
+      xAxis={[{ scaleType: 'band', data: rows.map((row) => hour(row.key)), categoryGapRatio: 0.38, position: 'none' }]}
+      yAxis={[{ valueFormatter: (value) => (privacy ? '••' : compactMoney(value)), position: 'none', min: Math.min(0, ...rows.map((row) => row.net_pnl)) * 1.05, max: Math.max(0, ...rows.map((row) => row.net_pnl)) * 1.05, colorMap: { type: 'piecewise', thresholds: [0], colors: [NEG, POS] } }]}
       series={[{ data: rows.map((row) => row.net_pnl), label: 'Net P&L', valueFormatter: (value, { dataIndex }) => `${money(value, { privacy })} · ${rows[dataIndex].trades} trades` }]}
       hideLegend
     ><ChartsReferenceLine y={0} lineStyle={{ stroke: 'rgba(16,24,40,.16)' }}/></BarChart>
-    <p className="ic-note">Best hour <b>{hour(best.key)}</b> <b className="tone-pos">{money(best.net_pnl, { privacy, decimals: 0 })}</b> · worst <b>{hour(worst.key)}</b> <b className={worst.net_pnl < 0 ? 'tone-neg' : 'tone-pos'}>{money(worst.net_pnl, { privacy, decimals: 0 })}</b></p>
   </ThemeProvider>
 }
 
@@ -90,17 +86,15 @@ export function OutcomeHistogram({ trades, privacy }) {
   }, [trades])
   if (!bins.length) return <ChartState state="empty" detail="No trades to chart."/>
   const label = (start) => (privacy ? '••' : `${start < 0 ? '−' : ''}$${Math.abs(start)}`)
-  const median = [...trades].map((trade) => trade.pnl).sort((a, b) => a - b)[Math.floor(trades.length / 2)]
   return <ThemeProvider theme={theme}>
-    <BarChart height={254} {...cartesian} borderRadius={3}
-      xAxis={[{ scaleType: 'band', data: bins.map((bin) => label(bin.start)), categoryGapRatio: 0.18, tickInterval: everyNth(bins, 6) }]}
-      yAxis={[{ width: 30, tickNumber: 4 }]}
+    <BarChart height={160} {...bare} borderRadius={3}
+      xAxis={[{ scaleType: 'band', data: bins.map((bin) => label(bin.start)), categoryGapRatio: 0.18, position: 'none' }]}
+      yAxis={[{ position: 'none' }]}
       series={[
         { id: 'losses', data: bins.map((bin) => bin.losses || null), stack: 'n', color: NEG, label: 'Losses', valueFormatter: (value) => (value ? `${value} trades` : null) },
         { id: 'wins', data: bins.map((bin) => bin.wins || null), stack: 'n', color: POS, label: 'Wins', valueFormatter: (value) => (value ? `${value} trades` : null) },
       ]}
       hideLegend
     />
-    <p className="ic-note">Typical trade <b className={median >= 0 ? 'tone-pos' : 'tone-neg'}>{money(median, { privacy, decimals: 0 })}</b> · buckets of $100, outliers folded into the ends</p>
   </ThemeProvider>
 }

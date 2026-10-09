@@ -4,7 +4,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CaretDown, FunnelSimple, X } from '@phosphor-icons/react'
+import { X } from '@phosphor-icons/react'
 import { SymbolToken } from '../viz'
 import { DateField, PRESETS, SymbolInput, useFloat } from './notebook-pickers'
 import { Select } from '../select'
@@ -84,9 +84,8 @@ export function TradeFilter({ trades, value, onChange, setups, label = 'Filters'
 
   return <div ref={boxRef} className={`rf-bar${compact ? ' is-compact' : ''}`}>
     <button type="button" className={`rf-btn${count ? ' is-set' : ''}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-      <FunnelSimple size={13} weight="bold"/>{label}
+      {label}
       {count > 0 && <em>{count}</em>}
-      <CaretDown size={10} weight="bold" className="rf-caret"/>
     </button>
     <Summary value={value} onChange={onChange}/>
     {open && place && createPortal(<div ref={panelRef} role="dialog" aria-label={label}

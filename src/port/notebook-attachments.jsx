@@ -367,7 +367,7 @@ function TextFilePane({ file, text, setText, original, command, save }) {
   return <form className="nb-sheet nb-edit-pane nb-textfile" onSubmit={(event) => { event.preventDefault(); if (dirty && !command.isPending) save(close) }}
     onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') { event.preventDefault(); if (dirty && !command.isPending) save(close) } }}>
     <div className="nb-ed-top">
-      <span className="nb-ed-crumb">Attachment<ChevronRight size={12}/><b>{file.name}</b></span>
+      <span className="nb-ed-crumb">Attachment<span className="nb-crumb-sep" aria-hidden="true">/</span><b>{file.name}</b></span>
     </div>
     <div className="nb-tf-page">
       <div className="nb-tf-gutter" aria-hidden="true">{Array.from({ length: lines }, (_, i) => <span key={i}>{i + 1}</span>)}</div>

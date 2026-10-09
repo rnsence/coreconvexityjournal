@@ -4,9 +4,9 @@
  * reports live in localStorage. Any group on the page (a leak, a set, a bar, a
  * heatmap cell) opens a drawer with its trades, stepping through its siblings.
  */
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowLeftRight, Check, ChevronLeft, ChevronRight, Copy, ExternalLink, FileText, Link2, Printer, RotateCcw, Save, Send, X } from 'lucide-react'
-import { ArrowDownRight, ArrowUpRight, CalendarBlank, CaretDown, Clock, Crosshair, Hourglass, ShieldWarning, SignOut, SquaresFour, Star, Tag, Wallet, Warning } from '@phosphor-icons/react'
+import { CalendarBlank } from '@phosphor-icons/react'
 import { Card, MetricStrip, PageHead, Segmented, TradeDrawer } from '../workspace'
 import { SymbolToken, TipRows, compactMoney, money, percent, toneOf, titleCase } from '../viz'
 import { Drawer, Field } from '../dialogs'
@@ -22,7 +22,6 @@ import {
 } from './reports-data'
 import { TradeFilter } from './reports-filter'
 import { DuelChart, EdgeMap, ProfitMix, ReportCover, rangeStart } from './reports-visuals'
-import { EquityDrawdown, HourBars, OutcomeHistogram } from './reports-insight-charts'
 import { Select } from '../select'
 import { TagStack } from './notebook'
 import './reports.css'
@@ -168,36 +167,27 @@ function DrillLayer({ drill, step, close, privacy }) {
 
 /* ============================================================ insights */
 
-const DIM_ICONS = {
-  mistake: Warning, playbook: Crosshair, hour: Clock, holding: Hourglass, account: Wallet, tag: Tag, weekday: CalendarBlank,
-  month: CalendarBlank, week: CalendarBlank, rating: Star, exits: SignOut, rule: ShieldWarning,
-}
 const sentence = (text) => (text ? text.charAt(0).toUpperCase() + text.slice(1) : text)
 /** A group's label as a person would write it: sentence case, hours as a window, holds with units. */
 function niceLabel(row) {
   const label = String(row.label ?? row.key)
-  if (row.dimension === 'hour') { const h = Number(row.key); return Number.isFinite(h) ? `${String(h).padStart(2, '0')}:00–${String(h + 1).padStart(2, '0')}:00` : label }
-  if (row.dimension === 'holding') return ({ 'Under 5m': 'Under 5 min holds', '5–15m': '5–15 min holds', '15–30m': '15–30 min holds', '30m+': '30+ min holds' })[label] ?? label
-  if (row.dimension === 'direction') return `${sentence(label)} trades`
+  if (row.dimension === 'hour') { const h = Number(row.key); return Number.isFinite(h) ? `${String(h).padStart(2, '0')}:00` : label }
+  if (row.dimension === 'holding') return ({ 'Under 5m': '<5m holds', '5–15m': '5–15m holds', '15–30m': '15–30m holds', '30m+': '30m+ holds' })[label] ?? label
+  if (row.dimension === 'direction') return `${sentence(label)}s`
   if (row.dimension === 'tag') return `#${label}`
   return sentence(label)
 }
 
 /** Ref 05 row: an identity tile, a sentence-case title over a quiet line, the figure over a fixed-width bar. */
 function InsightRow({ row, privacy, peak, onOpen, current, tone = 'neutral' }) {
-  const Icon = DIM_ICONS[row.dimension] ?? (row.dimension === 'direction' ? (row.key === 'short' ? ArrowDownRight : ArrowUpRight) : SquaresFour)
   const kind = row.dimension === 'rule' ? 'Rule' : DIMENSIONS[row.dimension]
   return <li>
     <button type="button" className={`rp-irow${current ? ' is-current' : ''}`} onClick={onOpen} aria-label={`${kind} ${niceLabel(row)}: ${money(row.net_pnl, { privacy })} over ${plural(row.trades, 'trade')}, ${winPct(row.win_rate)} won. Open trades`}>
-      {row.dimension === 'symbol' ? <span className="rp-itile is-logo" title={kind}><SymbolToken symbol={row.key}/></span> : <span className={`rp-itile tone-${tone}`} title={kind}><Icon size={16} weight="duotone"/></span>}
       <span className="rp-icopy">
         <b title={niceLabel(row)}>{niceLabel(row)}</b>
-        <small>{plural(row.trades, 'trade')} · {winPct(row.win_rate)} won</small>
+        <small>{row.trades} trades · {winPct(row.win_rate)}</small>
       </span>
-      <span className="rp-ifig">
-        <strong className={`tone-${toneOf(row.net_pnl)}`}>{money(row.net_pnl, { privacy, decimals: 0 })}</strong>
-        <span className="rp-itrack" aria-hidden="true"><i className={toneOf(row.net_pnl)} style={{ width: `${Math.max(4, (Math.abs(row.net_pnl) / peak) * 100)}%` }}/></span>
-      </span>
+      <strong className={`rp-ifig tone-${toneOf(row.net_pnl)}`}>{money(row.net_pnl, { privacy, decimals: 0 })}</strong>
     </button>
   </li>
 }
@@ -219,54 +209,35 @@ function InsightsTab({ trades, privacy, drill }) {
   const openId = drill.drill?.groups[drill.drill.index]?.id
   if (!view.trades) return <Card shell title="Insights"><Empty title="No trades yet" detail="Log a trade and your leaks and strengths show up here."/></Card>
   return <>
-    <Lede>What your own trades say. Only groups with at least {view.min_sample ?? 5} trades count. Click any row to see its trades.</Lede>
-    <MetricStrip items={headlineStrip(metrics, privacy)}/>
+    <MetricStrip items={headlineStrip(metrics, privacy)} hideSub/>
     <div className="ws-grid three rp-insights">
-      <Card shell title="Biggest leaks" aside={<span className="ws-hint">Costing you most</span>}>
-        {view.leaks.length
-          ? <><ol className="rp-irows">{view.leaks.map((row, index) => <InsightRow key={`${row.dimension}-${row.key}`} tone="neg" row={row} privacy={privacy} peak={peak} current={openId === `${row.dimension}-${row.key}`} onOpen={() => openRow(view.leaks, index)}/>)}</ol>
-            <div className="rp-isum"><span>Together</span><small>{plural(view.leaks.length, 'group')} · {plural(view.leaks.reduce((sum, row) => sum + row.trades, 0), 'trade')}</small><b className={`tone-${toneOf(view.leaks.reduce((sum, row) => sum + row.net_pnl, 0))}`}>{money(view.leaks.reduce((sum, row) => sum + row.net_pnl, 0), { privacy, decimals: 0 })}</b></div></>
-          : <Empty title="No losing group" detail="Nothing with 5+ trades is net negative."/>}
-      </Card>
-      <Card shell title="What works" aside={<span className="ws-hint">Paying you most</span>}>
+      <Card shell title="Winning" aside={<span className="ws-hint">Paying you most</span>}>
         {view.best.length
-          ? <><ol className="rp-irows">{view.best.map((row, index) => <InsightRow key={`${row.dimension}-${row.key}`} tone="pos" row={row} privacy={privacy} peak={peak} current={openId === `${row.dimension}-${row.key}`} onOpen={() => openRow(view.best, index)}/>)}</ol>
-            <div className="rp-isum"><span>Together</span><small>{plural(view.best.length, 'group')} · {plural(view.best.reduce((sum, row) => sum + row.trades, 0), 'trade')}</small><b className={`tone-${toneOf(view.best.reduce((sum, row) => sum + row.net_pnl, 0))}`}>{money(view.best.reduce((sum, row) => sum + row.net_pnl, 0), { privacy, decimals: 0 })}</b></div></>
+          ? <><ol className="rp-irows">{view.best.map((row, index) => <InsightRow key={`${row.dimension}-${row.key}`} tone="pos" row={row} privacy={privacy} peak={peak} current={openId === `${row.dimension}-${row.key}`} onOpen={() => openRow(view.best, index)}/>)}</ol></>
           : <Empty title="Not enough trades" detail="Each group needs 5+ trades."/>}
       </Card>
-      <Card shell title="Your rules" aside={<span className="ws-hint">Per trade</span>}>
+      <Card shell title="Losing" aside={<span className="ws-hint">Costing you most</span>}>
+        {view.leaks.length
+          ? <><ol className="rp-irows">{view.leaks.map((row, index) => <InsightRow key={`${row.dimension}-${row.key}`} tone="neg" row={row} privacy={privacy} peak={peak} current={openId === `${row.dimension}-${row.key}`} onOpen={() => openRow(view.leaks, index)}/>)}</ol></>
+          : <Empty title="No losing group" detail="Nothing with 5+ trades is net negative."/>}
+      </Card>
+      <Card shell title="Rules" aside={<span className="ws-hint">Per trade</span>}>
         {rules ? <div className="rp-rules2">
           <div className="rp-rsplit">
-            {[['followed', 'Followed every rule', rules.followed_net_pnl, rules.followed_trades], ['broken', 'Broke a rule', rules.broken_net_pnl, rules.broken_trades]].map(([id, name, net, count], index) => <button
+            {[['followed', 'Rules kept', rules.followed_net_pnl, rules.followed_trades], ['broken', 'Rule broken', rules.broken_net_pnl, rules.broken_trades]].map(([id, name, net, count], index) => <button
               key={id} type="button" className={`rp-rstat${openId === id ? ' is-current' : ''}`} onClick={() => drill.open(ruleGroups(), index)}
               aria-label={`${name}: ${money(count ? net / count : 0, { privacy })} per trade over ${plural(count, 'trade')}. Open trades`}
             >
               <small>{name}</small>
               <strong className={`tone-${toneOf(net)}`}>{money(count ? net / count : 0, { privacy, decimals: 0 })}<em>/trade</em></strong>
-              <span>{plural(count, 'trade')}</span>
             </button>)}
           </div>
-          <div className="rp-rshare">
-            <div className="rp-rules-bar" aria-hidden="true">
-              <i className="pos" style={{ flex: rules.followed_trades || 0.0001 }}/>
-              <i className="neg" style={{ flex: rules.broken_trades || 0.0001 }}/>
-            </div>
-            <div className="rp-rshare-legend">
-              <span><i className="pos"/>{Math.round((rules.followed_trades / Math.max(1, rules.followed_trades + rules.broken_trades)) * 100)}% clean</span>
-              <span><i className="neg"/>{Math.round((rules.broken_trades / Math.max(1, rules.followed_trades + rules.broken_trades)) * 100)}% broke one</span>
-            </div>
-          </div>
           {broken.length > 0 && <div className="rp-rbroken">
-            <span className="rp-sublabel">Broken most</span>
+            <span className="rp-sublabel">Broken</span>
             <ol className="rp-irows">{broken.map((row, index) => <InsightRow key={row.key} tone="neg" row={row} privacy={privacy} peak={brokenPeak} current={openId === `rule-${row.key}`} onOpen={() => drill.open(broken.map((item) => group(`rule-${item.key}`, item.label, 'Rule broken', inGroup(list, 'rule', item.key))), index)}/>)}</ol>
           </div>}
         </div> : <Empty title="No rules yet" detail="Set trading rules in Settings to see what breaking them costs."/>}
       </Card>
-    </div>
-    <div className="ws-grid three rp-insight-charts">
-      <Card shell title="Equity & drawdown" aside={<span className="ws-hint">By session</span>}><EquityDrawdown trades={list} privacy={privacy}/></Card>
-      <Card shell title="P&L by hour" aside={<span className="ws-hint">Entry hour</span>}><HourBars trades={list} privacy={privacy}/></Card>
-      <Card shell title="Trade outcomes" aside={<span className="ws-hint">Trades per $100</span>}><OutcomeHistogram trades={list} privacy={privacy}/></Card>
     </div>
   </>
 }
@@ -310,15 +281,9 @@ function SetSide({ id, value, setValue, m, privacy, trades, setups, current, onO
     ['Exp.', money(m.expectancy, { privacy, decimals: 0 }), toneOf(m.expectancy)],
   ] : []
   return <div className={`rp-side2 side-${id.toLowerCase()}${current ? ' is-current' : ''}`}>
-    <div className="rp-side2-top">
-      <span className={`rp-set-chip set-${id.toLowerCase()}`}>{id}</span>
-      <span className="rp-side2-name">Set {id}</span>
-      <TradeFilter trades={trades} value={value} onChange={setValue} setups={setups} label="Filters"/>
-    </div>
     <div className="rp-side2-row">
       <button type="button" className="rp-side2-main" disabled={!m} onClick={onOpen} aria-label={`Set ${id}: open its trades`} title="Open its trades">
-        <strong className={`tone-${toneOf(m?.net_pnl ?? 0)}`}>{m ? money(m.net_pnl, { privacy }) : 'No trades'}</strong>
-        {m && <ChevronRight size={14} className="rp-side2-go" aria-hidden="true"/>}
+        <span className="rp-side2-figure"><small className="rp-side2-name">Set {id}</small><strong className={`tone-${toneOf(m?.net_pnl ?? 0)}`}>{m ? money(m.net_pnl, { privacy }) : 'No trades'}</strong></span>
       </button>
       {m && <dl className="rp-side2-stats">{stats.map(([label, val, tone]) => <div key={label}><dt>{label}</dt><dd className={tone ? `tone-${tone}` : ''}>{val}</dd></div>)}</dl>}
     </div>
@@ -334,13 +299,13 @@ function SpreadTile({ ma, mb, privacy }) {
   const lead = net > 0 ? 'B' : net < 0 ? 'A' : null
   const signed = (v, fmt) => `${v > 0 ? '+' : v < 0 ? MINUS : '±'}${fmt(Math.abs(v))}`
   return <div className="rp-spread">
-    <span className="rp-spread-label">Spread <em>B − A</em></span>
-    <b className={`tone-${toneOf(net)}`}>{privacy ? '••••' : signed(net, (v) => `$${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`)}</b>
+    <div className="rp-spread-body">
+    <span className="rp-spread-figure"><small className="rp-side2-name">Spread <em>B − A</em></small><b className={`tone-${toneOf(net)}`}>{privacy ? '••••' : signed(net, (v) => `$${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`)}</b></span>
     <dl>
       <div><dt>Per trade</dt><dd className={`tone-${toneOf(per)}`}>{privacy ? '••••' : signed(per, (v) => `$${v.toFixed(0)}`)}</dd></div>
-      <div><dt>Win rate</dt><dd className={`tone-${toneOf(win)}`}>{signed(win, (v) => `${v.toFixed(1)} pts`)}</dd></div>
+      <div><dt>W/R</dt><dd className={`tone-${toneOf(win)}`}>{signed(win, (v) => `${v.toFixed(1)}%`)}</dd></div>
     </dl>
-    {lead && <span className={`rp-spread-lead lead-${lead.toLowerCase()}`} title="Higher net P&L">{lead} leads net</span>}
+    </div>
   </div>
 }
 
@@ -384,21 +349,56 @@ function Tearsheet({ ma, mb, privacy }) {
     return { label, a, b, kind, delta, edge, toned: !!better }
   })])
   return <div className="rp-sheet-wrap">
-    <p className="rp-sheet-lede"><b className="lead-b">Set B</b> has the edge on <b>{edgeB}</b> of {edgeA + edgeB} measures, <b className="lead-a">Set A</b> on <b>{edgeA}</b>.</p>
+    {/* who wins more measures, as one split bar */}
+    <div className="rp-sheet-tally" aria-label={`Set A leads ${edgeA} of ${edgeA + edgeB} measures, Set B ${edgeB}`}>
+      <span className="is-a"><i/>Set A<b>{edgeA}</b></span>
+      <span className="rp-sheet-split" aria-hidden="true"><i className="is-a" style={{ flexGrow: edgeA || 0.0001 }}/><i className="is-b" style={{ flexGrow: edgeB || 0.0001 }}/></span>
+      <span className="is-b"><b>{edgeB}</b>Set B<i/></span>
+    </div>
+    <div className="rp-sheet-duo">
     <table className="rp-sheet">
       <colgroup><col/><col className="c-a"/><col className="c-b"/><col/><col className="c-edge"/></colgroup>
-      <thead><tr><th scope="col">Statistic</th><th scope="col"><span className="rp-set-chip set-a">A</span></th><th scope="col"><span className="rp-set-chip set-b">B</span></th><th scope="col">B − A</th><th scope="col">Edge</th></tr></thead>
-      {groups.map(([title, rows]) => <tbody key={title}>
-        <tr className="rp-sheet-group"><th colSpan={5} scope="rowgroup">{title}</th></tr>
+      {/* the value column labels sit one row lower, beside the first section, so the white panel steps down past them */}
+      <thead className="rp-sr-head"><tr><th scope="col" className="rp-sr">Statistic</th><th scope="col" className="rp-sr">Set A</th><th scope="col" className="rp-sr">Set B</th><th scope="col" className="rp-sr">B − A</th><th scope="col" className="rp-sr">Edge</th></tr></thead>
+      {groups.map(([title, rows], groupIndex) => <tbody key={title}>
+        {groupIndex === 0
+          ? <tr className="rp-sheet-group is-first"><th scope="rowgroup">{title}</th>{['Set A', 'Set B', 'B − A', 'Edge'].map((label) => <td key={label} className="rp-sheet-colhead" aria-hidden="true">{label}</td>)}</tr>
+          : <tr className="rp-sheet-group"><th colSpan={5} scope="rowgroup">{title}</th></tr>}
         {rows.map((row) => <tr key={row.label}>
           <th scope="row">{row.label}</th>
           <td className={row.edge === 'a' ? 'is-edge' : ''}>{cellText(row.a, row.kind, privacy)}</td>
           <td className={row.edge === 'b' ? 'is-edge' : ''}>{cellText(row.b, row.kind, privacy)}</td>
           <td className={row.toned && row.delta ? `tone-${(row.edge === 'b') ? 'pos' : 'neg'}` : 'muted'}>{signedText(row.delta, row.kind, privacy) ?? '—'}</td>
-          <td>{row.edge ? <span className={`rp-edge-tag edge-${row.edge}`}>{row.edge.toUpperCase()}</span> : <span className="rp-edge-none">—</span>}</td>
+          <td>{row.edge ? <span className={`rp-edge-dot is-${row.edge}`} role="img" aria-label={`Set ${row.edge.toUpperCase()} is better`} title={`Set ${row.edge.toUpperCase()} is better`}/> : <span className="rp-edge-none">—</span>}</td>
         </tr>)}
       </tbody>)}
     </table>
+    </div>
+  </div>
+}
+
+/** One Filters control for both sets; its panel holds each set's filters. */
+function SetsControl({ a, b, setA, setB, trades, setups }) {
+  const [open, setOpen] = useState(false)
+  const boxRef = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    // clicks inside a set's own filter panel (portaled) or its menus keep this open
+    const away = (event) => { if (boxRef.current?.contains(event.target) || event.target.closest?.('.rf-panel, .nb-cal, .cs-menu, .nb-ed-suggest')) return; setOpen(false) }
+    const esc = (event) => { if (event.key === 'Escape' && !document.querySelector('.rf-panel')) setOpen(false) }
+    document.addEventListener('mousedown', away); document.addEventListener('keydown', esc)
+    return () => { document.removeEventListener('mousedown', away); document.removeEventListener('keydown', esc) }
+  }, [open])
+  return <div className="rp-sets" ref={boxRef}>
+    <button type="button" className={`rp-sets-btn${open ? ' is-open' : ''}`} aria-haspopup="dialog" aria-expanded={open} title={`${summary(a)} vs ${summary(b)}`} onClick={() => setOpen((value) => !value)}>
+Filters
+    </button>
+    {open && <div className="rp-sets-panel" role="dialog" aria-label="Sets">
+      {[['A', a, setA], ['B', b, setB]].map(([id, value, setValue]) => <div key={id} className="rp-sets-row">
+        <b>Set {id}</b>
+        <TradeFilter trades={trades} value={value} onChange={setValue} setups={setups} label="Filters"/>
+      </div>)}
+    </div>}
   </div>
 }
 
@@ -408,6 +408,7 @@ function CompareTab({ trades, privacy, setups, drill }) {
   useEffect(() => { writeStore('rp-compare-a', a); writeStore('rp-compare-b', b) }, [a, b])
   // one range governs the whole comparison: tiles, spread, chart and statistics
   const [range, setRange] = useState('All')
+  const [statsOn, setStatsOn] = useState(false)
   const lastDate = useMemo(() => trades.reduce((max, trade) => (trade.date > max ? trade.date : max), ''), [trades])
   const from = rangeStart(range, lastDate)
   const listA = useMemo(() => applyFilter(trades, a).filter((trade) => !from || trade.date >= from), [trades, a, from])
@@ -418,11 +419,10 @@ function CompareTab({ trades, privacy, setups, drill }) {
   const openId = drill.drill?.groups[drill.drill.index]?.id
   const shared = { privacy, trades, setups }
   return <>
-    <Lede>Put two sets of trades side by side: one setup against another, longs against shorts, or a mistake against the rest.</Lede>
     <section className="home-card ws-card duo rp-h2h" aria-label="Head to head">
       <header className="shell-head rp-setcard-head">
         <h2>Head to Head</h2>
-        <button type="button" className="rp-setcard-open rp-swap" onClick={() => { setA(b); setB(a) }}><ArrowLeftRight size={13}/> Swap</button>
+        <SetsControl a={a} b={b} setA={setA} setB={setB} trades={trades} setups={setups}/>
       </header>
       <div className="shell-body rp-h2h-body">
         <div className="rp-sides3">
@@ -434,9 +434,14 @@ function CompareTab({ trades, privacy, setups, drill }) {
       </div>
     </section>
 
-    <Card shell title="Statistics" className="rp-compare rp-stats-card" aside={<span className="ws-hint">{range === 'All' ? 'All dates' : range} · same definitions as the Trades page</span>}>
-      {!ma && !mb ? <Empty title="Neither set has trades" detail="Loosen a filter on either side."/> : <Tearsheet ma={ma} mb={mb} privacy={privacy}/>}
+    {/* folded to its head until opened; a click anywhere on the folded card opens it, its head folds it again */}
+    <div className={`rp-stats-wrap${statsOn ? ' is-on' : ''}`} role="button" tabIndex={0} aria-expanded={statsOn} aria-label={`${statsOn ? 'Hide' : 'Show'} statistics`}
+      onClick={(event) => { if (!statsOn || event.target.closest('.shell-head')) setStatsOn((value) => !value) }}
+      onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setStatsOn((value) => !value) } }}>
+    <Card shell title="Statistics" className={`rp-compare rp-stats-card${statsOn ? ' is-on' : ''}`} aside={<span className="ws-hint">{range === 'All' ? 'All dates' : range} · same definitions as the Trades page</span>}>
+      {!statsOn ? null : !ma && !mb ? <Empty title="Neither set has trades" detail="Loosen a filter on either side."/> : <Tearsheet ma={ma} mb={mb} privacy={privacy}/>}
     </Card>
+    </div>
   </>
 }
 
@@ -452,7 +457,6 @@ function Pick({ label, value, onChange, options, none, disabled = false }) {
       {none !== undefined && <option value="">{none}</option>}
       {options.map(([key, name]) => <option key={key} value={key}>{name}</option>)}
     </Select>
-    <CaretDown size={10} weight="bold" aria-hidden="true"/>
   </label>
 }
 
@@ -565,10 +569,6 @@ function BuilderTab({ trades, privacy, setups, drill, filter, setFilter }) {
   return <>
     <section className="home-card ws-card duo rp-compose rp-builder" aria-label="Build a report">
       <header className="shell-head rp-setcard-head">
-        <h2>Build</h2>
-        <span className="ws-hint rp-compose-count">{plural(list.length, 'trade')} in view</span>
-      </header>
-      <div className="shell-body rp-compose-body">
         <div className="rp-ctlbar">
           <div className="rp-ctlgroup" role="group" aria-label="Ranking">
             <Pick label="Metric" value={metric} onChange={setMetric} options={Object.entries(REPORT_METRICS)}/>
@@ -584,19 +584,17 @@ function BuilderTab({ trades, privacy, setups, drill, filter, setFilter }) {
           <span className="rp-ctlsep" aria-hidden="true"/>
           <TradeFilter trades={trades} value={filter} onChange={setFilter} setups={setups} label="Filters"/>
         </div>
-      </div>
-      <footer className="rp-setcard-foot rp-saved" aria-label="Saved views">
-        <span className="rp-saved-label">Saved</span>
-        {saved.map((entry) => <span key={entry.name} className={`rf-chip rp-saved-chip${active === entry.name ? ' on' : ''}`}>
-          <button type="button" className="rp-saved-load" onClick={() => loadReport(entry)}>{entry.name}</button>
-          <button type="button" aria-label={`Delete view ${entry.name}`} onClick={() => { persist(saved.filter((item) => item !== entry)); if (active === entry.name) setActive(null) }}><X size={10} strokeWidth={2.6}/></button>
-        </span>)}
-        {!saved.length && <span className="rp-muted">None yet</span>}
-        <span className="rp-saved-new">
-          <input aria-label="View name" placeholder="Name this view" maxLength={60} value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') saveReport() }}/>
-          <button type="button" className="rp-setcard-open" disabled={!name.trim() || saved.length >= SAVED_LIMIT} onClick={saveReport}><Save size={13}/> Save</button>
-        </span>
-      </footer>
+        <div className="rp-saved rp-saved-head" aria-label="Saved views">
+          {saved.map((entry) => <span key={entry.name} className={`rf-chip rp-saved-chip${active === entry.name ? ' on' : ''}`}>
+            <button type="button" className="rp-saved-load" onClick={() => loadReport(entry)}>{entry.name}</button>
+            <button type="button" aria-label={`Delete view ${entry.name}`} onClick={() => { persist(saved.filter((item) => item !== entry)); if (active === entry.name) setActive(null) }}><X size={10} strokeWidth={2.6}/></button>
+          </span>)}
+          <span className="rp-saved-new">
+            <input aria-label="View name" placeholder="Name this view" maxLength={60} value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') saveReport() }}/>
+            <button type="button" className="rp-setcard-open" disabled={!name.trim() || saved.length >= SAVED_LIMIT} onClick={saveReport}>Save</button>
+          </span>
+        </div>
+      </header>
     </section>
 
     {!list.length ? <Card shell title="Results"><Empty title="No trades match" detail="Loosen the filter to build a report."/></Card> : <>
@@ -613,7 +611,7 @@ function BuilderTab({ trades, privacy, setups, drill, filter, setFilter }) {
               : <Empty title="No trades match" detail="Try another pair of breakdowns."/>}
           </Card>
         : <div className="rp-rank-grid">
-            {groupStats.length > 0 && <MetricStrip items={groupStats}/>}
+            {groupStats.length > 0 && <MetricStrip items={groupStats} hideSub/>}
             <Card shell title={`${metricLabel} by ${DIMENSIONS[rows]}`} aside={<span className="ws-hint">Ranked best to worst · click a row for its trades</span>}>
             {bars.length
               ? <RankTable rows={bars} format={format} signed={SIGNED.has(metric)} onOpen={openBar} currentId={openId} symbols={rows === 'symbol' || rows === 'underlying'} dimLabel={DIMENSIONS[rows]} metricLabel={metricLabel} privacy={privacy} money={metric === 'net_pnl'}/>
@@ -806,7 +804,7 @@ function PublishTab({ trades, privacy, setups, published, setPublished, openRepo
     {/* one line: name it, optionally narrow the trades, publish. Notes come along whenever a date range is set */}
     <section className="home-card ws-card duo rp-compose rp-compose-lite" aria-label="New report">
       <div className="shell-body rp-compose-body">
-        <input className="rp-compose-title" aria-label="Report title" maxLength={120} placeholder="Name a new report, e.g. September review" value={title}
+        <input className="rp-compose-title" aria-label="Report title" maxLength={120} placeholder="Name a new report" value={title}
           onChange={(event) => setTitle(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') publish() }}/>
         {shared
           ? <span className="rp-compose-scope">{plural(matched, 'trade')}</span>
@@ -817,7 +815,9 @@ function PublishTab({ trades, privacy, setups, published, setPublished, openRepo
       </div>
       {error && <div className="rp-feedback error" role="alert">Publishing could not be confirmed. Retry sends the same report.</div>}
     </section>
-    <div className="rp-section-head"><h3>Published</h3><span>{plural(published.length, 'report')} · private to you</span></div>
+    <section className="rp-published" aria-label="Published reports">
+    <h2 className="rp-published-title">Published</h2>
+    <div className="rp-published-body">
     {published.length
       ? <div className="rp-rcards">
           {published.map((report, index) => <ReportCard
@@ -826,6 +826,8 @@ function PublishTab({ trades, privacy, setups, published, setPublished, openRepo
           />)}
         </div>
       : <Empty title="Nothing published yet" detail="Give a report a name and publish it above."/>}
+    </div>
+    </section>
   </>
 }
 
@@ -938,7 +940,6 @@ export function ReportsPage({ privacy, range = 'All' }) {
     <PageHead
       title="Reports"
       meta={`${plural(trades.length, 'closed trade')} · ${plural(sessions, 'session')} · ${range === 'All' ? 'all dates' : range}`}
-      actions={tab !== 'Publish' ? <button type="button" className="ws-outline" onClick={() => setTab('Publish')}><Send size={14}/> Publish a report</button> : null}
     />
     <div className="rp-tabs-row">
       <Segmented options={TABS} value={tab} onChange={setTab} label="Reports" className="rp-tabs"/>
@@ -947,7 +948,6 @@ export function ReportsPage({ privacy, range = 'All' }) {
       {tab === 'Insights' && <InsightsTab {...props}/>}
       {tab === 'Compare' && <CompareTab {...props}/>}
       {tab === 'Build' && <>
-        <Lede>Any metric by any breakdown, two breakdowns as a heatmap, and any two trade fields as a scatter. Click a row, cell or dot to see its trades.</Lede>
         <BuilderTab {...props} filter={buildFilter} setFilter={setBuildFilter}/>
       </>}
       {tab === 'Publish' && <PublishTab {...props} published={published} setPublished={setPublished} openReport={openReport}/>}

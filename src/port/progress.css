@@ -230,3 +230,120 @@
 /* figures never wrap mid-label; on a phone they flow onto a second line as whole items */
 .progress-page .pg-figs > div:not(:first-child) dt { white-space: nowrap; }
 @media (max-width: 640px) { .progress-page .pg-figs { grid-template-columns: repeat(3, auto); column-gap: 16px; } }
+/* month rows: one small mark per week, filled when that week is reviewed */
+.progress-page .pg-month-weeks { justify-self: end; display: inline-flex; gap: 4px; }
+.progress-page .pg-month-weeks i { width: 8px; height: 8px; border-radius: 3px; background: #e4e7ec; }
+.progress-page .pg-month-weeks i.is-done { background: var(--ink, #2b2f35); }
+.progress-page .pg-month-weeks i.is-stale { background: #f0b25b; }
+.progress-page .pg-weeks .pg-head .ws-seg { margin: 0; }
+@media (max-width: 640px) { .progress-page .pg-week-row .pg-month-weeks { display: none; } }
+/* the week stepper is the week card's title */
+.progress-page .pg-week .pg-picker { margin-left: 0; }
+.progress-page .pg-week .pg-picker > span { min-width: 0; padding: 0 4px; font-size: var(--card-title-size, 15px); font-weight: 600; letter-spacing: -.015em; }
+.progress-page .pg-week .pg-picker button { width: 26px; height: 26px; }
+.progress-page .pg-week .pg-picker button:hover:not(:disabled) { background: var(--duo-frame, #f7f7f8); }
+/* to review: its own duotone block, title on the grey strip, the rows on a white inset */
+.progress-page .pg-review-duo { margin-top: 16px; padding: 0 4px 4px; border-radius: 14px; background: var(--duo-frame, #f7f7f8); }
+.progress-page .pg-review-duo > .pg-sub { padding: 10px 10px 8px; }
+.progress-page .pg-review-body { padding: 6px 8px 8px; border-radius: 10px; background: #fff; }
+.progress-page .pg-review-body > .pg-list { margin: 0; }
+.progress-page .pg-review-body > .pg-more { margin: 6px 0 0; }
+.progress-page .pg-review-body > .pg-empty { padding: 10px 4px; }
+#root .progress-page .pg-overview { border-bottom: 0; padding-bottom: 0; }
+/* week stepper sized like the Edit habits button: 30px tall, 8px radius, 12.5px/600 */
+#root .progress-page .pg-week .pg-picker { height: 30px; padding: 0 2px; border-radius: 8px; }
+#root .progress-page .pg-week .pg-picker > span { font-size: 12.5px; font-weight: 600; letter-spacing: 0; padding: 0 2px; }
+#root .progress-page .pg-week .pg-picker button { width: 24px; height: 24px; border-radius: 6px; }
+#root .progress-page .pg-week .pg-picker button svg { width: 13px; height: 13px; }
+/* weeks as a duotone card: the list on a white inset up top, title and switch on the grey strip beneath */
+#root .progress-page .pg-weeks.is-duo { padding: 4px 4px 0; border: 0; background: var(--duo-frame, #f7f7f8); }
+#root .progress-page .pg-weeks.is-duo > .pg-weeks-body { padding: 6px 8px; border-radius: 10px; background: #fff; }
+#root .progress-page .pg-weeks.is-duo > .pg-weeks-body > .pg-week-list { margin: 0; }
+#root .progress-page .pg-weeks.is-duo > .pg-head { min-height: 44px; padding: 0 6px 0 12px; }
+#root .progress-page .pg-weeks.is-duo .pg-head .ws-seg { background: #fff; }
+/* to review: the ticker logo fills a 22px circle, so rows read full rather than sparse */
+#root#root .progress-page .pg-row-title .jt-token { width: 22px !important; height: 22px !important; min-width: 22px !important; padding: 0 !important; border-radius: 50%; overflow: hidden; }
+#root#root .progress-page .pg-row-title .jt-token img { width: 100% !important; height: 100% !important; object-fit: cover; }
+#root#root .progress-page .pg-row-title .pg-row-icon { width: 22px; height: 22px; border-radius: 6px; }
+#root#root .progress-page .pg-row { height: 38px; }
+/* week figures as a set-card: grey frame, white plate, net on the left and the rest on a grey panel */
+.progress-page .pg-figcard { flex: 1 1 auto; min-width: 0; align-self: center; padding: 4px; border-radius: 14px; background: var(--duo-frame, #f7f7f8); }
+.progress-page .pg-figcard-in { display: flex; align-items: center; gap: 16px; padding: 12px; border-radius: 10px; background: #fff; }
+.progress-page .pg-figcard dl { margin: 0; }
+.progress-page .pg-figcard dt { color: var(--ink-faint, #98a2b3); font-size: 12px; }
+.progress-page .pg-figcard dd { margin: 2px 0 0; color: var(--ink, #2b2f35); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.progress-page .pg-figcard-main dd { font-size: 26px; font-weight: 600; letter-spacing: -.035em; line-height: 1.15; }
+#root .progress-page .pg-figcard-main dd:is(.tone-pos, .tone-neg) { color: var(--ink, #2b2f35); }
+.progress-page .pg-figcard-rest { flex: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 8px 12px; border-radius: 10px; background: var(--canvas-soft, #f7f8fa); }
+.progress-page .pg-figcard-rest dd { font-size: 13px; font-weight: 600; }
+@media (max-width: 640px) { .progress-page .pg-figcard-in { flex-direction: column; align-items: stretch; } }
+/* day bars share the figure card's height: top and bottom on the same lines as its grey frame */
+#root .progress-page .pg-overview { align-items: stretch; }
+/* the week's days live in the stats plate: slim columns either side of a zero line */
+#root .progress-page .pg-overview { display: block; }
+.progress-page .pg-figcard-rest { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; align-items: center; }
+.progress-page .pg-figcard-days dd { margin-top: 2px; }
+.pg-tiles { display: flex; gap: 4px; }
+.pg-tile { position: relative; display: grid; place-items: center; width: 18px; height: 16px; border-radius: 5px; background: #fff; box-shadow: 0 0 0 1px var(--line, #eaecf0) inset; color: var(--ink-faint, #98a2b3); font-size: 10px; font-weight: 600; line-height: 1; cursor: default; transition: transform .15s cubic-bezier(.22,.82,.28,1); }
+.pg-tile.is-pos { background: rgba(34,196,125,var(--k)); box-shadow: none; color: #08734a; }
+.pg-tile.is-neg { background: rgba(245,97,90,var(--k)); box-shadow: none; color: #a8281f; }
+.pg-tile:hover { transform: translateY(-1px); }
+.pg-tile .pg-day-tip { bottom: calc(100% + 8px); }
+.pg-tile:hover .pg-day-tip { opacity: 1; transform: translate(-50%, 0); }
+.pg-tile:last-child .pg-day-tip { left: auto; right: -4px; align-items: flex-end; transform: translate(0, 3px); }
+.pg-tile:last-child:hover .pg-day-tip { transform: none; }
+@media (prefers-reduced-motion: reduce) { .pg-tile { transition: none; } .pg-tile:hover { transform: none; } }
+@media (max-width: 640px) { .progress-page .pg-figcard-rest { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 10px; } }
+/* week picker: one calendar button, and a month of week rows in the app's calendar popover */
+.pg-weekpick { display: inline-flex; }
+.progress-page .pg-weekbtn { height: 30px; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; border: 0; border-radius: 8px; background: var(--duo-frame, #f7f7f8); color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; transition: background-color .14s ease; }
+.progress-page .pg-weekbtn svg { color: var(--ink-soft, #475467); }
+.progress-page .pg-weekbtn:hover, .pg-weekpick.is-open .pg-weekbtn { background: #eef0f3; }
+.progress-page .pg-weekbtn:active { transform: translateY(1px); }
+.progress-page .pg-weekbtn:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgba(46,124,246,.12), 0 0 0 1px #93c5fd; }
+.pg-wcal { transform-origin: top right; }
+.pg-wcal-rows { display: grid; gap: 2px; }
+.pg-wcal-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; padding: 0; border: 0; border-radius: 9px; background: none; color: var(--ink); font: inherit; cursor: pointer; outline: 0; transition: background .12s ease, color .12s ease; }
+.pg-wcal-row > span { height: 32px; display: grid; place-items: center; border-radius: 9px; font-size: 12.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.pg-wcal-row > span.out { color: #c8ced7; }
+.pg-wcal-row > span.today { box-shadow: inset 0 0 0 1.5px #0c111d; font-weight: 650; }
+.pg-wcal-row:hover:not(:disabled), .pg-wcal-row:focus-visible { background: #f2f4f7; }
+.pg-wcal-row.is-picked { background: #0c111d !important; color: #fff; }
+.pg-wcal-row.is-picked > span { font-weight: 600; } .pg-wcal-row.is-picked > span.out { color: rgba(255,255,255,.55); }
+.pg-wcal-row.is-picked > span.today { box-shadow: inset 0 0 0 1.5px #fff; }
+.pg-wcal-row:disabled { color: #d0d5dd; cursor: default; } .pg-wcal-row:disabled > span.out { color: #e4e7ec; }
+/* week button: white with a hairline outline */
+#root .progress-page .pg-weekbtn { box-sizing: border-box; border: 1px solid var(--line, #eaecf0); background: #fff; }
+#root .progress-page .pg-weekbtn:hover, #root .progress-page .pg-weekpick.is-open .pg-weekbtn { background: var(--canvas-soft, #f7f8fa); }
+#root .progress-page .pg-weekbtn:focus-visible { border-color: #93c5fd; box-shadow: 0 0 0 3px rgba(46,124,246,.12); }
+/* routine folds to a grey title bar (as Statistics on Compare); open, it is a duotone frame around the white table */
+.pg-fold { border-radius: var(--radius, 14px); outline: none; }
+.pg-fold:not(.is-on) { cursor: pointer; }
+#root#root#root .progress-page .pg-fold > .cal-routine.home-card { padding: 0 4px 4px !important; border: 0 !important; background: var(--duo-frame, #f7f7f8) !important; transition: background-color .14s ease, transform .14s ease; }
+#root#root#root .progress-page .pg-fold > .cal-routine > .ws-card-head { min-height: 44px; padding: 0 6px 0 12px !important; }
+.pg-fold.is-on > .cal-routine > .ws-card-head { cursor: pointer; }
+.pg-fold:not(.is-on) > .cal-routine > :not(.ws-card-head), .pg-fold:not(.is-on) > .cal-routine > .ws-card-head > button { display: none !important; }
+#root#root#root .progress-page .pg-fold > .cal-routine > :is(.cal-table-wrap, .cal-routine-edit, .cal-muted) { margin: 0 !important; padding: 8px 12px 10px; border-radius: 10px; background: #fff; }
+#root#root#root .progress-page .pg-fold:not(.is-on):hover > .cal-routine { background: #f0f1f3 !important; }
+.pg-fold:not(.is-on):active > .cal-routine { transform: scale(.996); }
+#root#root#root .progress-page .pg-fold:focus-visible > .cal-routine { box-shadow: 0 0 0 3px rgba(46,124,246,.18) !important; }
+#root#root .progress-page .pg-fold .cal-routine .ws-outline.cal-sm { background: #fff !important; }
+#root#root#root .progress-page .pg-fold:not(.is-on) > .cal-routine.home-card { padding-bottom: 0 !important; }
+/* to-review list: five 38px rows, the rest scroll in place */
+#root .progress-page .pg-list.is-scroll { flex-wrap: nowrap; max-height: calc(var(--cap, 5) * 38px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #d0d5dd transparent; }
+#root .progress-page .pg-list.is-scroll > li { flex: none; }
+/* the weeks list sits inside the weekly review card, under To review, as its own duotone block */
+#root .progress-page .pg-week > .pg-weeks.is-duo { margin: 16px 0 0; border-radius: 14px; }
+#root .progress-page .pg-week > .pg-weeks.is-duo > .pg-head { padding-left: 10px; }
+#root .progress-page .pg-week > .pg-weeks.is-duo > .pg-head h2 { font-size: 13px; font-weight: 600; letter-spacing: normal; }
+#root .progress-page .pg-week > .pg-weeks.is-duo > .pg-head { min-height: 36px; padding-right: 4px; }
+/* the selected week's grey row reads as the block edge, so its top sits 16px under To review like the other blocks */
+#root .progress-page .pg-week > .pg-weeks.is-duo { margin-top: 8px; }
+/* rows sit 4px inside the white plate so the selected highlight never meets its edge; a lighter, shorter highlight */
+#root .progress-page .pg-week > .pg-weeks.is-duo > .pg-weeks-body { padding: 4px; }
+#root .progress-page .pg-week > .pg-weeks .pg-week-row { min-height: 50px; padding: 6px 10px; border-radius: 7px; }
+#root .progress-page .pg-week > .pg-weeks .pg-week-row.is-current { background: #f5f5f6; }
+#root .progress-page .pg-week > .pg-weeks .pg-week-row:is(:hover, :focus-visible):not(.is-current) { background: #f8f8f9; }
+/* week figures sit straight on the card: no grey frame around them */
+#root .progress-page .pg-figcard { padding: 0; background: none; }
+#root .progress-page .pg-figcard-in { padding: 0; }
