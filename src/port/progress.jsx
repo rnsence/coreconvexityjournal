@@ -7,7 +7,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { AlertTriangle, Check, FileText } from 'lucide-react'
-import { PageHead, Segmented } from '../workspace'
+import { MetricStrip, PageHead, Segmented } from '../workspace'
 import { SymbolToken, money, toneOf } from '../viz'
 import { metricRows, pickRows } from './calendar-metrics'
 import { RoutineCard } from './calendar-routine'
@@ -17,9 +17,15 @@ import { reviewQueue, tradeLabel } from './progress-data'
 import './progress.css'
 
 const LIST_CAP = 5
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 const WEEKDAY = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
 const shortDay = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
 const range = (week) => `${shortDay(week.starts_on)} – ${shortDay(week.ends_on)}`
+// "Sep 14 – 20"; both months only when the week crosses one
+const shortRange = (week) => {
+  const [a, b] = [shortDay(week.starts_on), shortDay(week.ends_on)]
+  return a.split(' ')[0] === b.split(' ')[0] ? `${a} – ${b.split(' ')[1]}` : `${a} – ${b}`
+}
 
 /** One status per week, in plain words; colour is kept for P&L, so status reads by icon and text. */
 export function weekStatus(week) {
@@ -65,18 +71,6 @@ function DayTiles({ week, privacy }) {
     </span>)}
   </span>
 }
-function DayBars({ week, large = false, privacy }) {
-  const days = dayNets(week)
-  const peak = Math.max(1, ...days.map((day) => Math.abs(day.net)))
-  return <span className={`pg-days${large ? ' is-large' : ''}`} role="img" aria-label={days.map((day) => `${day.label} ${day.trades ? money(day.net, { privacy, decimals: 0 }) : 'no trades'}`).join(', ')}>
-    {days.map((day) => <span key={day.label} className="pg-day" title={large ? undefined : `${day.label} · ${day.trades ? money(day.net, { privacy, decimals: 0 }) : 'no trades'}`}>
-      <span className="pg-day-plot">
-        <i className={day.trades ? `is-${day.net >= 0 ? 'pos' : 'neg'}` : 'is-none'} style={{ '--h': day.trades ? Math.max(0.08, Math.abs(day.net) / peak) : 0 }}/>
-      </span>
-      {large && <span className="pg-day-tip" aria-hidden="true"><b className={day.trades ? `tone-${toneOf(day.net)}` : undefined}>{day.trades ? money(day.net, { privacy, decimals: 0 }) : 'No trades'}</b><em>{day.label}{day.trades > 0 && ` · ${day.trades} trade${day.trades === 1 ? '' : 's'}`}</em></span>}
-    </span>)}
-  </span>
-}
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const addDays = (value, days) => new Date(Date.parse(`${value}T00:00:00Z`) + days * 86400000).toISOString().slice(0, 10)
@@ -118,7 +112,7 @@ function WeekPicker({ weeks, value, onChange }) {
   }
   const today = new Date().toISOString().slice(0, 10)
   return <span ref={boxRef} className={`pg-weekpick${open ? ' is-open' : ''}`}>
-    <button type="button" className="pg-weekbtn" aria-haspopup="dialog" aria-expanded={open} aria-label={`Week: ${range(current)}`} onClick={() => setOpen((v) => !v)}>
+    <button type="button" className="ws-outline" aria-haspopup="dialog" aria-expanded={open} aria-label={`Week: ${range(current)}`} onClick={() => setOpen((v) => !v)}>
       Calendar
     </button>
     {open && place && createPortal(<div ref={panelRef} role="dialog" aria-label="Pick a week"
@@ -148,71 +142,70 @@ function WeekPicker({ weeks, value, onChange }) {
 }
 
 /** The selected week: its figures, its days, and what still needs a look. */
-function WeekPanel({ week, privacy, openJournal, picker, children }) {
+function WeekPanel({ week, privacy, openJournal, bar, children }) {
   const fmt = (value) => money(value, { privacy })
   const trades = week.trades.map((item) => item.trade)
   const rows = pickRows(metricRows(trades, { privacy }), ['Net P&L', 'Trades', 'Win rate', 'Profit factor'])
   const pending = [
-    ...week.trades.filter((item) => item.review.state !== 'reviewed').map(({ trade, review }) => ({ id: trade.id, kind: 'Trade', symbol: trade.symbol, title: trade.symbol ?? 'Trade', meta: shortDay(trade.date), value: trade.pnl, state: review.state, open: () => openJournal?.(trade.date) })),
+    ...week.trades.filter((item) => item.review.state !== 'reviewed').map(({ trade, review }) => ({ id: trade.id, kind: 'Trade', symbol: trade.symbol, title: trade.symbol ?? 'Trade', side: trade.side, setup: trade.setup, meta: shortDay(trade.date), value: trade.pnl, state: review.state, open: () => openJournal?.(trade.date) })),
     ...week.entries.filter((item) => item.review.state !== 'reviewed').map((entry) => ({ id: entry.entry_id, kind: entry.kind === 'follow-up' ? 'Follow-up' : entry.kind === 'thesis' ? 'Thesis' : 'Note', title: entry.title, meta: shortDay(entry.date), state: entry.review.state, open: () => openJournal?.(entry.date) })),
   ]
   const empty = !week.trades.length && !week.entries.length
+  const days = dayNets(week).filter((day) => day.trades)
+  const best = days.reduce((top, day) => (!top || day.net > top.net ? day : top), null)
+  const wins = trades.filter((trade) => trade.pnl > 0).length, losses = trades.filter((trade) => trade.pnl < 0).length
+  const shown = (row) => (row.missing ? '—' : row.value)
+  const strip = [
+    { label: 'Net P&L', value: shown(rows[0]), sub: best ? `Best day ${best.label} ${money(best.net, { privacy, decimals: 0 })}` : 'No trades' },
+    { label: 'Trades', value: shown(rows[1]), sub: `${days.length} trading ${days.length === 1 ? 'day' : 'days'}` },
+    { label: 'Win rate', value: rows[2].missing ? '—' : `${Math.round(parseFloat(rows[2].value))}%`, sub: `${wins} wins · ${losses} losses` },
+    { label: 'Profit factor', value: shown(rows[3]), sub: trades.length ? `${money(trades.reduce((t, x) => t + x.pnl, 0) / trades.length, { privacy, decimals: 0 })} a trade` : '—' },
+    { label: 'Green days', value: `${days.filter((day) => day.net > 0).length} of ${days.length}`, sub: <DayTiles week={week} privacy={privacy}/> },
+  ]
 
-  return <section className="pg-card pg-week" aria-label={`Week of ${range(week)}`}>
-    <header className="pg-head">
-      <h2>Weekly review</h2>
-      {picker ?? <span className="pg-week-range">{range(week)}</span>}
-    </header>
-    {empty
-      ? <p className="pg-empty">Nothing was traded or written this week.</p>
-      : <>
-        <div className="pg-overview">
-          {/* like the compare set cards: the net figure, then its supporting figures on a soft grey plate */}
-          <div className="pg-figcard">
-            {(() => { const fig = (row) => <div key={row.label}>
-              <dt>{row.label}</dt>
-              <dd className={row.label === 'Net P&L' && row.raw != null ? `tone-${toneOf(row.raw)}` : undefined}>{row.missing ? '—' : row.label === 'Win rate' ? `${Math.round(parseFloat(row.value))}%` : row.value}</dd>
-            </div>
-            return <div className="pg-figcard-in">
-              <dl className="pg-figcard-main">{fig(rows[0])}</dl>
-              <dl className="pg-figcard-rest">{rows.slice(1).map(fig)}
-                <div className="pg-figcard-days"><dt>Days</dt><dd><DayTiles week={week} privacy={privacy}/></dd></div>
-              </dl>
-            </div> })()}
-          </div>
-        </div>
-        {week.review_status === 'out_of_date' && <ul className="pg-stale" role="alert">
-          {week.stale_items.slice(0, 3).map((item) => <li key={item.kind + item.id}><AlertTriangle size={13}/>{describeStale(item, week, fmt)}</li>)}
-          {week.stale_items.length > 3 && <li className="pg-stale-more">and {week.stale_items.length - 3} more</li>}
-        </ul>}
-        <div className="pg-review-duo">
+  const review = <div className="pg-review-duo">
         <div className="pg-sub">
-          <h3>To review</h3>
-          <span>{pending.length || 'All covered'}</span>
+          <h3>Review</h3>
         </div>
         <div className="pg-review-body">
         {/* five rows show; the rest scroll inside the list */}
+        {pending.length > 0 && <div className="pg-row pg-row-head" aria-hidden="true"><span>Trade</span><span>Side</span><span>Setup</span><span>Date</span><span>P&L</span></div>}
         {pending.length > 0 && <ul className={`pg-list${pending.length > LIST_CAP ? ' is-scroll' : ''}`} style={{ '--cap': LIST_CAP }}>
           {pending.map((item) => <li key={item.id}>
             <button type="button" className="pg-row" onClick={(event) => { if (event.detail) event.currentTarget.blur(); item.open() }}>
-              <span className="pg-row-title">{item.symbol ? <SymbolToken symbol={item.symbol}/> : <span className="pg-row-icon" aria-hidden="true"><FileText size={13} strokeWidth={1.9}/></span>}<span>{item.title}</span>{!item.symbol && <small>{item.kind}</small>}</span>
-              <span className="pg-row-meta">{item.state === 'changed' ? 'Edited since review' : item.meta}</span>
-              {item.value != null && <span className={`pg-row-value tone-${toneOf(item.value)}`}>{fmt(item.value)}</span>}
+              <span className="pg-row-title">{item.symbol ? <SymbolToken symbol={item.symbol}/> : <span className="pg-row-icon" aria-hidden="true"><FileText size={13} strokeWidth={1.9}/></span>}<span>{item.title}</span></span>
+              <span className="pg-row-side">{item.side ? <i className={`is-${item.side.toLowerCase()}`}>{item.side}</i> : null}</span>
+              <span className="pg-row-setup">{item.setup ?? item.kind}</span>
+              <span className={`pg-row-meta${item.state === 'changed' ? ' is-edited' : ''}`} title={item.state === 'changed' ? 'Edited since review' : undefined}>{item.meta}</span>
+              <span className={`pg-row-value${item.value != null ? ` tone-${toneOf(item.value)}` : ''}`}>{item.value != null ? fmt(item.value) : ''}</span>
             </button>
           </li>)}
         </ul>}
         {!pending.length && <p className="pg-empty">Every trade and note this week is covered.</p>}
         </div>
         </div>
-      </>}
-    {children}
-  </section>
+  // the week's strip sits straight under the page header, like Prop firms; its picker lives in the header too
+  return <>
+    {empty
+      ? <section className="pg-card pg-week" aria-label={`Week of ${range(week)}`}><p className="pg-empty">Nothing was traded or written this week.</p></section>
+      : <MetricStrip items={strip}/>}
+    {week.review_status === 'out_of_date' && <ul className="pg-stale" role="alert">
+      {week.stale_items.slice(0, 3).map((item) => <li key={item.kind + item.id}><AlertTriangle size={13}/>{describeStale(item, week, fmt)}</li>)}
+      {week.stale_items.length > 3 && <li className="pg-stale-more">and {week.stale_items.length - 3} more</li>}
+    </ul>}
+    {/* the Weeks / Months switch sits under the strip, above the pair it drives */}
+    {bar}
+    {/* To review and the weeks list share one row */}
+    <div className={`pg-pair${empty ? ' is-single' : ''}`}>
+      {!empty && review}
+      {children}
+    </div>
+  </>
 }
 
 /** Recent weeks, newest first: one row each, the lesson under reviewed ones. */
 /** Recent weeks, newest first, or the same weeks rolled up by month; a month row opens its latest week. */
-function WeekList({ weeks, selected, onSelect, privacy }) {
-  const [by, setBy] = useState('Weeks')
+function WeekList({ weeks, selected, onSelect, privacy, by = 'Weeks' }) {
   const lesson = (week) => {
     if (!week.review) return null
     const notes = week.review.content.notes
@@ -234,20 +227,20 @@ function WeekList({ weeks, selected, onSelect, privacy }) {
   }, [shown])
   const monthName = (key) => new Date(`${key}-15T12:00:00Z`).toLocaleDateString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
   return <section className="pg-card pg-weeks is-duo" aria-label="Recent weeks">
+    <header className="pg-head"><h2>{by}</h2></header>
     <div className="pg-weeks-body">
+    <div className="pg-week-row pg-wk-head" aria-hidden="true"><span>{by === 'Months' ? 'Month' : 'Week'}</span><span>Status</span><span>{by === 'Months' ? 'Weeks' : 'Lesson'}</span><span>Trades</span><span>Net</span></div>
     {by === 'Months'
       ? <ul className="pg-week-list">{months.map((month) => {
         const current = month.weeks.some((week) => week.week === selected)
         return <li key={month.key}>
           <button type="button" className={`pg-week-row is-month${current ? ' is-current' : ''}`} aria-current={current ? 'true' : undefined}
             onClick={(event) => { if (event.detail) event.currentTarget.blur(); onSelect(month.weeks[0].week) }}>
-            <span className="pg-week-main">
-              <b>{monthName(month.key)}</b>
-              <span className="pg-week-line"><span className="pg-status">{month.reviewed} of {month.weeks.length} weeks reviewed</span></span>
-            </span>
-            <span className="pg-week-count">{month.trades ? `${month.trades} trades` : ''}</span>
+            <b className="pg-wk-name">{monthName(month.key)}</b>
+            <span className="pg-wk-status"><span className="pg-status">{month.reviewed} of {month.weeks.length} reviewed</span></span>
+            <span className="pg-wk-note">{plural(month.weeks.length, 'week')}</span>
+            <span className="pg-week-count">{month.trades || '—'}</span>
             <span className={`pg-week-net${month.trades ? ` tone-${toneOf(month.net)}` : ''}`}>{month.trades ? money(month.net, { privacy, decimals: 0 }) : '—'}</span>
-            <span className="pg-month-weeks" aria-hidden="true">{month.weeks.map((week) => <i key={week.week} className={week.review_status === 'current' ? 'is-done' : week.review_status === 'out_of_date' ? 'is-stale' : ''}/>)}</span>
           </button>
         </li>
       })}</ul>
@@ -257,18 +250,15 @@ function WeekList({ weeks, selected, onSelect, privacy }) {
       return <li key={week.week}>
         <button type="button" className={`pg-week-row${week.week === selected ? ' is-current' : ''}`} aria-current={week.week === selected ? 'true' : undefined}
           onClick={(event) => { if (event.detail) event.currentTarget.blur(); onSelect(week.week) }}>
-          <span className="pg-week-main">
-            <b>{range(week)}</b>
-            <span className="pg-week-line"><StatusBadge week={week}/>{note && <em>{note}</em>}</span>
-          </span>
-          <span className="pg-week-count">{week.trades.length ? `${week.trades.length} trades` : ''}</span>
+          <b className="pg-wk-name">{shortRange(week)}</b>
+          <span className="pg-wk-status"><StatusBadge week={week}/></span>
+          <span className="pg-wk-note" title={note ?? undefined}>{note ?? ''}</span>
+          <span className="pg-week-count">{week.trades.length || '—'}</span>
           <span className={`pg-week-net${week.trades.length ? ` tone-${toneOf(net)}` : ''}`}>{week.trades.length ? money(net, { privacy, decimals: 0 }) : '—'}</span>
-          <DayBars week={week} privacy={privacy}/>
         </button>
       </li>
     })}</ul>}
     </div>
-    <header className="pg-head"><h2>{by}</h2><Segmented options={['Weeks', 'Months']} value={by} onChange={setBy} label="Group by" className="compact"/></header>
   </section>
 }
 
@@ -279,6 +269,7 @@ export function ProgressPage({ privacy, openJournal }) {
   const [selected, setSelected] = useState(() => (queue.weeks.find((week) => !week.review && week.trades.length) ?? queue.weeks[0]).week)
   const [editing, setEditing] = useState(null)
   const [routineOn, setRoutineOn] = useState(false)
+  const [by, setBy] = useState('Weeks')
   const [saved, setSaved] = useState(null)
   const index = queue.weeks.findIndex((week) => week.week === selected)
   const week = queue.weeks[index] ?? queue.weeks[0]
@@ -288,16 +279,17 @@ export function ProgressPage({ privacy, openJournal }) {
 
   const picker = <WeekPicker weeks={queue.weeks} value={week.week} onChange={setSelected}/>
 
-  const panel = <WeekPanel week={week} privacy={privacy} openJournal={openJournal} picker={picker}>
-    <WeekList weeks={queue.weeks} selected={week.week} onSelect={setSelected} privacy={privacy}/>
+  const panel = <WeekPanel week={week} privacy={privacy} openJournal={openJournal}
+    bar={<div className="pg-bar"><Segmented options={['Weeks', 'Months']} value={by} onChange={setBy} label="Group by" className="compact rail-switch report-switch"/></div>}>
+    <WeekList weeks={queue.weeks} selected={week.week} onSelect={setSelected} privacy={privacy} by={by}/>
   </WeekPanel>
   const routine = <RoutineCard month={week.ends_on.slice(0, 7)} privacy={privacy} version={version} onSaved={() => setVersion((value) => value + 1)}/>
 
   return <div className="page home ws-page progress-page">
     <PageHead
       title="Progress"
-      meta={`${reviewedCount} of ${queue.weeks.length} weeks reviewed`}
-      actions={<><button type="button" className="start-day" onClick={() => setEditing(week.week)}>{week.review ? 'Update review' : 'New review'}</button></>}
+      meta={`${range(week)} · ${reviewedCount} of ${queue.weeks.length} weeks reviewed`}
+      actions={<>{picker}<button type="button" className="start-day" onClick={() => setEditing(week.week)}>{week.review ? 'Update review' : 'New review'}</button></>}
     />
     {saved && <div className="pg-saved" role="status">Review saved.</div>}
 

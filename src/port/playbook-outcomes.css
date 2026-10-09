@@ -55,3 +55,5 @@
 /* playbook table: 6px from the white plate's edge, like the plan card above */
 #root#root .pb-page .ou-card.duo > .ou-list { padding: 6px !important; }
 .pb-page .ou-list > .ou-row { margin-left: 0; margin-right: 0; padding: 0 12px; }
+/* label band: white with a hairline outline, like every table header */
+#root .pb-page .ou-row.ou-row-head { box-sizing: border-box; border: 1px solid var(--line, #eaecf0); background: #fff !important; }

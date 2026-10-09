@@ -7550,3 +7550,78 @@ body { min-height: 100dvh; padding: 12px; box-sizing: border-box; }
 #root .calendar-page .greeting-plate .page-lede { font-size: 13px !important; line-height: normal !important; }
 /* every page subtitle under the title: 13px, one line height */
 #root .page :is(.ws-meta, .page-lede, .journal-lede) { font-size: 13px !important; line-height: normal !important; }
+/* table label bands everywhere: white with a hairline outline (first and last cells close the outline) */
+#root#root .page thead th { background: #fff !important; border-top: 1px solid var(--line, #eaecf0) !important; border-bottom: 1px solid var(--line, #eaecf0) !important; box-shadow: none !important; }
+#root#root .page thead th:first-child { border-left: 1px solid var(--line, #eaecf0) !important; }
+#root#root .page thead th:last-child { border-right: 1px solid var(--line, #eaecf0) !important; }
+@media (max-width: 640px) { #root#root .progress-page .cal-routine thead th:nth-child(2) { border-right: 1px solid var(--line, #eaecf0) !important; } }
+/* cash flow: a plain white card in the Compare chart's style */
+#root#root .prop-ws .flow-card { display: flex; flex-direction: column; gap: 10px; min-width: 0; margin: 0; padding: 14px 16px 12px; border: 1px solid var(--line, #eaecf0) !important; border-radius: 14px; background: #fff !important; box-shadow: none !important; }
+.prop-ws .flow-title { margin: 0; color: var(--ink, #2b2f35); font-size: var(--card-title-size, 15px); font-weight: 600; letter-spacing: -.015em; }
+#root#root .prop-ws .flow-card > .flow-layout { flex: 1; padding: 0 !important; }
+.prop-ws .flow-key { margin: 8px 0 0; }
+.prop-ws .flow-key .stack-chip { box-sizing: border-box; height: 24px; border: 1px solid var(--line, #eaecf0); background: #fff; color: var(--ink-soft, #475467); }
+.prop-ws .flow-key .stack-chip i { width: 7px; height: 7px; border-radius: 2px; }
+.prop-ws .flow-key i.spent { background: #d0d5dd; } .prop-ws .flow-key i.paid { background: #2e7cf6; } .prop-ws .flow-key i.loss { background: #f97066; }
+/* phones: the chart takes the full width, the figures stack under it */
+@media (max-width: 720px) { #root#root .prop-ws .flow-card > .flow-layout { grid-template-columns: minmax(0, 1fr); gap: 16px; } }
+/* firm and payout-cap tick bars: slimmer */
+#root#root .prop-ws .fn-ticks { height: 6px !important; }
+#root#root .prop-ws .fn-ticks > i { height: 6px !important; border-radius: 1.5px !important; }
+/* firm plates: flat, a hairline outline instead of the lifted shadow (drawn inside, so rows don't grow) */
+#root#root .prop-ws :is(.firm-card, .caps-card) .firm-net > li { box-shadow: none !important; outline: 1px solid var(--line, #eaecf0); outline-offset: -1px; }
+/* firm and payout-cap rows: figures only, no tick bars */
+#root#root .prop-ws .fn-ticks { display: none !important; }
+/* a firm with no active account: greyed out, no hover, N/A in place of the cap */
+#root#root .prop-ws .caps-net > li.is-na { background: var(--canvas-soft, #f7f8fa) !important; cursor: default; }
+#root#root .prop-ws .caps-net > li.is-na :is(.caps-name, .fn-value) { color: var(--ink-faint, #98a2b3) !important; font-weight: 500; }
+#root#root .prop-ws .caps-net > li.is-na .fn-head > :first-child { opacity: .45; filter: grayscale(1); }
+/* session timeline: one white card in the Compare chart's style (title and switches inside, no grey frame) */
+#root#root#root .page.home.journal .session-card.duo { padding: 0 !important; border: 1px solid var(--line, #eaecf0) !important; border-radius: 14px !important; background: #fff !important; box-shadow: none !important; }
+#root#root#root .page.home.journal .session-card.duo > .shell-head { min-height: 0; padding: 14px 16px 0 !important; background: none !important; }
+#root#root#root .page.home.journal .session-card.duo > .shell-body { margin: 0 !important; padding: 6px 16px 14px !important; border-radius: 0 0 14px 14px !important; background: none !important; box-shadow: none !important; }
+#root#root#root .page.home.journal .session-card .card-title { font-size: var(--card-title-size, 15px) !important; font-weight: 600 !important; letter-spacing: -.015em; }
+/* the lanes start right under the head, as the Compare chart does */
+#root#root#root .page.home.journal .session-card .session-timeline { padding-top: 0 !important; }
+#root#root#root .page.home.journal .session-card .stl { margin-top: 0 !important; }
+/* phones: both switches share the row under the title instead of running off the card */
+@media (max-width: 640px) {
+  #root#root#root .page.home.journal .session-card .st-tools { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; }
+  #root#root#root .page.home.journal .session-card .st-tools .ws-seg { width: 100% !important; min-width: 0; }
+  #root#root#root .page.home.journal .session-card .st-tools .ws-seg button { flex: 1; min-width: 0 !important; padding: 0 6px !important; }
+}
+/* the lanes fill the card's height instead of floating in the middle of it */
+#root#root#root .page.home.journal .session-card .session-timeline { justify-content: flex-start !important; }
+#root#root#root .page.home.journal .session-card .stl { flex: 1; display: flex; flex-direction: column; }
+#root#root#root .page.home.journal .session-card .stl > .stl-row { flex: 1 1 auto; }
+/* intraday stat chips: under the title, left-aligned, a little room before the chart */
+#root .page.home.journal .session-card .session-intraday > .chip-stack-wrap { margin: 0 0 8px; }
+/* 12px from title to chip, as on the Compare chart (the head row is as tall as its switch, so pull up) */
+@media (min-width: 641px) { #root .page.home.journal .session-card .session-intraday > .chip-stack-wrap { margin-top: -7px; } }
+/* the chip now leads the card body in both views */
+#root .page.home.journal .session-card > .shell-body > .chip-stack-wrap { flex: none; margin: 0 0 8px; }
+@media (min-width: 641px) { #root .page.home.journal .session-card > .shell-body > .chip-stack-wrap { margin-top: -7px; } }
+/* top row: stat chip, then the day's summary line beside it */
+#root .page.home.journal .session-card > .shell-body > .st-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; margin: 0 0 8px; }
+@media (min-width: 641px) { #root .page.home.journal .session-card > .shell-body > .st-top { margin-top: -7px; } }
+#root .page.home.journal .session-card .st-top > .chip-stack-wrap { flex: none; margin: 0 !important; }
+#root .page.home.journal .session-card .st-top-meta { margin: 0 !important; color: var(--ink-faint, #98a2b3); font-size: 12px; white-space: nowrap; }
+/* the hour-label row keeps its own height; only the lanes stretch */
+#root#root#root .page.home.journal .session-card .stl > .stl-row.stl-axis { flex: none !important; }
+/* one height for both views: the card is sized to the intraday chart and the timeline lanes stretch into it */
+#root#root#root .page.home.journal .session-card.duo { min-height: 311px; }
+@media (max-width: 640px) { #root#root#root .page.home.journal .session-card.duo { min-height: 366px; } }
+#root#root#root .page.home.journal .session-card.duo > .shell-body { flex: 1 1 auto; display: flex; flex-direction: column; }
+#root#root#root .page.home.journal .session-card .session-timeline { flex: 1 1 auto; }
+/* by-trade rows lead with the ticker's logo instead of its name */
+#root .page.home.journal .session-card .stl-name { gap: 8px; }
+#root#root .page.home.journal .session-card .stl-name .jt-token { flex: none; width: 22px !important; height: 22px !important; min-width: 22px !important; padding: 0 !important; border-radius: 50%; overflow: hidden; }
+#root#root .page.home.journal .session-card .stl-name .jt-token img { width: 100% !important; height: 100% !important; object-fit: cover; }
+/* the logo + side mark need far less room than a ticker name did */
+#root#root .page.home.journal .session-card .stl:not(.stl-packed) > .stl-row { grid-template-columns: 58px minmax(0, 1fr) 70px !important; }
+/* journal week chips: weekday + date centred over the P&L */
+#root#root .page.home.journal .jr-week .jr-day { grid-template-columns: auto auto !important; justify-content: center !important; column-gap: 4px !important; }
+#root#root .page.home.journal .jr-week .jr-day > small { grid-column: 1 / -1 !important; justify-self: center; }
+/* by-trade logos line up with the text inside the stat chip above them (11px in) */
+#root#root .page.home.journal .session-card .stl:not(.stl-packed) > .stl-row { grid-template-columns: 69px minmax(0, 1fr) 70px !important; }
+#root#root .page.home.journal .session-card .stl:not(.stl-packed) .stl-name { padding-left: 11px; }

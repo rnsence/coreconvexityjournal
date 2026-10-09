@@ -367,32 +367,9 @@ const SUGGESTED_TAGS = ['a+ setup', 'patient', 'chased', 'early exit', 'oversize
 /* ============================================================ trades */
 
 const GRADE_STARS = { 'A+': 5, A: 4, B: 3, C: 2, D: 1 }
-const PAGE_SIZE = 14
 
 /** Rows that fit under the blotter header on this screen, so the page has no dead space. */
-function useFittedRows(ref, fallback = PAGE_SIZE) {
-  const [rows, setRows] = useState(fallback)
-  const tries = useRef(0)
-  useEffect(() => {
-    const rowHeight = () => ref.current?.querySelector('tbody tr.jt-row')?.getBoundingClientRect().height || 46
-    // settle on the count that just fills the viewport, then stop
-    const settle = () => {
-      if (tries.current > 10) return
-      const page = ref.current?.closest('.page')
-      const tail = page?.lastElementChild
-      if (!tail) return
-      const step = rowHeight()
-      const slack = window.innerHeight - tail.getBoundingClientRect().bottom - 58
-      if (slack < 0) { tries.current += 1; setRows((current) => Math.max(6, current - Math.max(1, Math.ceil(-slack / step)))) }
-      else if (slack > step) { tries.current += 1; setRows((current) => Math.min(60, current + Math.floor(slack / step))) }
-    }
-    const frame = requestAnimationFrame(settle)
-    const onResize = () => { tries.current = 0; requestAnimationFrame(settle) }
-    window.addEventListener('resize', onResize)
-    return () => { cancelAnimationFrame(frame); window.removeEventListener('resize', onResize) }
-  }, [ref, rows])
-  return rows
-}
+const TRADES_PAGE = 11
 
 const SORTS = {
   date: (a, b) => a.timestamp - b.timestamp,
@@ -507,7 +484,8 @@ export function TradesPage({ privacy, range = 'All', initialQuery = '', openLog 
   }, [active, query, outcome, side, setup, sort])
 
   useEffect(() => { setPageIndex(0) }, [query, outcome, side, setup, sort, range])
-  const pageSize = useFittedRows(tableRef)
+  // a fixed page of eleven trades
+  const pageSize = TRADES_PAGE
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const visible = filtered.slice(pageIndex * pageSize, pageIndex * pageSize + pageSize)
   const selected = filtered.find((trade) => trade.id === selectedId) || null
@@ -1047,7 +1025,7 @@ export function payoutRules(account, taken) {
 }
 
 /** What each account is allowed to withdraw: per-payout size, runway to uncapped, and the monthly ceiling. */
-function PayoutCaps({ accounts, payouts, privacy }) {
+function PayoutCaps({ accounts, payouts, privacy, firms = [] }) {
   const [view, setView] = useState('Caps')
   const month = [...payouts].sort((a, b) => b.date.localeCompare(a.date))[0]?.date.slice(0, 7) ?? ''
   const rows = accounts.map((account) => {
@@ -1073,6 +1051,14 @@ function PayoutCaps({ accounts, payouts, privacy }) {
         <TickTrack scale={rules.monthly} parts={[{ value: drawn, tone: 'drawn' }]}/>
       </li>
     })}
+    {/* every firm is listed; one with no active account has no cap, so it sits greyed out as N/A */}
+    {firms.filter((firm) => !accounts.some((account) => account.firm === firm)).map((firm) => <li key={firm} className="is-na" aria-disabled="true">
+      <div className="fn-head">
+        <FirmLogo firm={firm}/>
+        <span className="fn-name"><span className="caps-name">{firm}</span><small>No active account</small></span>
+        <span className="fn-value caps-left">N/A</span>
+      </div>
+    </li>)}
   </ul>
 }
 
@@ -1422,14 +1408,18 @@ export function PropFirmsPage({ privacy }) {
 
 
     <div className="ws-grid two-one flow-row">
-      <Card shell title="Cash flow">
+      {/* one white card like the Compare chart: title inside, chart, outlined key chips */}
+      <section className="home-card flow-card" aria-label="Cash flow">
+        <h2 className="flow-title">Cash flow</h2>
         <div className="flow-layout">
           <div className="flow-chart">
           <GroupedColumns
             data={monthly} height={224} privacy={privacy} netLoss
             series={[{ key: 'spent', label: 'Spent', tone: 'spent' }, { key: 'paid', label: 'Payouts', tone: 'paid' }]}
           />
-            <div className="ws-legend flow-legend"><span><i className="spent"/>Spent</span><span><i className="paid"/>Payouts</span><span><i className="loss"/>Net loss</span></div>
+            <ul className="cume-legend flow-key" aria-label="Legend">
+              <li className="stack-chip"><i className="spent"/>Spent</li><li className="stack-chip"><i className="paid"/>Payouts</li><li className="stack-chip"><i className="loss"/>Net loss</li>
+            </ul>
           </div>
           <aside className="flow-side">
             <div className="flow-lead">
@@ -1446,7 +1436,7 @@ export function PropFirmsPage({ privacy }) {
             </dl>
           </aside>
         </div>
-      </Card>
+      </section>
       <Card shell title="Net by firm" className="firm-card">
         <FirmNetList rows={firms} format={(value) => money(value, { privacy, decimals: 0 })}/>
       </Card>
@@ -1454,7 +1444,7 @@ export function PropFirmsPage({ privacy }) {
         shell title="Payout caps" className="caps-card"
         aside={<span className="ws-hint caps-hint"><b className="tone-pos">{money(capsTakeHome(liveAccounts, propTransactions), { privacy, sign: false, decimals: 0 })}</b> max this month · {liveAccounts.filter((account) => account.phase === 'Funded').length} funded</span>}
       >
-        <PayoutCaps accounts={liveAccounts} payouts={propTransactions} privacy={privacy}/>
+        <PayoutCaps accounts={liveAccounts} payouts={propTransactions} privacy={privacy} firms={firms.map((firm) => firm.label)}/>
       </Card>
     </div>
 

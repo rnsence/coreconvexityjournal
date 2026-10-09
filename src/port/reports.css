@@ -1589,3 +1589,13 @@
 /* new report row, compact: 6px around 32px controls */
 #root#root .rp-page .ws-card.duo.rp-compose-lite > .rp-compose-body { padding: 6px !important; }
 #root#root .rp-page .rp-compose-lite :is(.rp-compose-title, .rf-btn, .rp-compose-go) { height: 32px !important; }
+/* tab row carries the compare Filters button at its far right */
+.rp-page .rp-tabs-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* the comparison sits on the page with no card: set cards, chart and verdicts stack at the page rhythm */
+#root#root .rp-page .rp-h2h-flat > .rp-h2h-body { padding: 0 !important; margin: 0 !important; background: none !important; border: 0 !important; }
+#root#root .rp-page .rp-h2h-flat > .rp-h2h-body { display: flex; flex-direction: column; gap: 16px; }
+/* set and spread figure panels: white with a hairline outline instead of grey */
+#root#root .rp-page .rp-side2-stats, #root#root .rp-page .rp-spread-body > dl { box-sizing: border-box; border: 1px solid var(--line, #eaecf0) !important; background: #fff !important; }
+/* set and spread cards: tighter plates */
+#root#root .rp-page .rp-sides3 > .rp-side2 > .rp-side2-row, #root#root .rp-page .rp-sides3 > * > .rp-spread-body { padding: 7px 7px 7px 12px !important; }
+#root#root .rp-page .rp-side2-stats, #root#root .rp-page .rp-spread-body > dl { padding: 5px 12px !important; }

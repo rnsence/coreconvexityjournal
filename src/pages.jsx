@@ -1385,11 +1385,7 @@ const LABEL_MINUTES = 36
                   key={option} type="button" role="tab" aria-selected={timelineView === option}
                   className={timelineView === option ? 'active' : ''} onClick={() => setTimelineView(option)}
                 >{option}</button>)}
-              </div> : <dl className="intraday-stats">
-                <div><dt>High</dt><dd className={`tone-${toneOf(intraday.high)}`}>{money(intraday.high, { privacy, decimals: 0 })}</dd></div>
-                <div><dt>Low</dt><dd className={`tone-${toneOf(intraday.low)}`}>{money(intraday.low, { privacy, decimals: 0 })}</dd></div>
-                <div><dt>Close</dt><dd className={`tone-${toneOf(intraday.close)}`}>{money(intraday.close, { privacy, decimals: 0 })}</dd></div>
-              </dl>}
+              </div> : null}
               <div className="ws-seg compact" role="tablist" aria-label="Session view">
                 {['Timeline', 'Intraday'].map((option) => <button
                   key={option} type="button" role="tab" aria-selected={sessionView === option}
@@ -1399,6 +1395,15 @@ const LABEL_MINUTES = 36
             </div>
           </div>
           <div className="shell-body">
+          {/* the day's figures and its one-line summary sit under the title in both views */}
+          <div className="st-top">
+            <CumeChips privacy={privacy} items={[
+              { label: 'Close', value: intraday.close, tone: toneOf(intraday.close) },
+              { label: 'High', value: intraday.high, tone: toneOf(intraday.high) },
+              { label: 'Low', value: intraday.low, tone: toneOf(intraday.low) },
+            ]}/>
+            <p className="st-meta st-top-meta">{sessionFills.length} trades · {Math.floor(heldMinutes / 60)}h {heldMinutes % 60}m in market · US Eastern</p>
+          </div>
           {sessionView === 'Intraday' ? <div className="session-intraday">
             <IntradayChart fills={sessionFills} height={210} privacy={privacy} onSelect={setDrawerTradeId}/>
           </div> : <div className="session-timeline">
@@ -1435,7 +1440,7 @@ const LABEL_MINUTES = 36
                 const end = timelineAt(toMinutes(fill.closed ?? fill.time))
                 const held = toMinutes(fill.closed ?? fill.time) - toMinutes(fill.time)
                 return <div className="stl-row" role="listitem" key={fill.id}>
-                  <span className="stl-name"><b>{fill.symbol}</b><i className={`side-mark ${fill.side.toLowerCase()}`} aria-label={fill.side}>{fill.side[0]}</i></span>
+                  <span className="stl-name" title={fill.symbol} aria-label={fill.symbol}><SymbolToken symbol={fill.symbol}/><i className={`side-mark ${fill.side.toLowerCase()}`} aria-label={fill.side}>{fill.side[0]}</i></span>
                   <span className="stl-lane">
                     <i className="stl-lunch" style={{ left: `${timelineAt(12 * 60)}%`, width: `${timelineAt(13 * 60 + 30) - timelineAt(12 * 60)}%` }}/>
                     {[10, 11, 12, 13, 14, 15].map((hour) => <i key={hour} className="stl-hour" style={{ left: `${timelineAt(hour * 60)}%` }}/>)}
@@ -1466,7 +1471,6 @@ const LABEL_MINUTES = 36
                 <span/>
               </div>
             </div>}
-            <p className="st-meta st-foot">{sessionFills.length} trades · {Math.floor(heldMinutes / 60)}h {heldMinutes % 60}m in market · US Eastern</p>
           </div>}
           </div>
         </section>

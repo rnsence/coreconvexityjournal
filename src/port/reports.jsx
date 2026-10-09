@@ -402,10 +402,8 @@ Filters
   </div>
 }
 
-function CompareTab({ trades, privacy, setups, drill }) {
-  const [a, setA] = useState(() => readStore('rp-compare-a', { direction: 'long' }))
-  const [b, setB] = useState(() => readStore('rp-compare-b', { direction: 'short' }))
-  useEffect(() => { writeStore('rp-compare-a', a); writeStore('rp-compare-b', b) }, [a, b])
+function CompareTab({ trades, privacy, setups, drill, sets }) {
+  const { a, b, setA, setB } = sets
   // one range governs the whole comparison: tiles, spread, chart and statistics
   const [range, setRange] = useState('All')
   const [statsOn, setStatsOn] = useState(false)
@@ -419,12 +417,9 @@ function CompareTab({ trades, privacy, setups, drill }) {
   const openId = drill.drill?.groups[drill.drill.index]?.id
   const shared = { privacy, trades, setups }
   return <>
-    <section className="home-card ws-card duo rp-h2h" aria-label="Head to head">
-      <header className="shell-head rp-setcard-head">
-        <h2>Head to Head</h2>
-        <SetsControl a={a} b={b} setA={setA} setB={setB} trades={trades} setups={setups}/>
-      </header>
-      <div className="shell-body rp-h2h-body">
+    {/* no card around the comparison: the set cards and chart sit straight on the page */}
+    <section className="rp-h2h-flat" aria-label="Head to head">
+      <div className="rp-h2h-body">
         <div className="rp-sides3">
           <SetSide id="A" value={a} setValue={setA} m={ma} current={openId === 'set-a'} onOpen={() => drill.open(groups(), 0)} {...shared}/>
           <SetSide id="B" value={b} setValue={setB} m={mb} current={openId === 'set-b'} onOpen={() => drill.open(groups(), 1)} {...shared}/>
@@ -934,6 +929,11 @@ export function ReportsPage({ privacy, range = 'All' }) {
   const [openView, setOpenView] = useState('report')
   const openReport = (id, view = 'report') => { setOpenView(view); setOpenId(id) }
   const sessions = useMemo(() => new Set(trades.map((trade) => trade.date)).size, [trades])
+  // the compare sets live here so their Filters button can sit in the tab row
+  const [setA, setStateA] = useState(() => readStore('rp-compare-a', { direction: 'long' }))
+  const [setB, setStateB] = useState(() => readStore('rp-compare-b', { direction: 'short' }))
+  useEffect(() => { writeStore('rp-compare-a', setA); writeStore('rp-compare-b', setB) }, [setA, setB])
+  const sets = { a: setA, b: setB, setA: setStateA, setB: setStateB }
   const props = { trades, privacy, setups, drill }
 
   return <div className="page home ws-page rp-page">
@@ -943,10 +943,11 @@ export function ReportsPage({ privacy, range = 'All' }) {
     />
     <div className="rp-tabs-row">
       <Segmented options={TABS} value={tab} onChange={setTab} label="Reports" className="rp-tabs"/>
+      {tab === 'Compare' && <SetsControl a={setA} b={setB} setA={setStateA} setB={setStateB} trades={trades} setups={setups}/>}
     </div>
     <div className="rp-panel" key={tab}>
       {tab === 'Insights' && <InsightsTab {...props}/>}
-      {tab === 'Compare' && <CompareTab {...props}/>}
+      {tab === 'Compare' && <CompareTab {...props} sets={sets}/>}
       {tab === 'Build' && <>
         <BuilderTab {...props} filter={buildFilter} setFilter={setBuildFilter}/>
       </>}
