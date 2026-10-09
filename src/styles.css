@@ -7625,3 +7625,16 @@ body { min-height: 100dvh; padding: 12px; box-sizing: border-box; }
 /* by-trade logos line up with the text inside the stat chip above them (11px in) */
 #root#root .page.home.journal .session-card .stl:not(.stl-packed) > .stl-row { grid-template-columns: 69px minmax(0, 1fr) 70px !important; }
 #root#root .page.home.journal .session-card .stl:not(.stl-packed) .stl-name { padding-left: 11px; }
+/* the day's summary line shows only while the stat chip is open */
+#root .page.home.journal .session-card .st-top-meta { display: none; }
+#root .page.home.journal .session-card .st-top:has(.chip-stack.is-open) .st-top-meta { display: block; animation: st-meta-in .24s cubic-bezier(.22,.82,.28,1) both; }
+@keyframes st-meta-in { from { opacity: 0; transform: translateX(-4px); } }
+@media (prefers-reduced-motion: reduce) { #root .page.home.journal .session-card .st-top-meta { animation: none !important; } }
+/* summary line: a soft left-to-right wipe, starting as the chips finish fanning out */
+#root .page.home.journal .session-card .st-top:has(.chip-stack.is-open) .st-top-meta {
+  -webkit-mask-image: linear-gradient(90deg, #000 40%, transparent 60%); mask-image: linear-gradient(90deg, #000 40%, transparent 60%);
+  -webkit-mask-size: 250% 100%; mask-size: 250% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  animation: st-meta-wipe .6s cubic-bezier(.22,.82,.28,1) .12s both;
+}
+@keyframes st-meta-wipe { from { -webkit-mask-position: 100% 0; mask-position: 100% 0; opacity: .4; } to { -webkit-mask-position: 0 0; mask-position: 0 0; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { #root .page.home.journal .session-card .st-top:has(.chip-stack.is-open) .st-top-meta { animation: st-meta-in .2s ease both !important; -webkit-mask-image: none; mask-image: none; } }
